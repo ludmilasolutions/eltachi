@@ -1,9 +1,0 @@
-cat > frontend/package.json << 'EOF'
-{
-  "name": "el-tachi-pwa",
-  "version": "1.0.0",
-  "scripts": {
-    "build": "echo 'Build complete'"
-  }
-}
-EOF
