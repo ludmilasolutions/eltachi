@@ -5,7 +5,7 @@
 // Clase GeminiAssistant - DEFINIDA AQUÍ MISMO
 class GeminiAssistant {
     constructor(apiKey) {
-        this.apiKey = apiKey || 'TU_API_KEY_AQUI';
+        this.apiKey = apiKey || 'AIzaSyDP6ZuOG0TEBM973TVlIO1jrED7CJxTVAk';
         this.apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
         this.context = '';
         console.log('🧠 GeminiAssistant creado (inline)');
