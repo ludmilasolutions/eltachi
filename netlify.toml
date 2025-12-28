@@ -1,0 +1,18 @@
+[build]
+  publish = "."
+  command = "echo 'No build needed'"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Service-Worker-Allowed = "/"
+    Cache-Control = "no-cache"
+
+[build.environment]
+  NODE_VERSION = "18"
+EOF
