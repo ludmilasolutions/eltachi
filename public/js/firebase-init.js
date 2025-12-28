@@ -7,12 +7,12 @@ if (typeof firebase === 'undefined') {
 
 // Configuración de Firebase - REEMPLAZA con tus propios valores
 const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "TU_AUTH_DOMAIN",
-    projectId: "TU_PROJECT_ID",
-    storageBucket: "TU_STORAGE_BUCKET",
-    messagingSenderId: "TU_MESSAGING_SENDER_ID",
-    appId: "TU_APP_ID"
+  apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
+  authDomain: "eltachi.firebaseapp.com",
+  projectId: "eltachi",
+  storageBucket: "eltachi.firebasestorage.app",
+  messagingSenderId: "231676602106",
+  appId: "1:231676602106:web:fde347e9caa00760b34b43"
 };
 
 // Inicializar Firebase
