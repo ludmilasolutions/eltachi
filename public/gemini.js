@@ -1,6 +1,6 @@
 class GeminiAssistant {
     constructor(apiKey) {
-        this.apiKey = apiKey;
+        this.apiKey = AIzaSyDP6ZuOG0TEBM973TVlIO1jrED7CJxTVAk;
         this.apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
         this.context = '';
     }
