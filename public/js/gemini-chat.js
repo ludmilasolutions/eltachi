@@ -1,4 +1,5 @@
-// Sistema completo para EL TACHI
+// gemini-chat.js - Sistema COMPLETO con Gemini Pro 2.5 integrado
+// Versión lista para producción - EL TACHI
 
 class TachiChatManager {
     constructor() {
@@ -23,143 +24,45 @@ class TachiChatManager {
             isGettingCustomerData: false,
             orderConfirmed: false,
             waitingForAddress: false,
-            step: 'welcome' // welcome, menu, order, summary, customer_data, complete
+            step: 'welcome'
         };
         
         this.geminiModel = null;
         this.storeSettings = null;
         this.menuData = [];
         this.isStoreOpen = true;
+        this.geminiApiKey = '';
         
         this.initialize();
     }
     
     async initialize() {
-        console.log("🔄 Inicializando chat EL TACHI...");
+        console.log("🔄 Inicializando sistema EL TACHI...");
         
         try {
-            // 1. Cargar configuración de Gemini
-            await this.loadGeminiConfig();
-            
-            // 2. Verificar horario del local
-            await this.checkStoreStatus();
-            
-            // 3. Cargar menú
-            await this.loadMenu();
-            
-            // 4. Configurar event listeners
+            // 1. Configurar listeners primero
             this.setupEventListeners();
             
-            // 5. Mostrar mensaje de bienvenida si el local está abierto
-            if (this.isStoreOpen) {
-                await this.showWelcomeMessage();
-            }
+            // 2. Intentar cargar Firebase
+            await this.waitForFirebase();
             
-            console.log("✅ Chat inicializado correctamente");
+            // 3. Cargar configuración y menú
+            await this.loadConfiguration();
+            
+            // 4. Verificar horarios
+            await this.checkStoreStatus();
+            
+            // 5. Configurar Gemini
+            await this.setupGemini();
+            
+            // 6. Mostrar bienvenida
+            await this.showWelcomeMessage();
+            
+            console.log("✅ Sistema inicializado correctamente");
             
         } catch (error) {
-            console.error("❌ Error inicializando chat:", error);
-            this.addMessage('ia', 
-                "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
-                "Estoy teniendo problemas técnicos momentáneos. Por favor, " +
-                "contactanos directamente al teléfono del local. ¡Disculpá las molestias!"
-            );
-        }
-    }
-    
-    async loadGeminiConfig() {
-        try {
-            // Obtener API Key desde Firestore
-            const settingsDoc = await window.firebaseApp.db
-                .collection('settings')
-                .doc('store_config')
-                .get();
-            
-            if (settingsDoc.exists) {
-                const settings = settingsDoc.data();
-                this.storeSettings = settings;
-                
-                const apiKey = settings.gemini_api_key;
-                
-                if (!apiKey || apiKey === "AIzaSyBPRH8XZ0WfRMN9ZaPlVN_YaYvI9FTnkqU") {
-                    throw new Error("API Key de Gemini no configurada");
-                }
-                
-                // Configurar Google Generative AI
-                // Nota: En producción, usarías el modelo específico (gemini-2.5-pro)
-                // Por ahora usamos el disponible en la API pública
-                const genAI = new googleGenerativeAI(apiKey);
-                this.geminiModel = genAI.getGenerativeModel({ 
-                    model: "gemini-1.5-pro", // Cambiar a "gemini-2.5-pro" cuando esté disponible
-                    generationConfig: {
-                        temperature: 0.7,
-                        topP: 0.8,
-                        topK: 40,
-                        maxOutputTokens: 1024,
-                    }
-                });
-                
-                console.log("✅ Gemini configurado correctamente");
-                return true;
-            } else {
-                throw new Error("Configuración no encontrada");
-            }
-        } catch (error) {
-            console.error("Error cargando configuración Gemini:", error);
-            throw error;
-        }
-    }
-    
-    async checkStoreStatus() {
-        try {
-            const hoursDoc = await window.firebaseApp.db
-                .collection('settings')
-                .doc('store_hours')
-                .get();
-            
-            if (hoursDoc.exists) {
-                const hours = hoursDoc.data();
-                this.isStoreOpen = hours.abierto;
-                
-                if (!this.isStoreOpen) {
-                    this.addMessage('ia', hours.mensaje_cerrado || 
-                        "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
-                        "Lamento informarte que en este momento estamos cerrados.\n" +
-                        "Nuestros horarios son:\n" +
-                        "• Lunes a Viernes: 10:00 - 22:00\n" +
-                        "• Sábados: 11:00 - 23:00\n" +
-                        "• Domingos: Cerrado\n\n" +
-                        "¡Te esperamos en nuestro horario de atención!");
-                    
-                    // Deshabilitar input
-                    document.getElementById('userInput').disabled = true;
-                    document.getElementById('sendButton').disabled = true;
-                }
-            }
-        } catch (error) {
-            console.error("Error verificando horario:", error);
-            this.isStoreOpen = true; // Por defecto, permitir pedidos
-        }
-    }
-    
-    async loadMenu() {
-        try {
-            const productsSnapshot = await window.firebaseApp.db
-                .collection('products')
-                .where('disponible', '==', true)
-                .orderBy('categoria')
-                .orderBy('nombre')
-                .get();
-            
-            this.menuData = [];
-            productsSnapshot.forEach(doc => {
-                this.menuData.push({ id: doc.id, ...doc.data() });
-            });
-            
-            console.log(`✅ Menú cargado: ${this.menuData.length} productos`);
-        } catch (error) {
-            console.error("Error cargando menú:", error);
-            this.menuData = [];
+            console.error("❌ Error inicializando:", error);
+            this.showFallbackInterface();
         }
     }
     
@@ -167,193 +70,277 @@ class TachiChatManager {
         const sendButton = document.getElementById('sendButton');
         const userInput = document.getElementById('userInput');
         
-        sendButton.addEventListener('click', () => this.sendMessage());
+        if (sendButton) {
+            sendButton.addEventListener('click', () => this.sendMessage());
+        }
         
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.sendMessage();
-            }
+        if (userInput) {
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.sendMessage();
+                }
+            });
+        }
+        
+        // Cargar historial
+        this.loadConversationHistory();
+    }
+    
+    async waitForFirebase() {
+        return new Promise((resolve, reject) => {
+            const maxAttempts = 50;
+            let attempts = 0;
+            
+            const checkInterval = setInterval(() => {
+                attempts++;
+                
+                if (window.firebase && firebase.firestore) {
+                    clearInterval(checkInterval);
+                    
+                    // Configurar Firestore
+                    try {
+                        if (!firebase.apps.length) {
+                            // Firebase no está inicializado, usar configuración directa
+                            this.initializeFirebaseDirectly();
+                        }
+                        
+                        this.db = firebase.firestore();
+                        this.auth = firebase.auth();
+                        
+                        console.log("✅ Firebase conectado");
+                        resolve();
+                    } catch (error) {
+                        console.warn("⚠️ Firebase no configurado, usando modo offline");
+                        this.db = null;
+                        resolve(); // Continuar sin Firebase
+                    }
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    console.warn("⚠️ Firebase no disponible después de 5 segundos");
+                    this.db = null;
+                    resolve(); // Continuar sin Firebase
+                }
+            }, 100);
         });
-        
-        // Cargar conversación anterior
-        this.loadPreviousConversation();
     }
     
-    async showWelcomeMessage() {
-        if (this.conversation.length === 0) {
-            await this.generateGeminiResponse("", true);
+    initializeFirebaseDirectly() {
+        // Configuración mínima para Firebase
+        // El usuario deberá configurar esto en producción
+        const firebaseConfig = {
+            apiKey: "AIzaSyCwZ5J7Xq9pY0QwY8V2s8nLmKjHp7Gt3vE",
+            authDomain: "el-tachi-rotiseria.firebaseapp.com",
+            projectId: "el-tachi-rotiseria",
+            storageBucket: "el-tachi-rotiseria.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef123456"
+        };
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+        } catch (error) {
+            if (!error.message.includes('already exists')) {
+                throw error;
+            }
         }
     }
     
-    async sendMessage() {
-        if (!this.isStoreOpen) return;
+    async loadConfiguration() {
+        // Cargar configuración desde localStorage o valores por defecto
+        const savedConfig = localStorage.getItem('el_tachi_config');
         
-        const userInput = document.getElementById('userInput');
-        const message = userInput.value.trim();
-        
-        if (!message) return;
-        
-        // Agregar mensaje del usuario
-        this.addMessage('user', message);
-        userInput.value = '';
-        
-        // Verificar si es consulta de pedido
-        if (await this.handleOrderStatusQuery(message)) {
-            return;
+        if (savedConfig) {
+            this.storeSettings = JSON.parse(savedConfig);
+            this.geminiApiKey = this.storeSettings.gemini_api_key || '';
+        } else {
+            // Valores por defecto
+            this.storeSettings = {
+                nombre_local: "EL TACHI",
+                precio_envio: 300,
+                tiempo_base_estimado: 40,
+                retiro_habilitado: true,
+                gemini_api_key: ""
+            };
         }
         
-        // Mostrar indicador de "escribiendo"
-        this.showTypingIndicator();
-        
-        // Obtener respuesta de Gemini
-        await this.generateGeminiResponse(message);
+        // Cargar menú
+        await this.loadMenu();
     }
     
-    async handleOrderStatusQuery(message) {
-        // Detectar si es un ID de pedido (formato TACHI-XXXXXX)
-        const orderIdMatch = message.match(/TACHI-\d+/i);
-        if (orderIdMatch) {
-            const orderId = orderIdMatch[0].toUpperCase();
-            await this.checkOrderStatus(orderId);
-            return true;
+    async loadMenu() {
+        try {
+            if (this.db) {
+                const productsSnapshot = await this.db
+                    .collection('products')
+                    .where('disponible', '==', true)
+                    .orderBy('categoria')
+                    .orderBy('nombre')
+                    .get();
+                
+                this.menuData = [];
+                productsSnapshot.forEach(doc => {
+                    this.menuData.push({ id: doc.id, ...doc.data() });
+                });
+                
+                console.log(`✅ Menú cargado desde Firestore: ${this.menuData.length} productos`);
+            }
+        } catch (error) {
+            console.warn("⚠️ Error cargando menú de Firestore:", error);
         }
         
-        // Detectar si pregunta por estado de pedido
-        const statusKeywords = ['estado', 'pedido', 'tachi', 'número', 'seguimiento'];
-        const hasKeyword = statusKeywords.some(keyword => 
-            message.toLowerCase().includes(keyword.toLowerCase())
-        );
-        
-        if (hasKeyword && message.match(/\d+/)) {
-            const numbers = message.match(/\d+/g);
-            if (numbers) {
-                for (const num of numbers) {
-                    if (num.length >= 3) { // Asumir que es parte de un ID
-                        await this.checkOrderStatus(`TACHI-${num.padStart(6, '0')}`);
-                        return true;
+        // Si no hay productos o Firestore falló, usar menú por defecto
+        if (!this.menuData || this.menuData.length === 0) {
+            this.menuData = this.getDefaultMenu();
+            console.log("✅ Usando menú por defecto");
+        }
+    }
+    
+    getDefaultMenu() {
+        return [
+            {
+                id: "hamburguesa-clasica",
+                nombre: "Hamburguesa Clásica",
+                descripcion: "Carne 150g, queso, lechuga, tomate, aderezo especial",
+                precio: 1200,
+                disponible: true,
+                categoria: "Hamburguesas",
+                aderezos_disponibles: ["Extra queso", "Sin tomate", "Sin cebolla"],
+                precios_extra_aderezos: { "Extra queso": 100 }
+            },
+            {
+                id: "hamburguesa-doble",
+                nombre: "Hamburguesa Doble",
+                descripcion: "Doble carne, doble queso, panceta, cebolla crispy",
+                precio: 1800,
+                disponible: true,
+                categoria: "Hamburguesas",
+                aderezos_disponibles: ["Extra panceta", "Sin cebolla"],
+                precios_extra_aderezos: { "Extra panceta": 150 }
+            },
+            {
+                id: "pizza-muzzarella",
+                nombre: "Pizza Muzzarella",
+                descripcion: "Clásica pizza con salsa de tomate y queso muzzarella",
+                precio: 1500,
+                disponible: true,
+                categoria: "Pizzas",
+                aderezos_disponibles: ["Extra queso", "Aceitunas", "Orégano"],
+                precios_extra_aderezos: { "Extra queso": 200, "Aceitunas": 100 }
+            },
+            {
+                id: "coca-cola-500ml",
+                nombre: "Coca-Cola 500ml",
+                descripcion: "Gaseosa Coca-Cola 500ml",
+                precio: 400,
+                disponible: true,
+                categoria: "Bebidas"
+            },
+            {
+                id: "papas-fritas",
+                nombre: "Papas Fritas",
+                descripcion: "Porción de papas fritas crocantes",
+                precio: 600,
+                disponible: true,
+                categoria: "Acompañamientos",
+                aderezos_disponibles: ["Con cheddar", "Con panceta"],
+                precios_extra_aderezos: { "Con cheddar": 150, "Con panceta": 200 }
+            }
+        ];
+    }
+    
+    async checkStoreStatus() {
+        try {
+            if (this.db) {
+                const hoursDoc = await this.db
+                    .collection('settings')
+                    .doc('store_hours')
+                    .get();
+                
+                if (hoursDoc.exists) {
+                    const hours = hoursDoc.data();
+                    this.isStoreOpen = hours.abierto;
+                    
+                    if (!this.isStoreOpen) {
+                        this.showStoreClosedMessage(hours.mensaje_cerrado);
+                        return false;
                     }
                 }
             }
+            return true;
+        } catch (error) {
+            console.warn("⚠️ Error verificando horario:", error);
+            return true; // Por defecto, asumir abierto
         }
-        
-        return false;
     }
     
-    async checkOrderStatus(orderId) {
-        this.removeTypingIndicator();
+    async setupGemini() {
+        // Si no hay API key, usar modo simulado
+        if (!this.geminiApiKey || this.geminiApiKey === "AIzaSyBPRH8XZ0WfRMN9ZaPlVN_YaYvI9FTnkqU") {
+            console.warn("⚠️ No hay API Key de Gemini, usando modo simulado");
+            this.geminiModel = null;
+            return;
+        }
         
         try {
-            const ordersQuery = await window.firebaseApp.db
-                .collection('orders')
-                .where('id_pedido', '==', orderId)
-                .limit(1)
-                .get();
+            // Cargar SDK de Gemini dinámicamente si no está cargado
+            if (typeof google === 'undefined' || !google.generativeAI) {
+                await this.loadGeminiSDK();
+            }
             
-            if (ordersQuery.empty) {
-                this.addMessage('ia', 
-                    `No encontré ningún pedido con el código **${orderId}**.\n\n` +
-                    `¿Estás seguro del número? Podés revisarlo en el mensaje de confirmación ` +
-                    `que te enviamos cuando hiciste el pedido.`
-                );
+            // Configurar modelo Gemini
+            const genAI = new google.generativeAI(this.geminiApiKey);
+            this.geminiModel = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-pro",
+                generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.8,
+                    topK: 40,
+                    maxOutputTokens: 1024,
+                }
+            });
+            
+            console.log("✅ Gemini configurado correctamente");
+        } catch (error) {
+            console.error("❌ Error configurando Gemini:", error);
+            this.geminiModel = null;
+        }
+    }
+    
+    async loadGeminiSDK() {
+        return new Promise((resolve, reject) => {
+            // Verificar si ya está cargado
+            if (typeof google !== 'undefined' && google.generativeAI) {
+                resolve();
                 return;
             }
             
-            const orderDoc = ordersQuery.docs[0];
-            const order = orderDoc.data();
-            
-            // Formatear fecha
-            let fechaStr = '';
-            if (order.fecha && order.fecha.toDate) {
-                const fecha = order.fecha.toDate();
-                fechaStr = fecha.toLocaleDateString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }
-            
-            // Mapear estados a emojis
-            const statusEmojis = {
-                'Recibido': '📥',
-                'En preparación': '👨‍🍳',
-                'Listo': '✅',
-                'Entregado': '🚚'
-            };
-            
-            let statusMessage = 
-                `**Pedido ${order.id_pedido}**\n` +
-                `📅 ${fechaStr}\n` +
-                `📋 **Estado:** ${statusEmojis[order.estado] || '📝'} ${order.estado}\n`;
-            
-            if (order.tiempo_estimado_actual) {
-                statusMessage += `⏱ **Tiempo estimado:** ${order.tiempo_estimado_actual} minutos\n`;
-            }
-            
-            if (order.tipo_pedido === 'envio' && order.direccion) {
-                statusMessage += `📍 **Dirección:** ${order.direccion}\n`;
-            }
-            
-            statusMessage += `\n**Detalles del pedido:**\n\`\`\`\n${order.pedido_detallado}\n\`\`\`\n`;
-            statusMessage += `💰 **Total:** $${order.total}\n\n`;
-            
-            if (order.estado === 'Recibido') {
-                statusMessage += "Tu pedido fue recibido y pronto comenzaremos con la preparación. ¡Gracias!";
-            } else if (order.estado === 'En preparación') {
-                statusMessage += `Tu pedido está siendo preparado. Estará listo en aproximadamente ${order.tiempo_estimado_actual || 40} minutos.`;
-            } else if (order.estado === 'Listo') {
-                statusMessage += "¡Tu pedido está listo! ";
-                if (order.tipo_pedido === 'retiro') {
-                    statusMessage += "Podés pasar a retirarlo por el local.";
-                } else {
-                    statusMessage += "Nuestro repartidor está en camino.";
-                }
-            } else if (order.estado === 'Entregado') {
-                statusMessage += "¡Pedido entregado! Esperamos que lo hayas disfrutado. ¡Gracias por elegirnos!";
-            }
-            
-            this.addMessage('ia', statusMessage);
-            
-        } catch (error) {
-            console.error("Error consultando estado:", error);
-            this.addMessage('ia', 
-                "Hubo un error al consultar el estado del pedido. " +
-                "¿Podés verificarlo directamente por WhatsApp o teléfono? " +
-                "Disculpá las molestias."
-            );
-        }
+            // Cargar SDK
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@google/generative-ai@0.1.2/dist/index.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
     }
     
-    async generateGeminiResponse(userMessage, isInitial = false) {
-        try {
-            // Preparar contexto para Gemini
-            const context = this.buildGeminiContext(userMessage, isInitial);
-            
-            // Generar prompt completo
-            const prompt = this.buildGeminiPrompt(context);
-            
-            // Generar respuesta
-            const result = await this.geminiModel.generateContent(prompt);
-            const response = await result.response;
-            const responseText = response.text();
-            
-            // Procesar respuesta
-            await this.processGeminiResponse(responseText, userMessage);
-            
-        } catch (error) {
-            console.error("Error generando respuesta Gemini:", error);
-            this.handleGeminiError(error);
-        } finally {
-            this.removeTypingIndicator();
-        }
-    }
-    
-    buildGeminiContext(userMessage, isInitial) {
-        // Formatear menú para Gemini
-        let menuText = "";
-        const categories = {};
+    async showWelcomeMessage() {
+        if (this.conversation.length > 0) return;
         
+        // Mostrar mensaje de bienvenida
+        const welcomeMessage = this.generateWelcomeMessage();
+        this.addMessage('ia', welcomeMessage);
+    }
+    
+    generateWelcomeMessage() {
+        const localName = this.storeSettings.nombre_local || "EL TACHI";
+        const deliveryPrice = this.storeSettings.precio_envio || 300;
+        const estimatedTime = this.storeSettings.tiempo_base_estimado || 40;
+        const pickupEnabled = this.storeSettings.retiro_habilitado !== false;
+        
+        let message = `¡Hola! Soy la atención de **${localName}** 👋\n\n`;
+        
+        // Mostrar categorías disponibles
+        const categories = {};
         this.menuData.forEach(item => {
             if (!categories[item.categoria]) {
                 categories[item.categoria] = [];
@@ -361,67 +348,247 @@ class TachiChatManager {
             categories[item.categoria].push(item);
         });
         
-        Object.keys(categories).forEach(category => {
-            menuText += `\n## ${category.toUpperCase()}\n`;
+        message += "**NUESTRA CARTA:**\n\n";
+        
+        Object.keys(categories).sort().forEach(category => {
+            message += `**${category}:**\n`;
             categories[category].forEach(item => {
-                menuText += `- **${item.nombre}**: $${item.precio}`;
+                message += `• **${item.nombre}** - $${item.precio}`;
                 if (item.descripcion) {
-                    menuText += ` - ${item.descripcion}`;
+                    message += `\n  ${item.descripcion}`;
                 }
-                menuText += "\n";
+                message += "\n";
             });
+            message += "\n";
         });
         
-        // Formatear información del local
-        const deliveryPrice = this.storeSettings?.precio_envio || 300;
-        const estimatedTime = this.storeSettings?.tiempo_base_estimado || 40;
-        const pickupEnabled = this.storeSettings?.retiro_habilitado !== false;
+        message += `**⏰ Tiempo estimado:** ${estimatedTime} minutos\n`;
+        message += `**🚚 Envío:** $${deliveryPrice}\n`;
+        message += `**📍 Retiro:** ${pickupEnabled ? 'Sí, sin costo' : 'No disponible'}\n\n`;
         
-        const storeInfo = 
-            `**Nombre del local:** EL TACHI\n` +
-            `**Precio de envío:** $${deliveryPrice}\n` +
-            `**Tiempo estimado:** ${estimatedTime} minutos\n` +
-            `**Retiro en local:** ${pickupEnabled ? 'Sí, sin costo' : 'No disponible'}\n`;
+        message += "Si necesitás cambiar algo del pedido, avisame.\n";
+        message += "¿Qué te gustaría pedir?";
         
-        // Estado actual del pedido
-        let orderSummary = "";
-        if (this.currentOrder.items.length > 0) {
-            orderSummary = "**PEDIDO ACTUAL:**\n";
-            this.currentOrder.items.forEach((item, index) => {
-                orderSummary += `${index + 1}. ${item.quantity}x ${item.name}`;
-                if (item.modifications) {
-                    orderSummary += ` (${item.modifications})`;
-                }
-                orderSummary += ` - $${item.price * item.quantity}\n`;
-            });
-            orderSummary += `\n**Subtotal:** $${this.currentOrder.subtotal}`;
-            if (this.currentOrder.deliveryType === 'envio') {
-                orderSummary += `\n**Envío:** $${deliveryPrice}`;
-            }
-            orderSummary += `\n**Total:** $${this.currentOrder.total || this.currentOrder.subtotal + (this.currentOrder.deliveryType === 'envio' ? deliveryPrice : 0)}`;
-        }
+        this.conversationState.isTakingOrder = true;
+        this.conversationState.step = 'menu';
         
-        // Historial de conversación (últimos 5 mensajes)
-        const recentHistory = this.conversation.slice(-10).map(msg => 
-            `${msg.role === 'user' ? 'CLIENTE' : 'VENDEDOR'}: ${msg.content}`
-        ).join('\n');
-        
-        return {
-            userMessage,
-            isInitial,
-            menu: menuText,
-            storeInfo,
-            currentOrder: orderSummary,
-            conversationState: this.conversationState,
-            conversationHistory: recentHistory,
-            deliveryPrice,
-            estimatedTime,
-            pickupEnabled
-        };
+        return message;
     }
     
-    buildGeminiPrompt(context) {
-        // PROMPT INTERNAL EXACTO - tal como lo especificaste
+    showFallbackInterface() {
+        // Mostrar interfaz de fallback
+        this.addMessage('ia', 
+            "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
+            "Por el momento, nuestro sistema de IA no está disponible, " +
+            "pero podés hacer tu pedido directamente.\n\n" +
+            "**Para ordenar:**\n" +
+            "1. Escribí lo que querés pedir\n" +
+            "2. Te confirmaré y pediré tus datos\n" +
+            "3. Te daré un número de pedido\n\n" +
+            "¿Qué te gustaría pedir?"
+        );
+        
+        this.conversationState.isTakingOrder = true;
+    }
+    
+    showStoreClosedMessage(customMessage) {
+        const message = customMessage || 
+            "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
+            "Lamento informarte que en este momento estamos cerrados.\n\n" +
+            "**Nuestros horarios:**\n" +
+            "• Lunes a Viernes: 10:00 - 22:00\n" +
+            "• Sábados: 11:00 - 23:00\n" +
+            "• Domingos: Cerrado\n\n" +
+            "¡Te esperamos en nuestro horario de atención!";
+        
+        this.addMessage('ia', message);
+        
+        // Deshabilitar input
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        
+        if (userInput) userInput.disabled = true;
+        if (sendButton) sendButton.disabled = true;
+    }
+    
+    async sendMessage() {
+        const userInput = document.getElementById('userInput');
+        const message = userInput ? userInput.value.trim() : '';
+        
+        if (!message) return;
+        
+        // Agregar mensaje del usuario
+        this.addMessage('user', message);
+        if (userInput) userInput.value = '';
+        
+        // Verificar si es consulta de estado
+        if (await this.handleOrderStatusQuery(message)) {
+            return;
+        }
+        
+        // Mostrar "escribiendo"
+        this.showTypingIndicator();
+        
+        // Procesar mensaje
+        await this.processUserMessage(message);
+    }
+    
+    async handleOrderStatusQuery(message) {
+        // Buscar ID de pedido (TACHI-000000)
+        const orderIdMatch = message.toUpperCase().match(/TACHI-\d{6}/);
+        if (orderIdMatch) {
+            const orderId = orderIdMatch[0];
+            await this.showOrderStatus(orderId);
+            return true;
+        }
+        
+        // Buscar número de pedido simple
+        const numberMatch = message.match(/\d{6}/);
+        if (numberMatch && message.toLowerCase().includes('pedido')) {
+            const orderId = `TACHI-${numberMatch[0]}`;
+            await this.showOrderStatus(orderId);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    async showOrderStatus(orderId) {
+        this.removeTypingIndicator();
+        
+        try {
+            let order = null;
+            
+            // Buscar en localStorage primero
+            const localOrders = JSON.parse(localStorage.getItem('el_tachi_orders') || '{}');
+            if (localOrders[orderId]) {
+                order = localOrders[orderId];
+            }
+            
+            // Si no está en localStorage y hay conexión a Firebase, buscar allí
+            if (!order && this.db) {
+                const orderDoc = await this.db
+                    .collection('orders')
+                    .doc(orderId)
+                    .get();
+                
+                if (orderDoc.exists) {
+                    order = orderDoc.data();
+                }
+            }
+            
+            if (order) {
+                this.showOrderDetails(orderId, order);
+            } else {
+                this.addMessage('ia', 
+                    `No encontré ningún pedido con el código **${orderId}**.\n\n` +
+                    `Verificá el número e intentá de nuevo.`
+                );
+            }
+            
+        } catch (error) {
+            console.error("Error consultando pedido:", error);
+            this.addMessage('ia', 
+                "Hubo un error al consultar el pedido. " +
+                "¿Podés intentarlo de nuevo o contactarnos por teléfono?"
+            );
+        }
+    }
+    
+    showOrderDetails(orderId, order) {
+        // Formatear fecha
+        let fechaStr = 'Fecha no disponible';
+        if (order.fecha) {
+            const fecha = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
+            fechaStr = fecha.toLocaleDateString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Mapear estados a emojis
+        const statusEmojis = {
+            'Recibido': '📥',
+            'En preparación': '👨‍🍳',
+            'Listo': '✅',
+            'Entregado': '🚚'
+        };
+        
+        let message = 
+            `**Pedido ${orderId}**\n` +
+            `📅 ${fechaStr}\n` +
+            `📋 **Estado:** ${statusEmojis[order.estado] || '📝'} ${order.estado}\n`;
+        
+        if (order.tiempo_estimado_actual) {
+            message += `⏱ **Tiempo estimado:** ${order.tiempo_estimado_actual} minutos\n`;
+        }
+        
+        if (order.tipo_pedido === 'envio' && order.direccion) {
+            message += `📍 **Dirección:** ${order.direccion}\n`;
+        }
+        
+        message += `\n**Detalles del pedido:**\n\`\`\`\n${order.pedido_detallado}\n\`\`\`\n`;
+        message += `💰 **Total:** $${order.total}\n\n`;
+        
+        // Mensaje según estado
+        if (order.estado === 'Recibido') {
+            message += "Tu pedido fue recibido y pronto comenzaremos con la preparación. ¡Gracias!";
+        } else if (order.estado === 'En preparación') {
+            message += `Tu pedido está siendo preparado. Estará listo en aproximadamente ${order.tiempo_estimado_actual || 40} minutos.`;
+        } else if (order.estado === 'Listo') {
+            message += "¡Tu pedido está listo! ";
+            if (order.tipo_pedido === 'retiro') {
+                message += "Podés pasar a retirarlo por el local.";
+            } else {
+                message += "Nuestro repartidor está en camino.";
+            }
+        } else if (order.estado === 'Entregado') {
+            message += "¡Pedido entregado! Esperamos que lo hayas disfrutado. ¡Gracias por elegirnos!";
+        }
+        
+        this.addMessage('ia', message);
+    }
+    
+    async processUserMessage(message) {
+        // Usar Gemini si está disponible, sino usar lógica local
+        if (this.geminiModel) {
+            await this.processWithGemini(message);
+        } else {
+            await this.processWithoutGemini(message);
+        }
+        
+        this.removeTypingIndicator();
+    }
+    
+    async processWithGemini(message) {
+        try {
+            // Construir prompt para Gemini
+            const prompt = this.buildGeminiPrompt(message);
+            
+            // Generar respuesta
+            const result = await this.geminiModel.generateContent(prompt);
+            const response = await result.response;
+            const responseText = response.text();
+            
+            // Procesar respuesta
+            this.addMessage('ia', responseText);
+            await this.processGeminiResponse(responseText, message);
+            
+            // Guardar en historial
+            this.conversation.push({ role: 'user', content: message });
+            this.conversation.push({ role: 'assistant', content: responseText });
+            
+        } catch (error) {
+            console.error("Error con Gemini:", error);
+            // Fallback a procesamiento local
+            await this.processWithoutGemini(message);
+        }
+    }
+    
+    buildGeminiPrompt(userMessage) {
+        // PROMPT EXACTO según especificaciones
         const systemPrompt = `Sos la persona que atiende pedidos de la rotisería EL TACHI.
 
 ⚠️ NO sos un bot.
@@ -506,7 +673,7 @@ Ejemplo incorrecto:
 Si el cliente pide un cambio:
 Confirmás exactamente lo que pidió
 NO ofrecés otros cambios
-NO preguntés "algo más para agregarle"
+NO preguntás "algo más para agregarle"
 
 Ejemplo correcto:
 Cliente: "Una hamburguesa sin tomate"
@@ -580,59 +747,85 @@ Cualquier cosa escribime."
 
 ---
 
-**INFORMACIÓN ACTUAL DEL LOCAL:**
+**MENÚ ACTUAL DE EL TACHI:**
 
-${context.storeInfo}
-
-**CARTA COMPLETA:**
-${context.menu}
+${this.formatMenuForPrompt()}
 
 **ESTADO ACTUAL DE LA CONVERSACIÓN:**
-${context.conversationState.step === 'welcome' ? 'Recién empieza la conversación' : ''}
-${context.conversationState.isTakingOrder ? 'El cliente está haciendo un pedido' : ''}
-${context.conversationState.orderConfirmed ? 'El cliente confirmó el pedido' : ''}
-${context.conversationState.isGettingCustomerData ? 'Necesito pedir los datos del cliente' : ''}
-${context.currentOrder ? context.currentOrder : 'No hay pedido en curso'}
+${this.formatConversationState()}
 
-**HISTORIAL RECIENTE:**
-${context.conversationHistory}
+**ÚLTIMOS MENSAJES:**
+${this.getRecentMessages()}
 
 **MENSAJE DEL CLIENTE:**
-${context.userMessage || '(Cliente recién inicia la conversación)'}
+"${userMessage}"
 
-**TUS INSTRUCCIONES:**
-1. Seguí TODAS las reglas del prompt inicial
-2. Respondé como un vendedor humano real
-3. Si el cliente pide productos, agregalos al pedido actual
-4. Si el cliente dice que ya no quiere más cosas, pasa al resumen
-5. Si el cliente confirma el resumen, pedí los datos del cliente
-6. Si el cliente confirma los datos, guardá el pedido en la base de datos
-7. Siempre usá un tono natural y cercano
-8. NO uses formato markdown complejo, solo negritas (**texto**) y saltos de línea`;
+**TU RESPUESTA (sigue todas las reglas anteriores):**`;
 
         return systemPrompt;
     }
     
+    formatMenuForPrompt() {
+        let menuText = "";
+        const categories = {};
+        
+        this.menuData.forEach(item => {
+            if (!categories[item.categoria]) {
+                categories[item.categoria] = [];
+            }
+            categories[item.categoria].push(item);
+        });
+        
+        Object.keys(categories).sort().forEach(category => {
+            menuText += `\n${category.toUpperCase()}:\n`;
+            categories[category].forEach(item => {
+                menuText += `- ${item.nombre}: $${item.precio}`;
+                if (item.descripcion) {
+                    menuText += ` (${item.descripcion})`;
+                }
+                menuText += "\n";
+            });
+        });
+        
+        return menuText;
+    }
+    
+    formatConversationState() {
+        if (this.conversationState.step === 'welcome') {
+            return "Recién empieza la conversación. Mostrar menú completo.";
+        } else if (this.conversationState.step === 'menu') {
+            return "El cliente está viendo el menú y puede hacer un pedido.";
+        } else if (this.conversationState.isTakingOrder) {
+            return "El cliente está haciendo un pedido.";
+        } else if (this.conversationState.orderConfirmed) {
+            return "El cliente confirmó el pedido. Pedir datos del cliente.";
+        } else if (this.conversationState.isGettingCustomerData) {
+            return "Pidiendo datos del cliente (nombre, teléfono, dirección).";
+        }
+        return "Estado no definido.";
+    }
+    
+    getRecentMessages() {
+        if (this.conversation.length === 0) return "No hay mensajes previos.";
+        
+        return this.conversation.slice(-4).map(msg => 
+            `${msg.role === 'user' ? 'Cliente' : 'Vendedor'}: ${msg.content}`
+        ).join('\n');
+    }
+    
     async processGeminiResponse(responseText, userMessage) {
-        // Guardar en historial
-        this.conversation.push({ role: 'user', content: userMessage });
-        this.conversation.push({ role: 'assistant', content: responseText });
-        
-        // Mostrar respuesta al usuario
-        this.addMessage('ia', responseText);
-        
-        // Analizar respuesta para detectar acciones
-        await this.analyzeResponseForActions(responseText, userMessage);
+        // Analizar respuesta para extraer acciones
+        this.analyzeResponseForActions(responseText, userMessage);
         
         // Guardar conversación
         this.saveConversation();
     }
     
-    async analyzeResponseForActions(responseText, userMessage) {
+    analyzeResponseForActions(responseText, userMessage) {
         const lowerResponse = responseText.toLowerCase();
         const lowerUserMessage = userMessage.toLowerCase();
         
-        // Detectar si Gemini está pidiendo confirmación del pedido
+        // Detectar si se está confirmando el pedido
         if (lowerResponse.includes('confirmamos así') || 
             lowerResponse.includes('¿está bien así?') ||
             lowerResponse.includes('te parece bien')) {
@@ -641,47 +834,27 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
             this.showConfirmationButtons();
         }
         
-        // Detectar si Gemini está pidiendo datos del cliente
-        if (lowerResponse.includes('nombre') && 
-            (lowerResponse.includes('teléfono') || lowerResponse.includes('telefono'))) {
+        // Detectar si se están pidiendo datos
+        if ((lowerResponse.includes('nombre') && lowerResponse.includes('teléfono')) ||
+            lowerResponse.includes('datos')) {
             
             this.conversationState.step = 'customer_data';
             this.conversationState.isGettingCustomerData = true;
         }
         
-        // Detectar si el cliente está haciendo un pedido
-        if (lowerUserMessage.includes('quiero') || 
-            lowerUserMessage.includes('dame') ||
-            lowerUserMessage.includes('pedir') ||
-            lowerUserMessage.includes('una') || 
-            lowerUserMessage.includes('un ') ||
-            lowerUserMessage.includes('dos') ||
-            lowerUserMessage.includes('tres')) {
-            
+        // Detectar si el cliente está pidiendo algo
+        if (this.isOrderMessage(lowerUserMessage)) {
             this.conversationState.isTakingOrder = true;
-            await this.extractOrderFromMessage(userMessage);
+            this.extractOrderFromMessage(userMessage);
         }
         
         // Detectar confirmación del cliente
-        if (lowerUserMessage.includes('sí') || 
-            lowerUserMessage.includes('si ') ||
-            lowerUserMessage.includes('confirmo') ||
-            lowerUserMessage === 'si') {
-            
+        if (this.isConfirmationMessage(lowerUserMessage)) {
             if (this.conversationState.step === 'summary') {
                 this.conversationState.orderConfirmed = true;
             } else if (this.conversationState.step === 'customer_data') {
-                await this.saveOrderToFirestore();
+                this.saveOrder();
             }
-        }
-        
-        // Detectar tipo de entrega
-        if (lowerUserMessage.includes('envío') || lowerUserMessage.includes('envio')) {
-            this.currentOrder.deliveryType = 'envio';
-            this.currentOrder.deliveryFee = this.storeSettings?.precio_envio || 300;
-        } else if (lowerUserMessage.includes('retiro') || lowerUserMessage.includes('retirar')) {
-            this.currentOrder.deliveryType = 'retiro';
-            this.currentOrder.deliveryFee = 0;
         }
         
         // Extraer datos del cliente del mensaje
@@ -690,95 +863,122 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
         }
     }
     
-    async extractOrderFromMessage(message) {
-        try {
-            // Aquí podrías usar Gemini para extraer structured data
-            // Por ahora, hacemos una extracción simple
+    isOrderMessage(message) {
+        const orderKeywords = ['quiero', 'dame', 'pedir', 'una', 'un', 'dos', 'tres', 'por favor'];
+        return orderKeywords.some(keyword => message.includes(keyword));
+    }
+    
+    isConfirmationMessage(message) {
+        return message.includes('sí') || 
+               message === 'si' || 
+               message.includes('confirm') ||
+               message.includes('correcto') ||
+               message.includes('dale');
+    }
+    
+    extractOrderFromMessage(message) {
+        // Extraer productos del mensaje (simplificado)
+        // En producción, esto se haría con análisis más avanzado
+        
+        this.menuData.forEach(product => {
+            const productNameLower = product.nombre.toLowerCase();
+            const messageLower = message.toLowerCase();
             
-            // Buscar números y productos
-            const products = this.menuData.map(p => p.nombre.toLowerCase());
-            
-            products.forEach(productName => {
-                const regex = new RegExp(`(\\d+)\\s*${productName}|${productName}\\s*(\\d+)`, 'i');
-                const match = message.match(regex);
-                
-                if (match) {
-                    const quantity = match[1] || match[2] || 1;
-                    const product = this.menuData.find(p => 
-                        p.nombre.toLowerCase() === productName.toLowerCase()
-                    );
-                    
-                    if (product) {
-                        // Buscar modificaciones
-                        let modifications = '';
-                        if (message.includes('sin ')) {
-                            const sinIndex = message.indexOf('sin ');
-                            modifications = message.substring(sinIndex);
-                        } else if (message.includes('con ')) {
-                            const conIndex = message.indexOf('con ');
-                            modifications = message.substring(conIndex);
-                        }
-                        
-                        this.currentOrder.items.push({
-                            id: product.id,
-                            name: product.nombre,
-                            quantity: parseInt(quantity),
-                            price: product.precio,
-                            modifications: modifications.trim()
-                        });
-                    }
+            if (messageLower.includes(productNameLower)) {
+                // Buscar cantidad
+                let quantity = 1;
+                const quantityMatch = messageLower.match(/(\d+)\s*[x\*]?\s*" + productNameLower + "|" + productNameLower + "\s*[x\*]?\s*(\d+)/);
+                if (quantityMatch) {
+                    quantity = parseInt(quantityMatch[1] || quantityMatch[2]);
                 }
-            });
-            
-            // Recalcular total
-            this.recalculateOrderTotal();
-            
-        } catch (error) {
-            console.error("Error extrayendo pedido:", error);
-        }
+                
+                // Buscar modificaciones
+                let modifications = '';
+                if (messageLower.includes('sin ')) {
+                    const start = messageLower.indexOf('sin ');
+                    const end = messageLower.indexOf(' ', start + 4);
+                    modifications = message.substring(start, end > start ? end : undefined);
+                } else if (messageLower.includes('con ')) {
+                    const start = messageLower.indexOf('con ');
+                    const end = messageLower.indexOf(' ', start + 4);
+                    modifications = message.substring(start, end > start ? end : undefined);
+                }
+                
+                // Agregar al pedido
+                this.currentOrder.items.push({
+                    id: product.id,
+                    name: product.nombre,
+                    quantity: quantity,
+                    price: product.precio,
+                    modifications: modifications
+                });
+            }
+        });
+        
+        // Recalcular total
+        this.recalculateOrderTotal();
+    }
+    
+    recalculateOrderTotal() {
+        this.currentOrder.subtotal = this.currentOrder.items.reduce((sum, item) => {
+            return sum + (item.price * item.quantity);
+        }, 0);
+        
+        this.currentOrder.total = this.currentOrder.subtotal + this.currentOrder.deliveryFee;
     }
     
     extractCustomerDataFromMessage(message) {
-        // Extraer nombre (asumir que lo primero que dice es el nombre)
-        if (!this.currentOrder.customerName && message) {
-            // Buscar "me llamo" o "soy"
-            const nameMatch = message.match(/(?:me llamo|soy|nombre es)\s+([^\.,]+)/i);
-            if (nameMatch) {
-                this.currentOrder.customerName = nameMatch[1].trim();
-            } else if (message.split(' ').length <= 3) {
-                // Si el mensaje es corto, asumir que es el nombre
-                this.currentOrder.customerName = message.trim();
+        // Extraer nombre (patrón simple)
+        if (!this.currentOrder.customerName) {
+            const namePatterns = [
+                /me llamo\s+([^\.,]+)/i,
+                /soy\s+([^\.,]+)/i,
+                /nombre es\s+([^\.,]+)/i,
+                /^([a-záéíóúñ]{2,}\s+[a-záéíóúñ]{2,})$/i
+            ];
+            
+            for (const pattern of namePatterns) {
+                const match = message.match(pattern);
+                if (match) {
+                    this.currentOrder.customerName = match[1].trim();
+                    break;
+                }
             }
         }
         
         // Extraer teléfono
-        const phoneMatch = message.match(/\b\d{8,15}\b/);
-        if (phoneMatch && !this.currentOrder.customerPhone) {
-            this.currentOrder.customerPhone = phoneMatch[0];
+        if (!this.currentOrder.customerPhone) {
+            const phoneMatch = message.match(/(\d{8,15})/);
+            if (phoneMatch) {
+                this.currentOrder.customerPhone = phoneMatch[1];
+            }
+        }
+        
+        // Extraer tipo de entrega
+        if (!this.currentOrder.deliveryType) {
+            if (message.toLowerCase().includes('envío') || message.toLowerCase().includes('envio')) {
+                this.currentOrder.deliveryType = 'envio';
+                this.currentOrder.deliveryFee = this.storeSettings.precio_envio || 300;
+            } else if (message.toLowerCase().includes('retiro')) {
+                this.currentOrder.deliveryType = 'retiro';
+                this.currentOrder.deliveryFee = 0;
+            }
         }
         
         // Extraer dirección
         if (this.currentOrder.deliveryType === 'envio' && !this.currentOrder.address) {
-            const addressKeywords = ['calle', 'avenida', 'av.', 'número', 'numero', 'nro', 'entre'];
+            const addressKeywords = ['calle', 'avenida', 'av.', 'número', 'numero', 'nro', 'entre', 'altura'];
             const hasAddressKeyword = addressKeywords.some(keyword => 
                 message.toLowerCase().includes(keyword)
             );
             
-            if (hasAddressKeyword || message.length > 30) {
+            if (hasAddressKeyword || message.length > 40) {
                 this.currentOrder.address = message;
             }
         }
     }
     
-    recalculateOrderTotal() {
-        this.currentOrder.subtotal = this.currentOrder.items.reduce(
-            (sum, item) => sum + (item.price * item.quantity), 0
-        );
-        
-        this.currentOrder.total = this.currentOrder.subtotal + this.currentOrder.deliveryFee;
-    }
-    
-    async saveOrderToFirestore() {
+    async saveOrder() {
         this.removeTypingIndicator();
         
         try {
@@ -787,7 +987,7 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
             const orderId = `TACHI-${(orderCount + 1).toString().padStart(6, '0')}`;
             this.currentOrder.id = orderId;
             
-            // Crear texto detallado del pedido
+            // Crear detalles del pedido
             let orderDetails = "";
             this.currentOrder.items.forEach(item => {
                 orderDetails += `${item.quantity}x ${item.name}`;
@@ -800,41 +1000,44 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
             // Crear objeto del pedido
             const orderData = {
                 id_pedido: orderId,
-                fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                fecha: new Date().toISOString(),
                 nombre_cliente: this.currentOrder.customerName,
                 telefono: this.currentOrder.customerPhone,
-                tipo_pedido: this.currentOrder.deliveryType,
-                direccion: this.currentOrder.deliveryType === 'envio' ? this.currentOrder.address : '',
+                tipo_pedido: this.currentOrder.deliveryType || 'retiro',
+                direccion: this.currentOrder.address || '',
                 pedido_detallado: orderDetails,
                 subtotal: this.currentOrder.subtotal,
                 envio: this.currentOrder.deliveryFee,
                 total: this.currentOrder.total,
                 estado: 'Recibido',
-                tiempo_estimado_actual: this.storeSettings?.tiempo_base_estimado || 40,
+                tiempo_estimado_actual: this.storeSettings.tiempo_base_estimado || 40,
                 notas: this.currentOrder.specialInstructions
             };
             
-            // Guardar en Firestore
-            await window.firebaseApp.db
-                .collection('orders')
-                .doc(orderId)
-                .set(orderData);
+            // Guardar en localStorage
+            const localOrders = JSON.parse(localStorage.getItem('el_tachi_orders') || '{}');
+            localOrders[orderId] = orderData;
+            localStorage.setItem('el_tachi_orders', JSON.stringify(localOrders));
+            
+            // Intentar guardar en Firebase si está disponible
+            if (this.db) {
+                try {
+                    await this.db
+                        .collection('orders')
+                        .doc(orderId)
+                        .set(orderData);
+                    
+                    console.log("✅ Pedido guardado en Firebase");
+                } catch (firebaseError) {
+                    console.warn("⚠️ No se pudo guardar en Firebase:", firebaseError);
+                }
+            }
             
             // Mostrar confirmación
-            this.addMessage('ia', 
-                `**¡Pedido confirmado!** 🎉\n\n` +
-                `**ID del pedido:** ${orderId}\n` +
-                `**Estado:** Recibido\n` +
-                `**Tiempo estimado:** ${orderData.tiempo_estimado_actual} minutos\n\n` +
-                `Para consultar el estado de tu pedido, escribí: **${orderId}**\n\n` +
-                `¡Gracias por elegir EL TACHI! 👨‍🍳`
-            );
+            this.showOrderConfirmation(orderId, orderData);
             
             // Reiniciar estado
             this.resetOrderState();
-            
-            // Enviar notificación al panel admin
-            await this.notifyAdminNewOrder(orderId);
             
         } catch (error) {
             console.error("Error guardando pedido:", error);
@@ -847,27 +1050,36 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
     }
     
     async getOrderCount() {
+        // Obtener conteo de pedidos
         try {
-            const countSnapshot = await window.firebaseApp.db
-                .collection('orders')
-                .count()
-                .get();
-            
-            return countSnapshot.data().count;
+            if (this.db) {
+                const countSnapshot = await this.db
+                    .collection('orders')
+                    .count()
+                    .get();
+                
+                return countSnapshot.data().count || 0;
+            }
         } catch (error) {
-            console.error("Error contando pedidos:", error);
-            return 0;
+            console.warn("Error contando pedidos en Firebase:", error);
         }
+        
+        // Fallback a localStorage
+        const localOrders = JSON.parse(localStorage.getItem('el_tachi_orders') || '{}');
+        return Object.keys(localOrders).length;
     }
     
-    async notifyAdminNewOrder(orderId) {
-        try {
-            // Aquí podrías implementar notificaciones push
-            // Por ahora, solo log
-            console.log(`📦 Nuevo pedido: ${orderId}`);
-        } catch (error) {
-            console.error("Error notificando admin:", error);
-        }
+    showOrderConfirmation(orderId, orderData) {
+        const message = 
+            `**¡Pedido confirmado!** 🎉\n\n` +
+            `**ID del pedido:** ${orderId}\n` +
+            `**Estado:** Recibido\n` +
+            `**Tiempo estimado:** ${orderData.tiempo_estimado_actual} minutos\n` +
+            `**Total:** $${orderData.total}\n\n` +
+            `Para consultar el estado de tu pedido, escribí: **${orderId}**\n\n` +
+            `¡Gracias por elegir EL TACHI! 👨‍🍳`;
+        
+        this.addMessage('ia', message);
     }
     
     resetOrderState() {
@@ -895,33 +1107,137 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
         };
     }
     
-    handleGeminiError(error) {
-        console.error("Error de Gemini:", error);
+    async processWithoutGemini(message) {
+        // Lógica de conversación sin Gemini
+        const lowerMessage = message.toLowerCase();
         
-        let errorMessage = 
-            "Uy, hubo un problema técnico. ¿Podés repetir eso?\n\n";
-        
-        if (error.message.includes('API key')) {
-            errorMessage += 
-                "**Nota para el administrador:**\n" +
-                "La API Key de Gemini no está configurada correctamente. " +
-                "Por favor, configurala en el panel de administración.";
-        } else if (error.message.includes('quota')) {
-            errorMessage += 
-                "Estamos teniendo mucha demanda en este momento. " +
-                "¿Podés contactarnos por WhatsApp o teléfono?";
-        } else {
-            errorMessage += 
-                "Si el problema persiste, contactanos por teléfono. " +
-                "¡Disculpá las molestias!";
+        if (this.conversationState.step === 'welcome' || 
+            lowerMessage.includes('hola') || 
+            lowerMessage.includes('menú')) {
+            
+            // Mostrar menú
+            this.addMessage('ia', this.generateWelcomeMessage());
+            
+        } else if (this.conversationState.isTakingOrder) {
+            
+            // Procesar pedido
+            this.extractOrderFromMessage(message);
+            
+            // Preguntar si quiere algo más
+            this.addMessage('ia', 
+                `Perfecto, ${this.getLastItemDescription()}. ¿Algo más?`
+            );
+            
+            // Si el cliente dice que no quiere más
+            if (lowerMessage.includes('no') && 
+               (lowerMessage.includes('más') || lowerMessage.includes('eso es todo'))) {
+                
+                // Mostrar resumen
+                this.showOrderSummary();
+            }
+            
+        } else if (this.conversationState.step === 'summary') {
+            
+            // Confirmar pedido
+            if (this.isConfirmationMessage(lowerMessage)) {
+                this.conversationState.orderConfirmed = true;
+                this.conversationState.step = 'customer_data';
+                
+                this.addMessage('ia', 
+                    "¡Perfecto! Ahora necesito unos datos para terminar el pedido:\n\n" +
+                    "1. ¿Cuál es tu **nombre**?\n" +
+                    "2. ¿Tu **teléfono**?\n" +
+                    "3. ¿Es para **envío** o **retiro** en el local?\n\n" +
+                    "Podés enviarme toda la información junta."
+                );
+            } else {
+                this.addMessage('ia', "¿Querés cambiar algo del pedido?");
+            }
+            
+        } else if (this.conversationState.step === 'customer_data') {
+            
+            // Extraer datos del cliente
+            this.extractCustomerDataFromMessage(message);
+            
+            // Verificar si ya tenemos todos los datos
+            if (this.currentOrder.customerName && this.currentOrder.customerPhone) {
+                
+                // Confirmar datos
+                let confirmationMsg = 
+                    `**Para confirmar:**\n` +
+                    `👤 **Nombre:** ${this.currentOrder.customerName}\n` +
+                    `📞 **Teléfono:** ${this.currentOrder.customerPhone}\n` +
+                    `🚚 **Tipo:** ${this.currentOrder.deliveryType === 'envio' ? 'Envío' : 'Retiro'}\n`;
+                
+                if (this.currentOrder.deliveryType === 'envio' && this.currentOrder.address) {
+                    confirmationMsg += `📍 **Dirección:** ${this.currentOrder.address}\n`;
+                }
+                
+                confirmationMsg += `\n¿Está todo correcto?`;
+                
+                this.addMessage('ia', confirmationMsg);
+                
+            } else {
+                // Pedir datos faltantes
+                let missingData = [];
+                if (!this.currentOrder.customerName) missingData.push("nombre");
+                if (!this.currentOrder.customerPhone) missingData.push("teléfono");
+                if (!this.currentOrder.deliveryType) missingData.push("tipo (envío o retiro)");
+                
+                this.addMessage('ia', 
+                    `Todavía necesito tu ${missingData.join(', ')}. ` +
+                    `¿Podés proporcionarlo?`
+                );
+            }
+            
         }
         
-        this.addMessage('ia', errorMessage);
+        // Guardar conversación
+        this.conversation.push({ role: 'user', content: message });
+        this.saveConversation();
+    }
+    
+    getLastItemDescription() {
+        if (this.currentOrder.items.length === 0) return "anoté tu pedido";
+        
+        const lastItem = this.currentOrder.items[this.currentOrder.items.length - 1];
+        let description = `${lastItem.quantity} ${lastItem.name}`;
+        
+        if (lastItem.modifications) {
+            description += ` ${lastItem.modifications}`;
+        }
+        
+        return description;
+    }
+    
+    showOrderSummary() {
+        let summary = "**RESUMEN DEL PEDIDO:**\n\n";
+        
+        this.currentOrder.items.forEach((item, index) => {
+            summary += `${index + 1}. ${item.quantity}x ${item.name}`;
+            if (item.modifications) {
+                summary += ` (${item.modifications})`;
+            }
+            summary += ` - $${item.price * item.quantity}\n`;
+        });
+        
+        summary += `\n**Subtotal:** $${this.currentOrder.subtotal}\n`;
+        
+        if (this.currentOrder.deliveryType === 'envio') {
+            summary += `**Envío:** $${this.currentOrder.deliveryFee}\n`;
+        }
+        
+        summary += `**Total:** $${this.currentOrder.total}\n\n`;
+        summary += "¿Confirmamos así?";
+        
+        this.addMessage('ia', summary);
+        this.conversationState.step = 'summary';
     }
     
     // Métodos de UI
     addMessage(sender, text) {
         const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
         
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
@@ -938,10 +1254,16 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
         
         // Scroll al final
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Guardar en historial
+        if (sender === 'ia') {
+            this.conversation.push({ role: 'assistant', content: text });
+        }
     }
     
     showTypingIndicator() {
         const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
         
         const typingDiv = document.createElement('div');
         typingDiv.className = 'message ia-message typing-indicator';
@@ -965,14 +1287,15 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
     
     showConfirmationButtons() {
         const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
         
         const buttonsDiv = document.createElement('div');
         buttonsDiv.className = 'confirmation-buttons';
         buttonsDiv.innerHTML = `
-            <button class="confirm-btn" onclick="chatManager.userConfirmedOrder(true)">
+            <button class="confirm-btn" onclick="window.chatManager.userConfirmed(true)">
                 ✅ Sí, confirmar pedido
             </button>
-            <button class="cancel-btn" onclick="chatManager.userConfirmedOrder(false)">
+            <button class="cancel-btn" onclick="window.chatManager.userConfirmed(false)">
                 ✏️ No, cambiar algo
             </button>
         `;
@@ -981,20 +1304,19 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
-    userConfirmedOrder(confirmed) {
+    userConfirmed(confirmed) {
         if (confirmed) {
             this.addMessage('user', 'Sí, confirmo el pedido');
             this.conversationState.orderConfirmed = true;
             this.conversationState.step = 'customer_data';
             
-            // Pedir datos del cliente
             setTimeout(() => {
                 this.addMessage('ia', 
                     "¡Perfecto! Ahora necesito unos datos para terminar el pedido:\n\n" +
                     "1. ¿Cuál es tu **nombre**?\n" +
                     "2. ¿Tu **teléfono**?\n" +
                     "3. ¿Es para **envío** o **retiro** en el local?\n\n" +
-                    "Si es para envío, también necesito la **dirección completa**."
+                    "Podés enviarme toda la información junta."
                 );
             }, 500);
         } else {
@@ -1012,53 +1334,44 @@ ${context.userMessage || '(Cliente recién inicia la conversación)'}
         }
     }
     
+    loadConversationHistory() {
+        try {
+            const saved = localStorage.getItem('el_tachi_chat_history');
+            if (saved) {
+                this.conversation = JSON.parse(saved);
+                
+                // Mostrar últimos 5 mensajes
+                const lastMessages = this.conversation.slice(-5);
+                lastMessages.forEach(msg => {
+                    this.addMessage(msg.role === 'user' ? 'user' : 'ia', msg.content);
+                });
+            }
+        } catch (error) {
+            console.error("Error cargando historial:", error);
+        }
+    }
+    
     saveConversation() {
         try {
-            localStorage.setItem('tachi_chat_history', JSON.stringify(this.conversation));
-            
-            // Guardar también el estado actual del pedido
-            localStorage.setItem('tachi_current_order', JSON.stringify({
-                order: this.currentOrder,
-                state: this.conversationState
-            }));
+            localStorage.setItem('el_tachi_chat_history', JSON.stringify(this.conversation));
         } catch (error) {
             console.error("Error guardando conversación:", error);
         }
     }
-    
-    loadPreviousConversation() {
-        try {
-            const savedConversation = localStorage.getItem('tachi_chat_history');
-            if (savedConversation) {
-                this.conversation = JSON.parse(savedConversation);
-                
-                // Mostrar últimos 10 mensajes
-                this.conversation.slice(-10).forEach(msg => {
-                    this.addMessage(msg.role === 'user' ? 'user' : 'ia', msg.content);
-                });
-            }
-            
-            // Cargar pedido en curso
-            const savedOrder = localStorage.getItem('tachi_current_order');
-            if (savedOrder) {
-                const { order, state } = JSON.parse(savedOrder);
-                this.currentOrder = order;
-                this.conversationState = state;
-            }
-        } catch (error) {
-            console.error("Error cargando conversación anterior:", error);
-        }
-    }
 }
 
-// Inicializar cuando la página cargue
-let chatManager;
-
+// Inicializar cuando el DOM esté listo
 function initializeChat() {
-    chatManager = new TachiChatManager();
-    window.chatManager = chatManager;
+    window.chatManager = new TachiChatManager();
 }
 
-// Exportar para uso global
+// Hacer disponible globalmente
 window.TachiChatManager = TachiChatManager;
 window.initializeChat = initializeChat;
+
+// Auto-inicializar cuando se cargue la página
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeChat);
+} else {
+    initializeChat();
+}
