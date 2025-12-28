@@ -1,6 +1,6 @@
-// Configuración Firebase
+// Firebase Configuration
 const firebaseConfig = {
-    apiKey: "TU_API_KEY",
+    apiKey: "TU_API_KEY_AQUI",
     authDomain: "TU_PROJECT.firebaseapp.com",
     projectId: "TU_PROJECT",
     storageBucket: "TU_PROJECT.appspot.com",
@@ -8,25 +8,26 @@ const firebaseConfig = {
     appId: "TU_APP_ID"
 };
 
-// Inicializar Firebase
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Singleton de Firebase
+// Firebase Service
 const FirebaseService = {
-    // Verificar si el local está abierto
-    async checkBusinessStatus() {
+    async getBusinessStatus() {
         try {
-            const settings = await db.collection('settings').doc('negocio').get();
-            return settings.exists ? settings.data().abierto : true;
+            const doc = await db.collection('settings').doc('negocio').get();
+            return doc.exists ? doc.data().abierto : true;
         } catch (error) {
-            console.error('Error verificando estado:', error);
+            console.error('Error getting business status:', error);
             return true;
         }
     },
 
-    // Obtener productos disponibles
     async getProducts() {
         try {
             const snapshot = await db.collection('products')
@@ -39,12 +40,11 @@ const FirebaseService = {
                 ...doc.data()
             }));
         } catch (error) {
-            console.error('Error obteniendo productos:', error);
+            console.error('Error getting products:', error);
             return [];
         }
     },
 
-    // Obtener configuración
     async getSettings() {
         try {
             const [horarios, envios, negocio] = await Promise.all([
@@ -59,45 +59,42 @@ const FirebaseService = {
                 negocio: negocio.exists ? negocio.data() : {}
             };
         } catch (error) {
-            console.error('Error obteniendo settings:', error);
+            console.error('Error getting settings:', error);
             return {};
         }
     },
 
-    // Crear nuevo pedido
     async createOrder(orderData) {
         try {
-            // Generar ID único
+            // Get next order number
             const counterRef = db.collection('counters').doc('orders');
-            const counter = await db.runTransaction(async (transaction) => {
-                const doc = await transaction.get(counterRef);
-                let count = 1;
-                
-                if (doc.exists) {
-                    count = doc.data().count + 1;
-                }
-                
-                transaction.set(counterRef, { count: count }, { merge: true });
-                return count;
-            });
-
-            const orderId = `TACHI-${counter.toString().padStart(6, '0')}`;
+            const counterDoc = await counterRef.get();
+            let count = 1;
+            
+            if (counterDoc.exists) {
+                count = counterDoc.data().count + 1;
+            }
+            
+            await counterRef.set({ count: count }, { merge: true });
+            
+            const orderId = `TACHI-${count.toString().padStart(6, '0')}`;
+            
             const orderWithId = {
                 ...orderData,
                 id_pedido: orderId,
                 fecha: firebase.firestore.FieldValue.serverTimestamp(),
                 estado: 'Recibido'
             };
-
+            
             await db.collection('orders').doc(orderId).set(orderWithId);
             return orderId;
+            
         } catch (error) {
-            console.error('Error creando pedido:', error);
+            console.error('Error creating order:', error);
             throw error;
         }
     },
 
-    // Consultar estado de pedido
     async checkOrderStatus(orderId) {
         try {
             const cleanedId = orderId.trim().toUpperCase();
@@ -110,43 +107,15 @@ const FirebaseService = {
                 };
             }
             
-            // Intentar buscar por ID parcial
-            const snapshot = await db.collection('orders')
-                .where('id_pedido', '>=', cleanedId)
-                .where('id_pedido', '<=', cleanedId + '\uf8ff')
-                .limit(1)
-                .get();
-            
-            if (!snapshot.empty) {
-                return {
-                    exists: true,
-                    data: snapshot.docs[0].data()
-                };
-            }
-            
             return { exists: false };
         } catch (error) {
-            console.error('Error consultando pedido:', error);
+            console.error('Error checking order:', error);
             return { exists: false, error: error.message };
-        }
-    },
-
-    // Actualizar estado de pedido (admin)
-    async updateOrderStatus(orderId, newStatus) {
-        try {
-            await db.collection('orders').doc(orderId).update({
-                estado: newStatus,
-                actualizado: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            return true;
-        } catch (error) {
-            console.error('Error actualizando pedido:', error);
-            throw error;
         }
     }
 };
 
-// Exportar para uso global
+// Export for global use
 window.FirebaseService = FirebaseService;
 window.db = db;
 window.auth = auth;
