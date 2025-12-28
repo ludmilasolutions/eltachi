@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - EL TACHI</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-container">
+            <div class="logo-admin">🍔 EL TACHI</div>
+            <h2>Panel Administrativo</h2>
+            <form id="login-form">
+                <input type="email" id="email" placeholder="Email" required>
+                <input type="password" id="password" placeholder="Contraseña" required>
+                <button type="submit" class="login-btn">Iniciar Sesión</button>
+            </form>
+            <div id="login-error" class="error-message"></div>
+        </div>
+    </div>
+
+    <!-- Main Admin -->
+    <div id="admin-panel" class="admin-panel hidden">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <div class="logo">EL TACHI</div>
+                <div class="business-status">
+                    <span class="status-indicator" id="status-indicator"></span>
+                    <span id="status-text"></span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="logout-btn" class="logout-btn">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="admin-nav">
+            <button class="nav-btn active" data-tab="dashboard">📊 Dashboard</button>
+            <button class="nav-btn" data-tab="orders">📦 Pedidos</button>
+            <button class="nav-btn" data-tab="products">🍔 Productos</button>
+            <button class="nav-btn" data-tab="settings">⚙️ Configuración</button>
+            <button class="nav-btn" data-tab="reports">📈 Reportes</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="admin-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content active">
+                <div class="dashboard-grid">
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Pedidos Hoy</h3>
+                            <div class="stat-number" id="orders-today">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Ventas Hoy</h3>
+                            <div class="stat-number" id="sales-today">$0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Estado</h3>
+                            <div class="stat-status" id="business-status">Abierto</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Pedidos Activos</h3>
+                            <div class="stat-number" id="active-orders">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="chart-container">
+                        <canvas id="orders-chart"></canvas>
+                    </div>
+
+                    <!-- Recent Orders -->
+                    <div class="recent-orders">
+                        <h3>Pedidos Recientes</h3>
+                        <div id="recent-orders-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Tab -->
+            <div id="orders-tab" class="tab-content">
+                <div class="orders-header">
+                    <h2>Gestión de Pedidos</h2>
+                    <div class="order-filters">
+                        <select id="status-filter">
+                            <option value="">Todos los estados</option>
+                            <option value="Recibido">Recibido</option>
+                            <option value="En preparación">En preparación</option>
+                            <option value="Listo">Listo</option>
+                            <option value="Entregado">Entregado</option>
+                        </select>
+                        <input type="date" id="date-filter">
+                        <button id="refresh-orders" class="refresh-btn">🔄 Actualizar</button>
+                    </div>
+                </div>
+
+                <!-- Kanban Board -->
+                <div class="kanban-board">
+                    <div class="kanban-column">
+                        <h4>Recibido</h4>
+                        <div id="column-recibido" class="kanban-items" data-status="Recibido">
+                            <!-- Pedidos arrastrables -->
+                        </div>
+                    </div>
+                    <div class="kanban-column">
+                        <h4>En preparación</h4>
+                        <div id="column-preparacion" class="kanban-items" data-status="En preparación">
+                            <!-- Pedidos arrastrables -->
+                        </div>
+                    </div>
+                    <div class="kanban-column">
+                        <h4>Listo</h4>
+                        <div id="column-listo" class="kanban-items" data-status="Listo">
+                            <!-- Pedidos arrastrables -->
+                        </div>
+                    </div>
+                    <div class="kanban-column">
+                        <h4>Entregado</h4>
+                        <div id="column-entregado" class="kanban-items" data-status="Entregado">
+                            <!-- Pedidos arrastrables -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Tab -->
+            <div id="products-tab" class="tab-content">
+                <div class="products-header">
+                    <h2>Gestión de Productos</h2>
+                    <button id="add-product" class="add-btn">+ Nuevo Producto</button>
+                </div>
+
+                <div class="products-grid" id="products-list">
+                    <!-- Productos cargados por JS -->
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings-tab" class="tab-content">
+                <div class="settings-grid">
+                    <!-- Horarios -->
+                    <div class="settings-section">
+                        <h3>🕐 Horarios</h3>
+                        <form id="hours-form">
+                            <!-- Generado por JS -->
+                        </form>
+                    </div>
+
+                    <!-- Envíos -->
+                    <div class="settings-section">
+                        <h3>🚚 Configuración de Envíos</h3>
+                        <form id="delivery-form">
+                            <div class="form-group">
+                                <label>Precio de envío:</label>
+                                <input type="number" id="delivery-price" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Tiempo mínimo (min):</label>
+                                <input type="number" id="delivery-min" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Tiempo máximo (min):</label>
+                                <input type="number" id="delivery-max" required>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="pickup-enabled">
+                                    Retiro habilitado
+                                </label>
+                            </div>
+                            <button type="submit" class="save-btn">Guardar</button>
+                        </form>
+                    </div>
+
+                    <!-- Gemini API -->
+                    <div class="settings-section">
+                        <h3>🧠 Configuración Gemini AI</h3>
+                        <form id="gemini-form">
+                            <div class="form-group">
+                                <label>API Key:</label>
+                                <input type="password" id="gemini-key" required>
+                            </div>
+                            <button type="submit" class="save-btn">Guardar</button>
+                        </form>
+                    </div>
+
+                    <!-- Negocio -->
+                    <div class="settings-section">
+                        <h3>🏪 Información del Negocio</h3>
+                        <form id="business-form">
+                            <div class="form-group">
+                                <label>Teléfono:</label>
+                                <input type="tel" id="business-phone" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Dirección:</label>
+                                <input type="text" id="business-address" required>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="business-open">
+                                    Local abierto
+                                </label>
+                            </div>
+                            <button type="submit" class="save-btn">Guardar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports-tab" class="tab-content">
+                <div class="reports-header">
+                    <h2>Reportes y Análisis</h2>
+                    <div class="report-controls">
+                        <select id="report-period">
+                            <option value="today">Hoy</option>
+                            <option value="week">Esta semana</option>
+                            <option value="month">Este mes</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                        <input type="date" id="report-start" class="hidden">
+                        <input type="date" id="report-end" class="hidden">
+                        <button id="generate-report" class="export-btn">Generar Reporte</button>
+                        <button id="export-csv" class="export-btn">📥 Exportar CSV</button>
+                    </div>
+                </div>
+
+                <div class="reports-grid">
+                    <div class="report-chart">
+                        <canvas id="sales-chart"></canvas>
+                    </div>
+                    <div class="report-stats">
+                        <h3>Estadísticas</h3>
+                        <div id="report-stats"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="product-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="modal-title">Nuevo Producto</h3>
+            <form id="product-form">
+                <input type="hidden" id="product-id">
+                
+                <div class="form-group">
+                    <label>Nombre:</label>
+                    <input type="text" id="product-name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripción:</label>
+                    <textarea id="product-desc" rows="3"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Precio:</label>
+                        <input type="number" id="product-price" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Categoría:</label>
+                        <select id="product-category" required>
+                            <option value="hamburguesas">Hamburguesas</option>
+                            <option value="pizzas">Pizzas</option>
+                            <option value="sandwiches">Sándwiches</option>
+                            <option value="acompañamientos">Acompañamientos</option>
+                            <option value="bebidas">Bebidas</option>
+                            <option value="postres">Postres</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Aderezos disponibles (separados por comas):</label>
+                    <input type="text" id="product-toppings" placeholder="mayonesa, ketchup, mostaza">
+                </div>
+                
+                <div class="form-group">
+                    <label>Precios extra (JSON):</label>
+                    <input type="text" id="product-extra-prices" placeholder='{"salsa especial": 50}'>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="product-available" checked>
+                        Disponible
+                    </label>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="submit" class="save-btn">Guardar</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="order-detail-modal" class="modal hidden">
+        <div class="modal-content large">
+            <h3>Detalle del Pedido</h3>
+            <div id="order-detail-content"></div>
+            <div class="modal-actions">
+                <button id="whatsapp-order-btn" class="whatsapp-btn">📱 Enviar WhatsApp</button>
+                <button class="cancel-btn" onclick="closeOrderModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="assets/js/firebase-config.js"></script>
+    <script src="assets/js/admin.js"></script>
+</body>
+</html>
