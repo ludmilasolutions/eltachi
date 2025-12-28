@@ -1,11 +1,11 @@
 // Firebase Configuration
 const firebaseConfig = {
-    apiKey: "TU_API_KEY_AQUI",
-    authDomain: "TU_PROJECT.firebaseapp.com",
-    projectId: "TU_PROJECT",
-    storageBucket: "TU_PROJECT.appspot.com",
-    messagingSenderId: "TU_SENDER_ID",
-    appId: "TU_APP_ID"
+    apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
+    authDomain: "eltachi.firebaseapp.com",
+    projectId: "eltachi",
+    storageBucket: "eltachi.firebasestorage.app",
+    messagingSenderId: "231676602106",
+    appId: "1:231676602106:web:fde347e9caa00760b34b43"
 };
 
 // Initialize Firebase
