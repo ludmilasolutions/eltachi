@@ -1,3 +1,183 @@
+// ============================================
+// EL TACHI APP - VERSIÓN COMPLETA (con Gemini incluido)
+// ============================================
+
+// Clase GeminiAssistant - DEFINIDA AQUÍ MISMO
+class GeminiAssistant {
+    constructor(apiKey) {
+        this.apiKey = apiKey || 'TU_API_KEY_AQUI';
+        this.apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+        this.context = '';
+        console.log('🧠 GeminiAssistant creado (inline)');
+    }
+
+    async initialize(products, settings) {
+        console.log('📦 Inicializando Gemini con', products?.length || 0, 'productos');
+        
+        // Construir menú
+        let menuText = "🍔 **MENÚ EL TACHI** 🍔\n\n";
+        
+        if (products && products.length > 0) {
+            const categories = {};
+            products.forEach(product => {
+                if (!categories[product.categoria]) {
+                    categories[product.categoria] = [];
+                }
+                categories[product.categoria].push(product);
+            });
+            
+            Object.entries(categories).forEach(([category, items]) => {
+                menuText += `**${category.toUpperCase()}:**\n`;
+                items.forEach(item => {
+                    menuText += `• ${item.nombre} - $${item.precio}`;
+                    if (item.descripcion) {
+                        menuText += ` (${item.descripcion})`;
+                    }
+                    if (item.aderezos_disponibles?.length > 0) {
+                        menuText += ` [Aderezos: ${item.aderezos_disponibles.join(', ')}]`;
+                    }
+                    menuText += '\n';
+                });
+                menuText += '\n';
+            });
+        } else {
+            menuText = `**MENÚ DE EJEMPLO:**\n\n` +
+                      `🍔 **HAMBURGUESAS:**\n` +
+                      `• Hamburguesa Clásica - $2500 (carne, queso, tomate, lechuga)\n` +
+                      `• Hamburguesa Doble - $3200 (doble carne, doble queso, panceta)\n\n` +
+                      `🍟 **ACOMPAÑAMIENTOS:**\n` +
+                      `• Papas Fritas - $1200\n` +
+                      `• Papas con Cheddar - $1800\n\n` +
+                      `🥤 **BEBIDAS:**\n` +
+                      `• Coca-Cola 500ml - $800\n` +
+                      `• Agua Mineral - $500\n\n`;
+        }
+
+        this.context = `Eres "EL TACHI", asistente virtual de una rotisería argentina.
+
+**TONO:**
+- Amigable, vendedor, claro
+- Usás emojis ocasionales 🍔👍
+- Respondés en español rioplatense
+- Sé conciso (2-3 líneas máximo)
+
+**INFORMACIÓN:**
+${menuText}
+
+**HORARIOS:**
+Lun-Jue: ${settings?.horarios?.lunes?.inicio || '10:00'} a ${settings?.horarios?.lunes?.cierre || '23:00'}
+Vie: ${settings?.horarios?.viernes?.inicio || '10:00'} a ${settings?.horarios?.viernes?.cierre || '00:00'}
+Sáb: ${settings?.horarios?.sabado?.inicio || '11:00'} a ${settings?.horarios?.sabado?.cierre || '00:00'}
+Dom: ${settings?.horarios?.domingo?.inicio || '11:00'} a ${settings?.horarios?.domingo?.cierre || '22:00'}
+
+**ENVÍOS:**
+- Precio: $${settings?.envios?.precio || 300}
+- Tiempo: ${settings?.envios?.tiempo_min || 30}-${settings?.envios?.tiempo_max || 45} min
+- Retiro: ${settings?.envios?.retiro_habilitado ? 'SÍ' : 'NO'}
+
+**PROTOCOLO:**
+1. Saludo + menú
+2. Preguntar: "¿Qué te gustaría ordenar?"
+3. Por producto: cantidad y personalización
+4. Confirmar resumen
+5. Pedir datos (nombre, teléfono, envío/retiro, dirección)
+6. Finalizar con opción WhatsApp
+
+**NO INVENTES:** Si no sabés, decí "Consultalo por WhatsApp"`;
+
+        console.log('✅ Contexto Gemini cargado');
+        return true;
+    }
+
+    async sendMessage(userMessage, orderContext = '') {
+        console.log('💬 Gemini recibió:', userMessage.substring(0, 50));
+        
+        // Modo fallback si no hay API key real
+        if (!this.apiKey || this.apiKey.includes('TU_API_KEY')) {
+            return this.getFallbackResponse(userMessage);
+        }
+        
+        try {
+            const fullPrompt = `${this.context}\n\n${orderContext}\n\nCliente: ${userMessage}\n\nAsistente EL TACHI:`;
+            
+            const response = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: fullPrompt }] }],
+                    generationConfig: { 
+                        temperature: 0.7,
+                        maxOutputTokens: 200 
+                    }
+                })
+            });
+
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                   this.getFallbackResponse(userMessage);
+                
+        } catch (error) {
+            console.warn('⚠️ Error Gemini, usando fallback:', error.message);
+            return this.getFallbackResponse(userMessage);
+        }
+    }
+
+    getFallbackResponse(userMessage) {
+        const msg = userMessage.toLowerCase();
+        
+        if (msg.includes('hola') || msg.includes('buenas')) {
+            return "¡Hola! 👋 Soy EL TACHI, tu asistente de pedidos.\n\n" +
+                   "🍔 **MENÚ RÁPIDO:**\n" +
+                   "• Hamburguesas desde $2500\n" +
+                   "• Pizzas desde $2800\n" +
+                   "• Acompañamientos desde $1200\n" +
+                   "• Bebidas desde $500\n\n" +
+                   "¿Qué te gustaría ordenar?";
+        }
+        
+        if (msg.includes('menú') || msg.includes('carta')) {
+            return "📋 **MENÚ COMPLETO:**\n\n" +
+                   "🍔 **HAMBURGUESAS:**\n" +
+                   "• Clásica: $2500 (carne, queso, tomate, lechuga)\n" +
+                   "• Doble: $3200 (doble carne, doble queso, panceta)\n\n" +
+                   "🍕 **PIZZAS:**\n" +
+                   "• Muzzarella: $2800\n" +
+                   "• Napolitana: $3200\n\n" +
+                   "🍟 **ACOMPAÑAMIENTOS:**\n" +
+                   "• Papas Fritas: $1200\n" +
+                   "• Papas con Cheddar: $1800\n\n" +
+                   "🥤 **BEBIDAS:**\n" +
+                   "• Coca-Cola 500ml: $800\n" +
+                   "• Agua Mineral: $500\n\n" +
+                   "¿Qué se te antoja?";
+        }
+        
+        if (msg.includes('hora') || msg.includes('abierto')) {
+            return "⏰ **HORARIOS:**\n" +
+                   "Lunes a Jueves: 10:00 - 23:00\n" +
+                   "Viernes: 10:00 - 00:00\n" +
+                   "Sábado: 11:00 - 00:00\n" +
+                   "Domingo: 11:00 - 22:00\n\n" +
+                   "🚚 **Envío:** $300 (30-45 min)\n" +
+                   "🏪 **Retiro:** Disponible";
+        }
+        
+        if (msg.includes('pedido') || msg.includes('ordenar') || msg.includes('quiero')) {
+            return "¡Perfecto! ¿Qué te gustaría pedir? Por ejemplo:\n" +
+                   "- 2 hamburguesas clásicas\n" +
+                   "- 1 porción de papas fritas\n" +
+                   "- 1 Coca-Cola\n\n" +
+                   "Podés personalizar cada producto. 🍔";
+        }
+        
+        return "¡Hola! Soy EL TACHI. ¿Te gustaría ver el menú o hacer un pedido?";
+    }
+}
+
+// ============================================
+// CLASE PRINCIPAL DE LA APLICACIÓN
+// ============================================
+
 class ElTachiApp {
     constructor() {
         this.chatHistory = [];
@@ -38,7 +218,7 @@ class ElTachiApp {
         // Load products and settings
         await this.loadData();
         
-        // Initialize Gemini
+        // Initialize Gemini (ahora está definido arriba)
         await this.initializeGemini();
         
         // Setup event listeners
@@ -80,7 +260,9 @@ class ElTachiApp {
 
     async initializeGemini() {
         try {
-            // In production, get API key from Firestore
+            console.log('🔄 Initializing Gemini Assistant...');
+            
+            // GeminiAssistant ya está definido en este mismo archivo
             const apiKey = this.settings.gemini_config?.api_key || 'TU_API_KEY_AQUI';
             
             this.geminiAssistant = new GeminiAssistant(apiKey);
@@ -89,6 +271,10 @@ class ElTachiApp {
             console.log('✅ Gemini Assistant initialized');
         } catch (error) {
             console.error('Error initializing Gemini:', error);
+            // Crear un asistente de emergencia
+            this.geminiAssistant = {
+                sendMessage: async (msg) => "¡Hola! Soy EL TACHI. ¿En qué puedo ayudarte?"
+            };
         }
     }
 
@@ -122,6 +308,21 @@ class ElTachiApp {
                 const action = e.currentTarget.dataset.action;
                 this.handleQuickAction(action);
             });
+        });
+        
+        // Menu button
+        document.getElementById('menu-btn')?.addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.add('active');
+            this.loadMenu();
+        });
+        
+        // Close modals
+        document.getElementById('close-order-modal')?.addEventListener('click', () => {
+            document.getElementById('order-modal').classList.remove('active');
+        });
+        
+        document.getElementById('close-menu-modal')?.addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.remove('active');
         });
     }
 
@@ -282,17 +483,16 @@ ${this.getCurrentSchedule()}
     }
 
     extractOrderFromSummary(summaryText) {
-        // Simple extraction logic - in production, use more sophisticated parsing
+        // Simple extraction logic
         const lines = summaryText.split('\n');
         const orderLines = lines.filter(line => 
             line.includes('x') || line.includes('-') || line.includes('•')
         );
         
         this.currentOrder = orderLines.map(line => {
-            // Simple parsing - adjust based on your actual format
             return {
                 text: line.trim(),
-                quantity: 1 // Default
+                quantity: 1
             };
         });
         
@@ -500,7 +700,6 @@ ${this.getCurrentSchedule()}
     }
 
     requestCustomerData() {
-        // In a more advanced version, show a form
         this.addMessage('system', 
             '📝 Para completar tu pedido, necesito los siguientes datos:\n\n' +
             '1. **Nombre completo**\n' +
@@ -540,7 +739,7 @@ ${this.getCurrentSchedule()}
                     if (!localStorage.getItem('pwa_prompt_dismissed')) {
                         setTimeout(() => {
                             installPrompt.classList.add('active');
-                        }, 10000); // Show after 10 seconds
+                        }, 10000);
                     }
                     
                     // Handle cancel button
