@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EL TACHI - Panel Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1E3A8A;
+            --secondary: #FFD700;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fb;
+        }
+        
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, var(--primary) 0%, #152c6b 100%);
+            box-shadow: 3px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 250px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-header h3 {
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        
+        .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 12px 20px;
+            border-left: 4px solid transparent;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            color: white;
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--secondary);
+        }
+        
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .order-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .order-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .status-received { background: #ffc107; color: #333; }
+        .status-preparing { background: #17a2b8; color: white; }
+        .status-ready { background: #28a745; color: white; }
+        .status-delivered { background: #6c757d; color: white; }
+        
+        .kanban-column {
+            min-height: 400px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .kanban-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: move;
+            user-select: none;
+        }
+        
+        .whatsapp-btn {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+        }
+        
+        .whatsapp-btn:hover {
+            background: #128C7E;
+            color: white;
+        }
+        
+        .table-hover tbody tr:hover {
+            background: rgba(30, 58, 138, 0.05);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-warning {
+            background: var(--secondary);
+            border-color: var(--secondary);
+            color: #333;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                margin-left: -250px;
+            }
+            
+            .sidebar.active {
+                margin-left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .main-content.active {
+                margin-left: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="bi-shop"></i> EL TACHI</h3>
+            <small class="text-light">Panel Administrativo</small>
+        </div>
+        
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link active" href="#" data-tab="dashboard">
+                <i class="bi-speedometer2"></i> Dashboard
+            </a>
+            <a class="nav-link" href="#" data-tab="orders">
+                <i class="bi-cart"></i> Pedidos
+                <span class="badge bg-danger ms-auto" id="ordersBadge">0</span>
+            </a>
+            <a class="nav-link" href="#" data-tab="products">
+                <i class="bi-egg-fried"></i> Productos
+            </a>
+            <a class="nav-link" href="#" data-tab="toppings">
+                <i class="bi-pepper-hot"></i> Aderezos
+            </a>
+            <a class="nav-link" href="#" data-tab="config">
+                <i class="bi-gear"></i> Configuración
+            </a>
+            <a class="nav-link" href="#" data-tab="reports">
+                <i class="bi-graph-up"></i> Reportes
+            </a>
+            <hr class="text-light mx-3">
+            <div class="px-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="businessSwitch">
+                    <label class="form-check-label text-light" for="businessSwitch">Negocio Abierto</label>
+                </div>
+            </div>
+            <div class="mt-3 px-3">
+                <button class="btn btn-warning w-100" id="logoutBtn">
+                    <i class="bi-box-arrow-right"></i> Cerrar Sesión
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <!-- Dashboard Tab -->
+        <div class="tab-content">
+            <!-- Dashboard -->
+            <div class="tab-pane active" id="dashboard">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi-speedometer2"></i> Dashboard</h2>
+                    <button class="btn btn-primary" id="refreshDashboard">
+                        <i class="bi-arrow-clockwise"></i> Actualizar
+                    </button>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-muted">Pedidos Hoy</h6>
+                                    <h2 id="todayOrders">0</h2>
+                                </div>
+                                <div class="stat-icon bg-primary text-white">
+                                    <i class="bi-cart"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-muted">Ventas Hoy</h6>
+                                    <h2 id="todayRevenue">$0</h2>
+                                </div>
+                                <div class="stat-icon bg-success text-white">
+                                    <i class="bi-currency-dollar"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-muted">Tasa Envíos</h6>
+                                    <h2 id="deliveryRate">0%</h2>
+                                </div>
+                                <div class="stat-icon bg-info text-white">
+                                    <i class="bi-truck"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-muted">Estado</h6>
+                                    <h4><span class="badge bg-success" id="businessStatus">Abierto</span></h4>
+                                </div>
+                                <div class="stat-icon bg-warning text-dark">
+                                    <i class="bi-shop"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="stat-card">
+                            <h5>Pedidos por Hora (Últimas 24h)</h5>
+                            <canvas id="ordersChart" height="250"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <h5>Estado de Pedidos</h5>
+                            <canvas id="statusChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Kanban Board -->
+                <div class="stat-card">
+                    <h5 class="mb-3">Pedidos Activos (Arrastrar para cambiar estado)</h5>
+                    <div class="row" id="kanbanBoard">
+                        <!-- Se llena con JS -->
+                    </div>
+                </div>
+                
+                <!-- Recent Orders -->
+                <div class="stat-card mt-4">
+                    <h5>Pedidos Recientes</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Cliente</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentOrdersTable">
+                                <!-- Se llena con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Orders Tab -->
+            <div class="tab-pane" id="orders">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi-cart"></i> Gestión de Pedidos</h2>
+                    <div>
+                        <button class="btn btn-primary" id="exportOrders">
+                            <i class="bi-download"></i> Exportar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Filters -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="filterDate">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="filterStatus">
+                            <option value="">Todos los estados</option>
+                            <option value="Recibido">Recibido</option>
+                            <option value="En preparación">En preparación</option>
+                            <option value="Listo para entregar">Listo para entregar</option>
+                            <option value="Entregado">Entregado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" placeholder="Buscar..." id="filterSearch">
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" id="applyFilters">Aplicar Filtros</button>
+                    </div>
+                </div>
+                
+                <!-- Orders Table -->
+                <div class="stat-card">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th>Teléfono</th>
+                                    <th>Tipo</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTable">
+                                <!-- Se llena con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Products Tab -->
+            <div class="tab-pane" id="products">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi-egg-fried"></i> Gestión de Productos</h2>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+                        <i class="bi-plus"></i> Nuevo Producto
+                    </button>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Precio</th>
+                                    <th>Categoría</th>
+                                    <th>Disponible</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTable">
+                                <!-- Se llena con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Config Tab -->
+            <div class="tab-pane" id="config">
+                <h2 class="mb-4"><i class="bi-gear"></i> Configuración</h2>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="stat-card mb-4">
+                            <h5>Información del Negocio</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="configName">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Teléfono WhatsApp</label>
+                                <input type="text" class="form-control" id="configPhone">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Dirección</label>
+                                <textarea class="form-control" id="configAddress" rows="2"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card mb-4">
+                            <h5>Precios y Tarifas</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Valor de Envío</label>
+                                <input type="number" class="form-control" id="configDeliveryFee">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Tiempo Estimado</label>
+                                <input type="text" class="form-control" id="configEstimatedTime">
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="configDeliveryEnabled">
+                                <label class="form-check-label">Envíos habilitados</label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="configPickupEnabled">
+                                <label class="form-check-label">Retiro habilitado</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="stat-card mb-4">
+                            <h5>Horarios</h5>
+                            <div id="hoursConfig">
+                                <!-- Se llena con JS -->
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card mb-4">
+                            <h5>Configuración IA</h5>
+                            <div class="mb-3">
+                                <label class="form-label">API Key Gemini</label>
+                                <input type="password" class="form-control" id="configGeminiKey">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Prompt del Asistente</label>
+                                <textarea class="form-control" id="configPrompt" rows="4"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mensaje Cerrado</label>
+                                <textarea class="form-control" id="configClosedMessage" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <button class="btn btn-primary btn-lg" id="saveConfig">
+                        <i class="bi-save"></i> Guardar Configuración
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Product Modal -->
+    <div class="modal fade" id="productModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Producto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm">
+                        <input type="hidden" id="productId">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre *</label>
+                            <input type="text" class="form-control" id="productName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="productDesc" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Precio *</label>
+                            <input type="number" class="form-control" id="productPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Categoría</label>
+                            <input type="text" class="form-control" id="productCategory">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Aderezos (separar por comas)</label>
+                            <input type="text" class="form-control" id="productToppings">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">URL Imagen</label>
+                            <input type="text" class="form-control" id="productImage">
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="productAvailable" checked>
+                            <label class="form-check-label">Disponible</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveProduct">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Detail Modal -->
+    <div class="modal fade" id="orderDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Pedido <span id="detailOrderId"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Cliente</h6>
+                            <p><strong>Nombre:</strong> <span id="detailCustomerName"></span></p>
+                            <p><strong>Teléfono:</strong> <span id="detailCustomerPhone"></span></p>
+                            <p><strong>Tipo:</strong> <span id="detailOrderType"></span></p>
+                            <p><strong>Dirección:</strong> <span id="detailCustomerAddress"></span></p>
+                            <p><strong>Fecha:</strong> <span id="detailOrderDate"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Estado</h6>
+                            <div class="mb-3">
+                                <select class="form-select" id="detailStatusSelect">
+                                    <option value="Recibido">Recibido</option>
+                                    <option value="En preparación">En preparación</option>
+                                    <option value="Listo para entregar">Listo para entregar</option>
+                                    <option value="Entregado">Entregado</option>
+                                </select>
+                            </div>
+                            <h6>Acciones</h6>
+                            <div class="d-grid gap-2">
+                                <a class="btn btn-success whatsapp-btn" id="detailWhatsAppBtn" target="_blank">
+                                    <i class="bi-whatsapp"></i> Enviar WhatsApp
+                                </a>
+                                <button class="btn btn-primary" id="updateStatusBtn">
+                                    <i class="bi-check-circle"></i> Actualizar Estado
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h6>Detalle del Pedido</h6>
+                            <div class="card">
+                                <div class="card-body">
+                                    <pre id="detailOrderItems"></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="customMessage" placeholder="Mensaje personalizado para WhatsApp">
+                                <button class="btn btn-outline-primary" id="sendCustomMessage">
+                                    <i class="bi-send"></i> Enviar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Configuración
+        const API_URL = '<?= ScriptApp.getService().getUrl() ?>';
+        const ADMIN_PASS = 'admin123'; // Cambiar en producción
+        
+        // Estado
+        let state = {
+            orders: [],
+            products: [],
+            config: {},
+            stats: {},
+            currentOrder: null
+        };
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Verificar autenticación
+            const auth = localStorage.getItem('admin_auth');
+            if (auth !== ADMIN_PASS) {
+                const password = prompt('Contraseña de administrador:');
+                if (password === ADMIN_PASS) {
+                    localStorage.setItem('admin_auth', password);
+                } else {
+                    alert('Contraseña incorrecta');
+                    window.location.href = '/';
+                    return;
+                }
+            }
+            
+            await init();
+            setupEventListeners();
+            setupCharts();
+            loadDashboard();
+            
+            // Auto-refresh cada 30 segundos
+            setInterval(loadDashboard, 30000);
+        });
+        
+        async function init() {
+            await loadConfig();
+            await loadOrders();
+            await loadProducts();
+            await loadStats();
+        }
+        
+        // Funciones de carga
+        async function loadConfig() {
+            try {
+                const res = await fetch(`${API_URL}?action=getConfig`);
+                state.config = await res.json();
+                updateConfigForm();
+            } catch (error) {
+                showError('Error cargando configuración');
+            }
+        }
+        
+        async function loadOrders() {
+            try {
+                const res = await fetch(`${API_URL}?action=getAllOrders&auth=${ADMIN_PASS}`);
+                state.orders = await res.json();
+                updateOrdersTable();
+                updateOrdersBadge();
+            } catch (error) {
+                showError('Error cargando pedidos');
+            }
+        }
+        
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API_URL}?action=getStats&auth=${ADMIN_PASS}`);
+                state.stats = await res.json();
+                updateDashboardStats();
+            } catch (error) {
+                showError('Error cargando estadísticas');
+            }
+        }
+        
+        async function loadProducts() {
+            try {
+                const res = await fetch(`${API_URL}?action=getProducts`);
+                state.products = await res.json();
+                updateProductsTable();
+            } catch (error) {
+                showError('Error cargando productos');
+            }
+        }
+        
+        // Actualización de UI
+        function updateDashboardStats() {
+            const today = state.stats.today || {};
+            document.getElementById('todayOrders').textContent = today.orders || 0;
+            document.getElementById('todayRevenue').textContent = `$${today.revenue || 0}`;
+            document.getElementById('deliveryRate').textContent = 
+                today.orders ? `${Math.round((today.delivery / today.orders) * 100)}%` : '0%';
+            
+            // Actualizar gráficos
+            updateCharts();
+            
+            // Actualizar Kanban
+            updateKanbanBoard();
+            
+            // Actualizar tabla reciente
+            updateRecentOrders();
+        }
+        
+        function updateKanbanBoard() {
+            const board = document.getElementById('kanbanBoard');
+            board.innerHTML = '';
+            
+            const statuses = ['Recibido', 'En preparación', 'Listo para entregar', 'Entregado'];
+            
+            statuses.forEach(status => {
+                const column = document.createElement('div');
+                column.className = 'col-md-3 kanban-column';
+                column.dataset.status = status;
+                column.innerHTML = `<h6>${status}</h6>`;
+                
+                const ordersInStatus = state.orders
+                    .filter(o => o.estado === status && isToday(new Date(o.fecha_hora)))
+                    .slice(0, 5);
+                
+                ordersInStatus.forEach(order => {
+                    const item = document.createElement('div');
+                    item.className = 'kanban-item';
+                    item.draggable = true;
+                    item.dataset.orderId = order.id_pedido;
+                    item.innerHTML = `
+                        <div class="fw-bold">${order.id_pedido}</div>
+                        <small>${order.nombre_cliente}</small>
+                        <div class="text-success fw-bold">$${order.total}</div>
+                    `;
+                    
+                    item.addEventListener('dragstart', handleDragStart);
+                    item.addEventListener('click', () => showOrderDetail(order.id_pedido));
+                    
+                    column.appendChild(item);
+                });
+                
+                column.addEventListener('dragover', handleDragOver);
+                column.addEventListener('drop', handleDrop);
+                
+                board.appendChild(column);
+            });
+        }
+        
+        // Drag & Drop para Kanban
+        let draggedOrder = null;
+        
+        function handleDragStart(e) {
+            draggedOrder = e.target.dataset.orderId;
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+        
+        async function handleDrop(e) {
+            e.preventDefault();
+            if (!draggedOrder) return;
+            
+            const newStatus = e.target.closest('.kanban-column').dataset.status;
+            
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'updateOrderStatus',
+                        auth: ADMIN_PASS,
+                        orderId: draggedOrder,
+                        newStatus: newStatus
+                    })
+                });
+                
+                const result = await res.json();
+                if (result.success) {
+                    await loadOrders();
+                    showToast('Estado actualizado', 'success');
+                }
+            } catch (error) {
+                showError('Error actualizando estado');
+            }
+            
+            draggedOrder = null;
+        }
+        
+        function updateOrdersTable(filteredOrders = null) {
+            const orders = filteredOrders || state.orders;
+            const tbody = document.getElementById('ordersTable');
+            tbody.innerHTML = '';
+            
+            orders.forEach(order => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="fw-bold">${order.id_pedido}</td>
+                    <td>${formatDate(order.fecha_hora)}</td>
+                    <td>${order.nombre_cliente}</td>
+                    <td>${order.telefono}</td>
+                    <td>${order.tipo_pedido}</td>
+                    <td class="text-success fw-bold">$${order.total}</td>
+                    <td><span class="status-badge status-${getStatusClass(order.estado)}">${order.estado}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary view-order" data-id="${order.id_pedido}">
+                            <i class="bi-eye"></i>
+                        </button>
+                        <a class="btn btn-sm btn-outline-success" 
+                           href="https://wa.me/${order.telefono.replace(/\D/g, '')}" 
+                           target="_blank">
+                            <i class="bi-whatsapp"></i>
+                        </a>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // Agregar eventos
+            document.querySelectorAll('.view-order').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    showOrderDetail(e.target.closest('button').dataset.id);
+                });
+            });
+        }
+        
+        function showOrderDetail(orderId) {
+            const order = state.orders.find(o => o.id_pedido === orderId);
+            if (!order) return;
+            
+            state.currentOrder = order;
+            
+            document.getElementById('detailOrderId').textContent = orderId;
+            document.getElementById('detailCustomerName').textContent = order.nombre_cliente;
+            document.getElementById('detailCustomerPhone').textContent = order.telefono;
+            document.getElementById('detailOrderType').textContent = order.tipo_pedido;
+            document.getElementById('detailCustomerAddress').textContent = order.direccion || 'N/A';
+            document.getElementById('detailOrderDate').textContent = formatDate(order.fecha_hora);
+            document.getElementById('detailStatusSelect').value = order.estado;
+            
+            // Detalle del pedido
+            let detailText = '';
+            try {
+                const details = typeof order.pedido_detallado === 'string' 
+                    ? JSON.parse(order.pedido_detallado)
+                    : order.pedido_detallado;
+                
+                if (Array.isArray(details)) {
+                    details.forEach(item => {
+                        detailText += `${item.cantidad}x ${item.producto}\n`;
+                        if (item.personalizacion) {
+                            detailText += `   - ${item.personalizacion}\n`;
+                        }
+                        detailText += `   $${item.subtotal}\n\n`;
+                    });
+                } else {
+                    detailText = order.pedido_detallado;
+                }
+            } catch (e) {
+                detailText = order.pedido_detallado;
+            }
+            
+            document.getElementById('detailOrderItems').textContent = detailText;
+            
+            // Botón WhatsApp
+            const whatsappBtn = document.getElementById('detailWhatsAppBtn');
+            const message = `Hola ${order.nombre_cliente}! Tu pedido ${orderId} está: ${order.estado}.`;
+            whatsappBtn.href = `https://wa.me/${order.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+            
+            const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+            modal.show();
+        }
+        
+        // Funciones utilitarias
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function getStatusClass(status) {
+            const map = {
+                'Recibido': 'received',
+                'En preparación': 'preparing',
+                'Listo para entregar': 'ready',
+                'Entregado': 'delivered'
+            };
+            return map[status] || 'received';
+        }
+        
+        function isToday(date) {
+            const today = new Date();
+            return date.getDate() === today.getDate() &&
+                   date.getMonth() === today.getMonth() &&
+                   date.getFullYear() === today.getFullYear();
+        }
+        
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', () => {
+                document.body.removeChild(toast);
+            });
+        }
+        
+        function showError(message) {
+            showToast(message, 'danger');
+        }
+        
+        // Configuración de eventos
+        function setupEventListeners() {
+            // Navegación entre pestañas
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Actualizar activo
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    
+                    // Mostrar pestaña correspondiente
+                    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                    document.getElementById(link.dataset.tab).classList.add('active');
+                });
+            });
+            
+            // Botón refresh
+            document.getElementById('refreshDashboard').addEventListener('click', loadDashboard);
+            
+            // Filtros de pedidos
+            document.getElementById('applyFilters').addEventListener('click', applyFilters);
+            
+            // Guardar configuración
+            document.getElementById('saveConfig').addEventListener('click', saveConfig);
+            
+            // Guardar producto
+            document.getElementById('saveProduct').addEventListener('click', saveProduct);
+            
+            // Actualizar estado de pedido
+            document.getElementById('updateStatusBtn').addEventListener('click', updateOrderStatus);
+            
+            // Enviar mensaje personalizado
+            document.getElementById('sendCustomMessage').addEventListener('click', sendCustomMessage);
+            
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                localStorage.removeItem('admin_auth');
+                window.location.reload();
+            });
+            
+            // Switch negocio abierto/cerrado
+            document.getElementById('businessSwitch').addEventListener('change', toggleBusinessStatus);
+        }
+        
+        // Funciones de negocio
+        async function toggleBusinessStatus() {
+            const isOpen = document.getElementById('businessSwitch').checked;
+            document.getElementById('businessStatus').textContent = isOpen ? 'Abierto' : 'Cerrado';
+            document.getElementById('businessStatus').className = `badge bg-${isOpen ? 'success' : 'danger'}`;
+            
+            // Aquí iría la lógica para actualizar en Google Sheets
+        }
+        
+        async function saveConfig() {
+            const configData = {
+                business_name: document.getElementById('configName').value,
+                whatsapp_number: document.getElementById('configPhone').value,
+                address: document.getElementById('configAddress').value,
+                delivery_fee: document.getElementById('configDeliveryFee').value,
+                estimated_time: document.getElementById('configEstimatedTime').value,
+                delivery_enabled: document.getElementById('configDeliveryEnabled').checked ? 'true' : 'false',
+                pickup_enabled: document.getElementById('configPickupEnabled').checked ? 'true' : 'false',
+                gemini_api_key: document.getElementById('configGeminiKey').value,
+                gemini_prompt: document.getElementById('configPrompt').value,
+                closed_message: document.getElementById('configClosedMessage').value
+            };
+            
+            // Recopilar horarios
+            const hours = {};
+            document.querySelectorAll('.hour-day').forEach(div => {
+                const day = div.dataset.day;
+                hours[day] = {
+                    enabled: div.querySelector('.hour-enabled').checked,
+                    open: div.querySelector('.hour-open').value,
+                    close: div.querySelector('.hour-close').value
+                };
+            });
+            
+            configData.open_hours = JSON.stringify(hours);
+            
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'updateConfig',
+                        auth: ADMIN_PASS,
+                        configData: configData
+                    })
+                });
+                
+                const result = await res.json();
+                if (result.success) {
+                    showToast('Configuración guardada', 'success');
+                    await loadConfig();
+                }
+            } catch (error) {
+                showError('Error guardando configuración');
+            }
+        }
+        
+        async function updateOrderStatus() {
+            const newStatus = document.getElementById('detailStatusSelect').value;
+            
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'updateOrderStatus',
+                        auth: ADMIN_PASS,
+                        orderId: state.currentOrder.id_pedido,
+                        newStatus: newStatus
+                    })
+                });
+                
+                const result = await res.json();
+                if (result.success) {
+                    showToast('Estado actualizado', 'success');
+                    await loadOrders();
+                    bootstrap.Modal.getInstance(document.getElementById('orderDetailModal')).hide();
+                }
+            } catch (error) {
+                showError('Error actualizando estado');
+            }
+        }
+        
+        async function sendCustomMessage() {
+            const message = document.getElementById('customMessage').value;
+            if (!message) return;
+            
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'sendWhatsApp',
+                        auth: ADMIN_PASS,
+                        orderId: state.currentOrder.id_pedido,
+                        message: message
+                    })
+                });
+                
+                const result = await res.json();
+                if (result.success) {
+                    showToast('Mensaje enviado', 'success');
+                    document.getElementById('customMessage').value = '';
+                }
+            } catch (error) {
+                showError('Error enviando mensaje');
+            }
+        }
+        
+        // Gráficos
+        function setupCharts() {
+            // Gráfico de pedidos por hora
+            window.ordersChart = new Chart(document.getElementById('ordersChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Pedidos',
+                        data: [],
+                        borderColor: 'rgb(30, 58, 138)',
+                        backgroundColor: 'rgba(30, 58, 138, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+            
+            // Gráfico de estado
+            window.statusChart = new Chart(document.getElementById('statusChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Recibido', 'En preparación', 'Listo', 'Entregado'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            '#ffc107',
+                            '#17a2b8',
+                            '#28a745',
+                            '#6c757d'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+        
+        function updateCharts() {
+            // Actualizar gráfico por hora
+            const hours = Object.entries(state.stats.byHour || {})
+                .sort((a, b) => a[0] - b[0]);
+            
+            window.ordersChart.data.labels = hours.map(([hour]) => `${hour}:00`);
+            window.ordersChart.data.datasets[0].data = hours.map(([, count]) => count);
+            window.ordersChart.update();
+            
+            // Actualizar gráfico de estado
+            window.statusChart.data.datasets[0].data = [
+                state.stats.byStatus?.Recibido || 0,
+                state.stats.byStatus?.['En preparación'] || 0,
+                state.stats.byStatus?.['Listo para entregar'] || 0,
+                state.stats.byStatus?.Entregado || 0
+            ];
+            window.statusChart.update();
+        }
+        
+        // Cargar dashboard completo
+        async function loadDashboard() {
+            await Promise.all([loadOrders(), loadStats()]);
+        }
+    </script>
+</body>
+</html>

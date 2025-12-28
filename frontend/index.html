@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EL TACHI - Pedidos</title>
+    <meta name="theme-color" content="#1E3A8A">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍔</text></svg>">
+    <style>
+        :root {
+            --primary: #1E3A8A;
+            --secondary: #FFD700;
+            --success: #28a745;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .logo {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .status-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--secondary);
+            color: var(--primary);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .chat-container {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+        
+        .message.bot {
+            justify-content: flex-start;
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .bot .bubble {
+            background: white;
+            border: 2px solid var(--primary);
+            border-bottom-left-radius: 5px;
+        }
+        
+        .user .bubble {
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .input-container {
+            display: flex;
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid var(--primary);
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+        }
+        
+        button {
+            background: var(--secondary);
+            color: var(--primary);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-left: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: scale(1.1);
+        }
+        
+        .product-card {
+            background: white;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .product-name {
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .product-price {
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .order-summary {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        
+        .install-prompt {
+            background: var(--secondary);
+            color: var(--primary);
+            padding: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        .install-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        
+        .loader {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .dot-flashing {
+            position: relative;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: var(--primary);
+            color: var(--primary);
+            animation: dotFlashing 1s infinite linear alternate;
+            animation-delay: .5s;
+            margin: 0 auto;
+        }
+        
+        .dot-flashing::before, .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+        }
+        
+        .dot-flashing::before {
+            left: -15px;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: var(--primary);
+            color: var(--primary);
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 0s;
+        }
+        
+        .dot-flashing::after {
+            left: 15px;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: var(--primary);
+            color: var(--primary);
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 1s;
+        }
+        
+        @keyframes dotFlashing {
+            0% { background-color: var(--primary); }
+            50%, 100% { background-color: rgba(30, 58, 138, 0.2); }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .app-container {
+                border-radius: 15px;
+            }
+            
+            .chat-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="logo">🍔</div>
+            <h1>EL TACHI</h1>
+            <p>Rotisería & Hamburguesas</p>
+            <div class="status-badge" id="statusIndicator">🔄</div>
+        </div>
+        
+        <div class="install-prompt" id="installPrompt">
+            📱 Instalar app para mejor experiencia
+            <button class="install-btn" id="installButton">Instalar</button>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot">
+                <div class="bubble" id="welcomeMessage">
+                    <div class="loader">
+                        <div class="dot-flashing"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" 
+                   id="userInput" 
+                   placeholder="Escribe tu mensaje..." 
+                   autocomplete="off"
+                   autofocus>
+            <button id="sendButton">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuración
+        const CONFIG = {
+            apiUrl: 'URL_DE_TU_WEB_APP', // Reemplazar después
+            adminPassword: 'admin123'
+        };
+        
+        // Estado de la aplicación
+        let state = {
+            conversation: [],
+            currentOrder: {
+                items: [],
+                customer: {},
+                type: null,
+                address: null,
+                total: 0
+            },
+            products: [],
+            config: {},
+            deferredPrompt: null
+        };
+        
+        // Elementos DOM
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const installPrompt = document.getElementById('installPrompt');
+        const installButton = document.getElementById('installButton');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initApp();
+            setupEventListeners();
+            setupPWA();
+            startConversation();
+        });
+        
+        async function initApp() {
+            try {
+                // Cargar configuración
+                const configRes = await fetch(`${CONFIG.apiUrl}?action=getConfig`);
+                state.config = await configRes.json();
+                
+                // Verificar si está abierto
+                const openRes = await fetch(`${CONFIG.apiUrl}?action=isOpen`);
+                const { isOpen } = await openRes.json();
+                
+                statusIndicator.textContent = isOpen ? '✅ Abierto' : '🔒 Cerrado';
+                statusIndicator.style.background = isOpen ? '#28a745' : '#dc3545';
+                
+                // Cargar productos
+                const productsRes = await fetch(`${CONFIG.apiUrl}?action=getProducts`);
+                state.products = await productsRes.json();
+                
+            } catch (error) {
+                console.error('Error inicializando app:', error);
+                showError('Error de conexión. Recargá la página.');
+            }
+        }
+        
+        function setupEventListeners() {
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
+            // Instalar PWA
+            installButton.addEventListener('click', async () => {
+                if (state.deferredPrompt) {
+                    state.deferredPrompt.prompt();
+                    const { outcome } = await state.deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        installPrompt.style.display = 'none';
+                    }
+                    state.deferredPrompt = null;
+                }
+            });
+        }
+        
+        function setupPWA() {
+            // Detectar si está instalado
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                console.log('App instalada');
+            }
+            
+            // Mostrar prompt de instalación
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                state.deferredPrompt = e;
+                installPrompt.style.display = 'block';
+            });
+            
+            // Registrar Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(() => console.log('SW registrado'))
+                    .catch(err => console.log('SW error:', err));
+            }
+        }
+        
+        async function startConversation() {
+            const isOpenRes = await fetch(`${CONFIG.apiUrl}?action=isOpen`);
+            const { isOpen } = await isOpenRes.json();
+            
+            if (!isOpen) {
+                addMessage('bot', state.config.closed_message || 'Estamos cerrados. Volvé mañana!');
+                return;
+            }
+            
+            // Mostrar carta inicial
+            let message = `¡Hola! Soy el asistente de *${state.config.business_name}* 🍔\n\n`;
+            message += `*Horario:* ${getHoursText()}\n`;
+            message += `*Envío:* $${state.config.delivery_fee}\n`;
+            message += `*Tiempo estimado:* ${state.config.estimated_time}\n\n`;
+            message += `*NUESTRA CARTA:*\n\n`;
+            
+            state.products.forEach(product => {
+                message += `🍽️ *${product.nombre}* - $${product.precio}\n`;
+                message += `   ${product.descripcion}\n`;
+                if (product.aderezos_disponibles) {
+                    message += `   Aderezos: ${product.aderezos_disponibles}\n`;
+                }
+                message += `\n`;
+            });
+            
+            message += `\nPodés personalizar cada producto. ¿Qué te gustaría pedir?`;
+            
+            addMessage('bot', message);
+        }
+        
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+            
+            addMessage('user', text);
+            userInput.value = '';
+            
+            // Mostrar typing indicator
+            const typingMsg = addMessage('bot', '<div class="dot-flashing"></div>');
+            
+            try {
+                // Enviar a Gemini
+                const response = await fetch(`${CONFIG.apiUrl}?action=chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        history: state.conversation.slice(-10)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Remover typing indicator
+                chatContainer.removeChild(typingMsg);
+                
+                // Mostrar respuesta
+                addMessage('bot', data.response);
+                
+                // Detectar si el asistente pidió confirmar pedido
+                if (text.toLowerCase().includes('confirmar') || 
+                    data.response.includes('resumen')) {
+                    showOrderSummary();
+                }
+                
+            } catch (error) {
+                console.error('Error en chat:', error);
+                chatContainer.removeChild(typingMsg);
+                addMessage('bot', 'Ups, hubo un error. Intentá de nuevo.');
+            }
+        }
+        
+        function addMessage(sender, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = formatMessage(content);
+            
+            messageDiv.appendChild(bubble);
+            chatContainer.appendChild(messageDiv);
+            
+            // Scroll al final
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Guardar en historial
+            state.conversation.push({
+                role: sender === 'bot' ? 'assistant' : 'user',
+                content: content
+            });
+            
+            return messageDiv;
+        }
+        
+        function formatMessage(text) {
+            // Convertir markdown simple
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>')
+                .replace(/✅/g, '✅ ')
+                .replace(/🍔/g, '🍔 ')
+                .replace(/🍟/g, '🍟 ');
+        }
+        
+        function showOrderSummary() {
+            // Extraer pedido del historial (simplificado)
+            const summary = state.conversation
+                .filter(m => m.role === 'assistant')
+                .pop()?.content || 'Resumen del pedido';
+            
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'order-summary';
+            summaryDiv.innerHTML = `
+                <h3>📋 Resumen del Pedido</h3>
+                <div style="margin: 10px 0;">${formatMessage(summary)}</div>
+                <button onclick="confirmOrder()" style="background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 5px; width: 100%;">✅ Confirmar Pedido</button>
+            `;
+            
+            chatContainer.appendChild(summaryDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        async function confirmOrder() {
+            // Aquí iría la lógica para recolectar datos del cliente
+            // y crear el pedido en Google Sheets
+            
+            addMessage('bot', 'Perfecto! Para confirmar tu pedido necesito:\n\n1. Tu nombre completo\n2. Número de teléfono\n3. ¿Es envío o retiro?');
+            
+            // En un sistema completo, aquí seguiría el flujo de captura de datos
+        }
+        
+        function getHoursText() {
+            if (!state.config.open_hours) return '11:00 - 22:00';
+            
+            const days = {
+                monday: 'Lunes',
+                tuesday: 'Martes',
+                wednesday: 'Miércoles',
+                thursday: 'Jueves',
+                friday: 'Viernes',
+                saturday: 'Sábado',
+                sunday: 'Domingo'
+            };
+            
+            return Object.entries(state.config.open_hours)
+                .map(([day, hours]) => 
+                    `${days[day] || day}: ${hours.open} - ${hours.close}`)
+                .join(', ');
+        }
+        
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                background: #dc3545;
+                color: white;
+                padding: 15px;
+                border-radius: 10px;
+                margin: 10px;
+                text-align: center;
+            `;
+            errorDiv.textContent = message;
+            chatContainer.appendChild(errorDiv);
+        }
+        
+        // Hacer funciones globales para botones
+        window.confirmOrder = confirmOrder;
+    </script>
+</body>
+</html>
