@@ -4,49 +4,218 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EL TACHI - Panel Admin</title>
-    <!-- Cargar configuración PRIMERO -->
-    <script src="./config.js"></script>
     <!-- Estilos -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* ESTILOS DEL PASO ANTERIOR (mantener igual) */
-        :root { --primary: #1E3A8A; --secondary: #FFD700; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fb; }
-        .sidebar { min-height: 100vh; background: linear-gradient(180deg, var(--primary) 0%, #152c6b 100%); }
-        .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-header h3 { color: var(--secondary); }
-        .nav-link { color: rgba(255,255,255,0.8); padding: 12px 20px; }
-        .nav-link:hover, .nav-link.active { color: white; background: rgba(255,255,255,0.1); }
-        .main-content { margin-left: 250px; padding: 20px; }
-        .stat-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
-        .order-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-left: 4px solid var(--primary); }
-        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 0.8em; }
-        .status-received { background: #ffc107; }
+        :root {
+            --primary: #1E3A8A;
+            --secondary: #FFD700;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fb;
+        }
+        
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, var(--primary) 0%, #152c6b 100%);
+            box-shadow: 3px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 250px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-header h3 {
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        
+        .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 12px 20px;
+            border-left: 4px solid transparent;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            color: white;
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--secondary);
+        }
+        
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .order-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .order-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .status-received { background: #ffc107; color: #333; }
         .status-preparing { background: #17a2b8; color: white; }
         .status-ready { background: #28a745; color: white; }
         .status-delivered { background: #6c757d; color: white; }
-        .kanban-column { min-height: 400px; background: #f8f9fa; border-radius: 10px; padding: 15px; }
-        .whatsapp-btn { background: #25D366; color: white; border: none; padding: 5px 10px; border-radius: 5px; }
-        .btn-primary { background: var(--primary); border-color: var(--primary); }
-        @media (max-width: 768px) { .sidebar { margin-left: -250px; } .sidebar.active { margin-left: 0; } .main-content { margin-left: 0; } }
+        
+        .kanban-column {
+            min-height: 400px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .kanban-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: move;
+            user-select: none;
+        }
+        
+        .whatsapp-btn {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+        }
+        
+        .whatsapp-btn:hover {
+            background: #128C7E;
+            color: white;
+        }
+        
+        .table-hover tbody tr:hover {
+            background: rgba(30, 58, 138, 0.05);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-warning {
+            background: var(--secondary);
+            border-color: var(--secondary);
+            color: #333;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                margin-left: -250px;
+            }
+            
+            .sidebar.active {
+                margin-left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .main-content.active {
+                margin-left: 250px;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3><i class="bi-shop"></i> <span id="businessName">EL TACHI</span></h3>
+            <h3><i class="bi-shop"></i> EL TACHI</h3>
             <small class="text-light">Panel Administrativo</small>
         </div>
         
         <nav class="nav flex-column mt-3">
-            <a class="nav-link active" href="#" data-tab="dashboard"><i class="bi-speedometer2"></i> Dashboard</a>
-            <a class="nav-link" href="#" data-tab="orders"><i class="bi-cart"></i> Pedidos <span class="badge bg-danger ms-auto" id="ordersBadge">0</span></a>
-            <a class="nav-link" href="#" data-tab="products"><i class="bi-egg-fried"></i> Productos</a>
-            <a class="nav-link" href="#" data-tab="config"><i class="bi-gear"></i> Configuración</a>
-            <a class="nav-link" href="#" data-tab="reports"><i class="bi-graph-up"></i> Reportes</a>
+            <a class="nav-link active" href="#" data-tab="dashboard">
+                <i class="bi-speedometer2"></i> Dashboard
+            </a>
+            <a class="nav-link" href="#" data-tab="orders">
+                <i class="bi-cart"></i> Pedidos
+                <span class="badge bg-danger ms-auto" id="ordersBadge">0</span>
+            </a>
+            <a class="nav-link" href="#" data-tab="products">
+                <i class="bi-egg-fried"></i> Productos
+            </a>
+            <a class="nav-link" href="#" data-tab="toppings">
+                <i class="bi-pepper-hot"></i> Aderezos
+            </a>
+            <a class="nav-link" href="#" data-tab="config">
+                <i class="bi-gear"></i> Configuración
+            </a>
+            <a class="nav-link" href="#" data-tab="reports">
+                <i class="bi-graph-up"></i> Reportes
+            </a>
             <hr class="text-light mx-3">
             <div class="px-3">
                 <div class="form-check form-switch">
@@ -55,81 +224,159 @@
                 </div>
             </div>
             <div class="mt-3 px-3">
-                <button class="btn btn-warning w-100" id="logoutBtn"><i class="bi-box-arrow-right"></i> Cerrar Sesión</button>
+                <button class="btn btn-warning w-100" id="logoutBtn">
+                    <i class="bi-box-arrow-right"></i> Cerrar Sesión
+                </button>
             </div>
         </nav>
     </div>
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
-        <!-- Dashboard -->
-        <div class="tab-pane active" id="dashboard">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="bi-speedometer2"></i> Dashboard</h2>
-                <div>
-                    <button class="btn btn-sm btn-outline-primary" id="configApiBtn"><i class="bi-plug"></i> Config API</button>
-                    <button class="btn btn-primary" id="refreshDashboard"><i class="bi-arrow-clockwise"></i> Actualizar</button>
-                </div>
-            </div>
-            
-            <!-- Configuración API (inicialmente visible) -->
-            <div class="stat-card mb-4" id="apiConfigCard">
-                <h5><i class="bi-exclamation-triangle text-warning"></i> Configuración Requerida</h5>
-                <p>Antes de usar el panel, necesitas configurar la URL de la API:</p>
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="mb-3">
-                            <label class="form-label">URL del Web App (Apps Script)</label>
-                            <input type="text" class="form-control" id="apiUrlInput" 
-                                   placeholder="https://script.google.com/macros/s/.../exec">
-                            <small class="form-text text-muted">
-                                1. Publica tu Apps Script como Web App<br>
-                                2. Copia la URL completa<br>
-                                3. Pega aquí
-                            </small>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">Contraseña Admin</label>
-                            <input type="password" class="form-control" id="adminPassInput" 
-                                   value="admin123">
-                        </div>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="saveApiConfig"><i class="bi-save"></i> Guardar Configuración</button>
-                <button class="btn btn-link" id="testConnectionBtn">Probar Conexión</button>
-            </div>
-            
-            <!-- Stats (inicialmente oculto) -->
-            <div id="dashboardContent" style="display: none;">
-                <!-- Stats Cards -->
-                <div class="row mb-4">
-                    <div class="col-md-3"><div class="stat-card"><h6>Pedidos Hoy</h6><h2 id="todayOrders">0</h2></div></div>
-                    <div class="col-md-3"><div class="stat-card"><h6>Ventas Hoy</h6><h2 id="todayRevenue">$0</h2></div></div>
-                    <div class="col-md-3"><div class="stat-card"><h6>Envíos Hoy</h6><h2 id="deliveryRate">0</h2></div></div>
-                    <div class="col-md-3"><div class="stat-card"><h6>Estado</h6><h4><span class="badge bg-success" id="businessStatus">Abierto</span></h4></div></div>
-                </div>
-                
-                <!-- Kanban -->
-                <div class="stat-card mb-4">
-                    <h5>Pedidos Activos</h5>
-                    <div class="row" id="kanbanBoard">
-                        <div class="col-md-3 kanban-column" data-status="Recibido"><h6>Recibido</h6></div>
-                        <div class="col-md-3 kanban-column" data-status="En preparación"><h6>En preparación</h6></div>
-                        <div class="col-md-3 kanban-column" data-status="Listo para entregar"><h6>Listo para entregar</h6></div>
-                        <div class="col-md-3 kanban-column" data-status="Entregado"><h6>Entregado</h6></div>
+        <!-- Dashboard Tab -->
+        <div class="tab-content">
+            <!-- Dashboard -->
+            <div class="tab-pane active" id="dashboard">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi-speedometer2"></i> Dashboard</h2>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" id="configApiBtn"><i class="bi-gear"></i> Configurar API</button>
+                        <button class="btn btn-primary" id="refreshDashboard">
+                            <i class="bi-arrow-clockwise"></i> Actualizar
+                        </button>
                     </div>
                 </div>
                 
-                <!-- Recent Orders -->
-                <div class="stat-card">
-                    <h5>Pedidos Recientes</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead><tr><th>ID</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
-                            <tbody id="recentOrdersTable"></tbody>
-                        </table>
+                <!-- Configuración API -->
+                <div class="stat-card mb-4" id="apiConfigCard">
+                    <h5><i class="bi-exclamation-triangle text-warning"></i> Configuración Requerida</h5>
+                    <p>Antes de usar el panel, necesitas configurar la URL de la API de Google Apps Script:</p>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label">URL del Web App (Apps Script)</label>
+                                <input type="text" class="form-control" id="apiUrlInput" 
+                                       placeholder="https://script.google.com/macros/s/.../exec" value="">
+                                <small class="form-text text-muted">
+                                    1. Publica tu Apps Script como Web App<br>
+                                    2. Copia la URL completa<br>
+                                    3. Pega aquí
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Contraseña Admin</label>
+                                <input type="text" class="form-control" id="adminPassInput" 
+                                       value="admin123">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="saveApiConfig"><i class="bi-save"></i> Guardar Configuración</button>
+                    <button class="btn btn-outline-primary" id="testConnectionBtn">Probar Conexión</button>
+                </div>
+                
+                <!-- Stats (inicialmente oculto) -->
+                <div id="dashboardContent" style="display: none;">
+                    <!-- Stats Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="text-muted">Pedidos Hoy</h6>
+                                        <h2 id="todayOrders">0</h2>
+                                    </div>
+                                    <div class="stat-icon bg-primary text-white">
+                                        <i class="bi-cart"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="text-muted">Ventas Hoy</h6>
+                                        <h2 id="todayRevenue">$0</h2>
+                                    </div>
+                                    <div class="stat-icon bg-success text-white">
+                                        <i class="bi-currency-dollar"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="text-muted">Tasa Envíos</h6>
+                                        <h2 id="deliveryRate">0%</h2>
+                                    </div>
+                                    <div class="stat-icon bg-info text-white">
+                                        <i class="bi-truck"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="text-muted">Estado</h6>
+                                        <h4><span class="badge bg-success" id="businessStatus">Abierto</span></h4>
+                                    </div>
+                                    <div class="stat-icon bg-warning text-dark">
+                                        <i class="bi-shop"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="stat-card">
+                                <h5>Pedidos por Hora (Últimas 24h)</h5>
+                                <canvas id="ordersChart" height="250"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card">
+                                <h5>Estado de Pedidos</h5>
+                                <canvas id="statusChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Kanban Board -->
+                    <div class="stat-card">
+                        <h5 class="mb-3">Pedidos Activos (Arrastrar para cambiar estado)</h5>
+                        <div class="row" id="kanbanBoard">
+                            <!-- Se llena con JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Orders -->
+                    <div class="stat-card mt-4">
+                        <h5>Pedidos Recientes</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Cliente</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentOrdersTable">
+                                    <!-- Se llena con JS -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -137,11 +384,17 @@
     </div>
 
     <!-- Modals -->
+    <!-- Order Detail Modal -->
     <div class="modal fade" id="orderDetailModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Pedido <span id="detailOrderId"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body" id="orderDetailContent"></div>
+                <div class="modal-header">
+                    <h5 class="modal-title">Pedido <span id="detailOrderId"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="orderDetailContent">
+                    <!-- Se llena dinámicamente -->
+                </div>
             </div>
         </div>
     </div>
@@ -151,8 +404,8 @@
     <script>
         // Configuración inicial
         let CONFIG = {
-            API_URL: window.EL_TACHI_CONFIG ? window.EL_TACHI_CONFIG.API_URL : '',
-            ADMIN_PASS: window.EL_TACHI_CONFIG ? window.EL_TACHI_CONFIG.ADMIN_PASS : 'admin123'
+            API_URL: localStorage.getItem('el_tachi_api_url') || '',
+            ADMIN_PASS: localStorage.getItem('el_tachi_admin_pass') || 'admin123'
         };
         
         // Estado de la aplicación
@@ -165,6 +418,19 @@
         
         // Inicialización
         document.addEventListener('DOMContentLoaded', () => {
+            // Verificar autenticación
+            const auth = localStorage.getItem('el_tachi_auth');
+            if (auth !== CONFIG.ADMIN_PASS) {
+                const password = prompt('Contraseña de administrador:');
+                if (password === CONFIG.ADMIN_PASS) {
+                    localStorage.setItem('el_tachi_auth', password);
+                } else {
+                    alert('Contraseña incorrecta');
+                    window.location.href = '/';
+                    return;
+                }
+            }
+            
             // Cargar configuración guardada
             loadSavedConfig();
             
@@ -175,6 +441,8 @@
             if (CONFIG.API_URL && CONFIG.API_URL.includes('script.google.com')) {
                 hideApiConfig();
                 initDashboard();
+            } else {
+                showApiConfig();
             }
         });
         
@@ -196,6 +464,7 @@
             // Guardar configuración API
             document.getElementById('saveApiConfig').addEventListener('click', saveApiConfig);
             document.getElementById('testConnectionBtn').addEventListener('click', testConnection);
+            document.getElementById('configApiBtn').addEventListener('click', showApiConfig);
             
             // Navegación
             document.querySelectorAll('.nav-link').forEach(link => {
@@ -203,23 +472,35 @@
                     e.preventDefault();
                     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
                     link.classList.add('active');
+                    
+                    // Ocultar/mostrar contenido según pestaña
+                    const tabId = link.dataset.tab;
+                    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                    document.getElementById(tabId).classList.add('active');
                 });
             });
             
             // Refresh
             document.getElementById('refreshDashboard').addEventListener('click', initDashboard);
             
-            // Config API button
-            document.getElementById('configApiBtn').addEventListener('click', () => {
-                document.getElementById('apiConfigCard').style.display = 'block';
-                document.getElementById('dashboardContent').style.display = 'none';
-            });
-            
             // Logout
             document.getElementById('logoutBtn').addEventListener('click', () => {
                 localStorage.removeItem('el_tachi_auth');
                 location.reload();
             });
+            
+            // Business switch
+            document.getElementById('businessSwitch').addEventListener('change', toggleBusinessStatus);
+        }
+        
+        function showApiConfig() {
+            document.getElementById('apiConfigCard').style.display = 'block';
+            document.getElementById('dashboardContent').style.display = 'none';
+        }
+        
+        function hideApiConfig() {
+            document.getElementById('apiConfigCard').style.display = 'none';
+            document.getElementById('dashboardContent').style.display = 'block';
         }
         
         function saveApiConfig() {
@@ -239,8 +520,7 @@
             CONFIG.API_URL = apiUrl;
             CONFIG.ADMIN_PASS = adminPass;
             
-            // Probar conexión automáticamente
-            testConnection();
+            alert('Configuración guardada. Ahora prueba la conexión.');
         }
         
         async function testConnection() {
@@ -250,8 +530,16 @@
             }
             
             try {
-                const response = await fetch(`${CONFIG.API_URL}?action=getConfig`);
-                if (!response.ok) throw new Error('Error en la respuesta');
+                // Usar fetch con mode 'no-cors' no es suficiente, necesitamos que el servidor responda con CORS headers
+                // Google Apps Script con el código corregido debería responder con los headers adecuados
+                const response = await fetch(`${CONFIG.API_URL}?action=getConfig`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 const data = await response.json();
                 
@@ -263,13 +551,74 @@
                     initDashboard();
                 }
             } catch (error) {
-                alert('❌ Error de conexión: ' + error.message + '\n\nVerifica:\n1. La URL es correcta\n2. El Web App está publicado\n3. Los permisos son "Anyone, even anonymous"');
+                console.error('Error de conexión:', error);
+                
+                // Intentar método alternativo (JSONP) para GET requests
+                if (CONFIG.API_URL) {
+                    try {
+                        const jsonpResult = await fetchJSONP(`${CONFIG.API_URL}?action=getConfig&callback=test`);
+                        if (jsonpResult) {
+                            alert('✅ Conexión exitosa usando JSONP!');
+                            hideApiConfig();
+                            initDashboard();
+                            return;
+                        }
+                    } catch (jsonpError) {
+                        console.error('JSONP también falló:', jsonpError);
+                    }
+                }
+                
+                alert('❌ Error de conexión: ' + error.message + 
+                      '\n\nSoluciones:\n' +
+                      '1. Asegúrate de que el Web App esté publicado como "Anyone, even anonymous"\n' +
+                      '2. Verifica que el código de Apps Script tenga los headers CORS\n' +
+                      '3. Prueba con un proxy CORS temporal');
+                
+                // Mostrar opción de proxy
+                showProxyOption();
             }
         }
         
-        function hideApiConfig() {
-            document.getElementById('apiConfigCard').style.display = 'none';
-            document.getElementById('dashboardContent').style.display = 'block';
+        // Función JSONP alternativa
+        function fetchJSONP(url) {
+            return new Promise((resolve, reject) => {
+                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+                const script = document.createElement('script');
+                
+                window[callbackName] = function(data) {
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    resolve(data);
+                };
+                
+                script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+                script.onerror = () => {
+                    reject(new Error('JSONP request failed'));
+                };
+                
+                document.body.appendChild(script);
+            });
+        }
+        
+        function showProxyOption() {
+            const useProxy = confirm('¿Quieres usar un proxy CORS temporal para probar?');
+            if (useProxy) {
+                const proxyUrl = `https://cors-anywhere.herokuapp.com/${CONFIG.API_URL}?action=getConfig`;
+                fetch(proxyUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            alert('Error con proxy: ' + data.error);
+                        } else {
+                            alert('✅ Conexión exitosa con proxy!');
+                            hideApiConfig();
+                            initDashboard();
+                        }
+                    })
+                    .catch(error => {
+                        alert('Proxy también falló: ' + error.message);
+                    });
+            }
         }
         
         async function initDashboard() {
@@ -330,7 +679,15 @@
                 // Actualizar cards
                 document.getElementById('todayOrders').textContent = stats.today?.orders || 0;
                 document.getElementById('todayRevenue').textContent = '$' + (stats.today?.revenue || 0);
-                document.getElementById('deliveryRate').textContent = stats.today?.delivery || 0;
+                
+                const deliveryRate = stats.today?.orders ? 
+                    Math.round((stats.today.delivery / stats.today.orders) * 100) : 0;
+                document.getElementById('deliveryRate').textContent = deliveryRate + '%';
+                
+                // Actualizar gráficos si existen
+                if (window.ordersChart && window.statusChart) {
+                    updateCharts(stats);
+                }
             } catch (error) {
                 console.error('Error cargando stats:', error);
             }
@@ -339,62 +696,99 @@
         function updateDashboard() {
             updateKanbanBoard();
             updateRecentOrders();
+            setupCharts();
         }
         
         function updateKanbanBoard() {
-            const columns = document.querySelectorAll('.kanban-column');
-            columns.forEach(column => {
-                const status = column.dataset.status;
-                // Limpiar columnas
-                while (column.children.length > 1) {
-                    column.removeChild(column.lastChild);
-                }
+            const board = document.getElementById('kanbanBoard');
+            if (!board) return;
+            
+            board.innerHTML = '';
+            
+            const statuses = ['Recibido', 'En preparación', 'Listo para entregar', 'Entregado'];
+            
+            statuses.forEach(status => {
+                const column = document.createElement('div');
+                column.className = 'col-md-3 kanban-column';
+                column.dataset.status = status;
+                column.innerHTML = `<h6>${status}</h6>`;
                 
-                // Filtrar órdenes por estado (hoy)
-                const todayOrders = state.orders.filter(order => {
-                    const orderDate = new Date(order.fecha_hora);
-                    const today = new Date();
-                    return orderDate.toDateString() === today.toDateString() && 
-                           order.estado === status;
+                const ordersInStatus = state.orders
+                    .filter(o => o.estado === status && isToday(new Date(o.fecha_hora)))
+                    .slice(0, 5);
+                
+                ordersInStatus.forEach(order => {
+                    const item = document.createElement('div');
+                    item.className = 'kanban-item';
+                    item.draggable = true;
+                    item.dataset.orderId = order.id_pedido;
+                    item.innerHTML = `
+                        <div class="fw-bold">${order.id_pedido}</div>
+                        <small>${order.nombre_cliente}</small>
+                        <div class="text-success fw-bold">$${order.total}</div>
+                    `;
+                    
+                    item.addEventListener('dragstart', handleDragStart);
+                    item.addEventListener('click', () => showOrderDetail(order.id_pedido));
+                    
+                    column.appendChild(item);
                 });
                 
-                // Agregar tarjetas
-                todayOrders.slice(0, 5).forEach(order => {
-                    const card = createOrderCard(order);
-                    column.appendChild(card);
-                });
+                column.addEventListener('dragover', handleDragOver);
+                column.addEventListener('drop', handleDrop);
+                
+                board.appendChild(column);
             });
         }
         
-        function createOrderCard(order) {
-            const card = document.createElement('div');
-            card.className = 'kanban-item';
-            card.draggable = true;
-            card.dataset.orderId = order.id_pedido;
-            card.innerHTML = `
-                <div class="fw-bold">${order.id_pedido}</div>
-                <small>${order.nombre_cliente}</small>
-                <div class="text-success fw-bold">$${order.total}</div>
-                <small class="text-muted">${formatTime(order.fecha_hora)}</small>
-            `;
+        // Drag & Drop para Kanban
+        function handleDragStart(e) {
+            state.dragOrderId = e.target.dataset.orderId;
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+        
+        async function handleDrop(e) {
+            e.preventDefault();
+            if (!state.dragOrderId) return;
             
-            // Drag & Drop
-            card.addEventListener('dragstart', (e) => {
-                state.dragOrderId = order.id_pedido;
-                e.dataTransfer.effectAllowed = 'move';
-            });
+            const newStatus = e.target.closest('.kanban-column').dataset.status;
             
-            // Click para ver detalles
-            card.addEventListener('click', () => showOrderDetail(order.id_pedido));
+            try {
+                const response = await fetch(CONFIG.API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'updateOrderStatus',
+                        auth: CONFIG.ADMIN_PASS,
+                        orderId: state.dragOrderId,
+                        newStatus: newStatus
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    await loadOrders();
+                    showToast('Estado actualizado', 'success');
+                }
+            } catch (error) {
+                console.error('Error actualizando estado:', error);
+            }
             
-            return card;
+            state.dragOrderId = null;
         }
         
         function updateRecentOrders() {
             const tbody = document.getElementById('recentOrdersTable');
+            if (!tbody) return;
+            
             tbody.innerHTML = '';
             
-            // Ordenar por fecha (más recientes primero)
+            // Ordenar por fecha (más recientes primero) y tomar solo 10
             const recentOrders = [...state.orders]
                 .sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora))
                 .slice(0, 10);
@@ -404,7 +798,8 @@
                 row.innerHTML = `
                     <td class="fw-bold">${order.id_pedido}</td>
                     <td>${order.nombre_cliente}</td>
-                    <td class="text-success">$${order.total}</td>
+                    <td>${order.telefono}</td>
+                    <td class="text-success fw-bold">$${order.total}</td>
                     <td><span class="status-badge status-${getStatusClass(order.estado)}">${order.estado}</span></td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary view-order" data-id="${order.id_pedido}">
@@ -440,8 +835,6 @@
                 }
                 
                 state.currentOrder = order;
-                
-                document.getElementById('detailOrderId').textContent = orderId;
                 
                 let detailHTML = `
                     <div class="row">
@@ -504,6 +897,7 @@
                 `;
                 
                 document.getElementById('orderDetailContent').innerHTML = detailHTML;
+                document.getElementById('detailOrderId').textContent = orderId;
                 
                 // Configurar eventos en el modal
                 document.getElementById('updateStatusBtn').addEventListener('click', updateOrderStatus);
@@ -587,6 +981,12 @@
             }
         }
         
+        function toggleBusinessStatus() {
+            const isOpen = document.getElementById('businessSwitch').checked;
+            // Aquí iría la lógica para actualizar el estado en la base de datos
+            console.log('Negocio ' + (isOpen ? 'abierto' : 'cerrado'));
+        }
+        
         // Funciones utilitarias
         function formatDateTime(dateString) {
             const date = new Date(dateString);
@@ -594,14 +994,6 @@
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-        
-        function formatTime(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleTimeString('es-ES', {
                 hour: '2-digit',
                 minute: '2-digit'
             });
@@ -615,6 +1007,13 @@
                 'Entregado': 'delivered'
             };
             return map[status] || 'received';
+        }
+        
+        function isToday(date) {
+            const today = new Date();
+            return date.getDate() === today.getDate() &&
+                   date.getMonth() === today.getMonth() &&
+                   date.getFullYear() === today.getFullYear();
         }
         
         function showToast(message, type = 'info') {
@@ -640,48 +1039,88 @@
             }, 3000);
         }
         
-        // Configurar drag & drop
-        document.addEventListener('DOMContentLoaded', () => {
-            const columns = document.querySelectorAll('.kanban-column');
-            
-            columns.forEach(column => {
-                column.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                });
-                
-                column.addEventListener('drop', async (e) => {
-                    e.preventDefault();
-                    
-                    if (!state.dragOrderId) return;
-                    
-                    const newStatus = column.dataset.status;
-                    
-                    try {
-                        const response = await fetch(CONFIG.API_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                action: 'updateOrderStatus',
-                                auth: CONFIG.ADMIN_PASS,
-                                orderId: state.dragOrderId,
-                                newStatus: newStatus
-                            })
-                        });
-                        
-                        const result = await response.json();
-                        if (result.success) {
-                            showToast('Pedido movido a ' + newStatus, 'success');
-                            initDashboard();
+        // Gráficos
+        function setupCharts() {
+            // Gráfico de pedidos por hora
+            const ordersChartCanvas = document.getElementById('ordersChart');
+            if (ordersChartCanvas) {
+                window.ordersChart = new Chart(ordersChartCanvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Pedidos',
+                            data: [],
+                            borderColor: 'rgb(30, 58, 138)',
+                            backgroundColor: 'rgba(30, 58, 138, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false }
                         }
-                    } catch (error) {
-                        console.error('Error actualizando estado:', error);
                     }
-                    
-                    state.dragOrderId = null;
                 });
-            });
-        });
+            }
+            
+            // Gráfico de estado
+            const statusChartCanvas = document.getElementById('statusChart');
+            if (statusChartCanvas) {
+                window.statusChart = new Chart(statusChartCanvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Recibido', 'En preparación', 'Listo', 'Entregado'],
+                        datasets: [{
+                            data: [0, 0, 0, 0],
+                            backgroundColor: [
+                                '#ffc107',
+                                '#17a2b8',
+                                '#28a745',
+                                '#6c757d'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+        }
+        
+        function updateCharts(stats) {
+            // Actualizar gráfico por hora
+            if (window.ordersChart && stats.byHour) {
+                const hours = Object.entries(stats.byHour)
+                    .sort((a, b) => a[0] - b[0]);
+                
+                window.ordersChart.data.labels = hours.map(([hour]) => `${hour}:00`);
+                window.ordersChart.data.datasets[0].data = hours.map(([, count]) => count);
+                window.ordersChart.update();
+            }
+            
+            // Actualizar gráfico de estado
+            if (window.statusChart && stats.byStatus) {
+                window.statusChart.data.datasets[0].data = [
+                    stats.byStatus.Recibido || 0,
+                    stats.byStatus['En preparación'] || 0,
+                    stats.byStatus['Listo para entregar'] || 0,
+                    stats.byStatus.Entregado || 0
+                ];
+                window.statusChart.update();
+            }
+        }
+        
+        // Auto-refresh cada 30 segundos
+        setInterval(() => {
+            if (CONFIG.API_URL && document.getElementById('dashboardContent').style.display !== 'none') {
+                initDashboard();
+            }
+        }, 30000);
     </script>
 </body>
 </html>
