@@ -1,115 +1,104 @@
-const CACHE_NAME = 'el-tachi-pwa-v3';
-const urlsToCache = [
+// Service Worker para EL TACHI
+const CACHE_NAME = 'el-tachi-v1.0';
+const CACHE_URLS = [
     '/',
     '/index.html',
-    '/assets/js/firebase-config.js',
-    '/assets/js/gemini.js',
-    '/assets/js/app.js',
-    '/assets/js/pwa.js',
-    '/manifest.json',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap'
+    '/admin.html',
+    '/css/style.css',
+    '/css/admin.css',
+    '/js/firebase-init.js',
+    '/js/gemini-chat.js',
+    '/js/admin-panel.js',
+    '/js/pwa.js',
+    '/icon-192.png',
+    '/icon-512.png',
+    '/manifest.json'
 ];
 
-// Install Service Worker
+// Instalar Service Worker
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('Opened cache');
-                return cache.addAll(urlsToCache);
+                console.log('📦 Cacheando archivos');
+                return cache.addAll(CACHE_URLS);
             })
+            .then(() => self.skipWaiting())
     );
 });
 
-// Activate Service Worker
+// Activar Service Worker
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
             return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
-                        console.log('Deleting old cache:', cacheName);
-                        return caches.delete(cacheName);
+                cacheNames.map(cache => {
+                    if (cache !== CACHE_NAME) {
+                        console.log('🗑 Eliminando cache viejo:', cache);
+                        return caches.delete(cache);
                     }
                 })
             );
-        })
+        }).then(() => self.clients.claim())
     );
 });
 
-// Fetch Strategy: Cache First, Network Fallback
+// Interceptar solicitudes
 self.addEventListener('fetch', event => {
-    // Skip Firebase and Gemini API requests
+    // Solo cachear solicitudes GET
+    if (event.request.method !== 'GET') return;
+    
+    // Evitar cachear Firebase y Google APIs
     if (event.request.url.includes('firebase') || 
-        event.request.url.includes('googleapis.com/generative-language') ||
-        event.request.url.includes('googleapis.com/v1beta')) {
+        event.request.url.includes('googleapis') ||
+        event.request.url.includes('gstatic')) {
         return;
     }
     
     event.respondWith(
         caches.match(event.request)
             .then(response => {
-                // Cache hit - return response
+                // Cache hit - devolver respuesta del cache
                 if (response) {
                     return response;
                 }
                 
-                // Clone the request
-                const fetchRequest = event.request.clone();
-                
-                return fetch(fetchRequest).then(response => {
-                    // Check if we received a valid response
-                    if (!response || response.status !== 200 || response.type !== 'basic') {
+                // No está en cache - hacer solicitud de red
+                return fetch(event.request)
+                    .then(response => {
+                        // Verificar que sea una respuesta válida
+                        if (!response || response.status !== 200 || response.type !== 'basic') {
+                            return response;
+                        }
+                        
+                        // Clonar la respuesta para guardarla en cache
+                        const responseToCache = response.clone();
+                        
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                cache.put(event.request, responseToCache);
+                            });
+                        
                         return response;
-                    }
-                    
-                    // Clone the response
-                    const responseToCache = response.clone();
-                    
-                    caches.open(CACHE_NAME)
-                        .then(cache => {
-                            cache.put(event.request, responseToCache);
-                        });
-                    
-                    return response;
-                }).catch(() => {
-                    // If both cache and network fail, show offline page
-                    if (event.request.headers.get('accept').includes('text/html')) {
-                        return caches.match('/index.html');
-                    }
-                });
+                    })
+                    .catch(() => {
+                        // Si falla la red y no está en cache, mostrar página offline
+                        if (event.request.mode === 'navigate') {
+                            return caches.match('/index.html');
+                        }
+                    });
             })
     );
 });
 
-// Background Sync for offline orders
+// Sincronización en segundo plano
 self.addEventListener('sync', event => {
     if (event.tag === 'sync-orders') {
         event.waitUntil(syncOrders());
     }
 });
 
-// Push notifications
-self.addEventListener('push', event => {
-    const options = {
-        body: event.data.text(),
-        icon: '/assets/icons/icon-192.png',
-        badge: '/assets/icons/icon-192.png',
-        vibrate: [100, 50, 100],
-        data: {
-            dateOfArrival: Date.now(),
-            primaryKey: '1'
-        }
-    };
-    
-    event.waitUntil(
-        self.registration.showNotification('EL TACHI', options)
-    );
-});
-
-// Background sync function
 async function syncOrders() {
-    // Implement offline order synchronization here
-    console.log('Syncing offline orders...');
+    // Implementar sincronización de pedidos offline
+    // Esto se implementará en una versión futura
 }
