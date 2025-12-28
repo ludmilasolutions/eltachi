@@ -81,7 +81,7 @@ class TachiChatManager {
                 
                 const apiKey = settings.gemini_api_key;
                 
-                if (!apiKey || apiKey === "AIzaSyDP6ZuOG0TEBM973TVlIO1jrED7CJxTVAk") {
+                if (!apiKey || apiKey === "AIzaSyBPRH8XZ0WfRMN9ZaPlVN_YaYvI9FTnkqU") {
                     throw new Error("API Key de Gemini no configurada");
                 }
                 
