@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EL TACHI - Asistente IA de Pedidos</title>
+    
+    <!-- PWA Metadata -->
+    <meta name="theme-color" content="#1a73e8">
+    <meta name="description" content="Asistente de IA para pedidos de rotisería. Realiza tu pedido conversando con nuestra inteligencia artificial.">
+    <meta name="keywords" content="hamburguesas, pizza, delivery, pedidos, comida, rotisería">
+    <meta name="author" content="EL TACHI">
+    
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EL TACHI">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <style>
+        /* ===== RESET & BASE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary-blue: #1a73e8;
+            --primary-dark-blue: #0d47a1;
+            --primary-yellow: #fbbc05;
+            --primary-orange: #ff9800;
+            --success-green: #34a853;
+            --error-red: #ea4335;
+            --warning-orange: #ff9800;
+            
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --text-light: #80868b;
+            
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #f1f3f4;
+            
+            --border-light: #dadce0;
+            --border-medium: #e0e0e0;
+            
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+            
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --radius-full: 9999px;
+            
+            --transition-fast: 150ms ease;
+            --transition-normal: 250ms ease;
+            --transition-slow: 350ms ease;
+        }
+
+        body {
+            font-family: 'Poppins', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ===== APP CONTAINER ===== */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--bg-primary);
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ===== HEADER ===== */
+        .app-header {
+            background: var(--primary-blue);
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            z-index: 100;
+            min-height: 70px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--primary-yellow);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: var(--shadow-md);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-text h1 {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .logo-text .tagline {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-badge {
+            background: var(--success-green);
+            padding: 6px 14px;
+            border-radius: var(--radius-full);
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .status-badge.closed {
+            background: var(--error-red);
+        }
+
+        .status-badge i {
+            font-size: 12px;
+        }
+
+        .menu-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .menu-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ===== CHAT CONTAINER ===== */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--bg-secondary);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(26, 115, 232, 0.03) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(251, 188, 5, 0.03) 0%, transparent 20%);
+            position: relative;
+            scroll-behavior: smooth;
+        }
+
+        .chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-bottom: 10px;
+        }
+
+        /* ===== MESSAGES ===== */
+        .message {
+            max-width: 85%;
+            padding: 16px 20px;
+            border-radius: var(--radius-xl);
+            line-height: 1.5;
+            position: relative;
+            animation: messageAppear 0.3s ease;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        @keyframes messageAppear {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark-blue));
+            color: white;
+            border-bottom-right-radius: var(--radius-sm);
+            box-shadow: var(--shadow-md);
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: white;
+            color: var(--text-primary);
+            border-bottom-left-radius: var(--radius-sm);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-light);
+        }
+
+        .message.system {
+            align-self: center;
+            background: linear-gradient(135deg, var(--primary-yellow), var(--primary-orange));
+            color: white;
+            text-align: center;
+            max-width: 95%;
+            padding: 14px 24px;
+            font-weight: 500;
+            box-shadow: var(--shadow-md);
+        }
+
+        .message.welcome {
+            background: linear-gradient(135deg, #34a853, #2e7d32);
+            color: white;
+            padding: 24px;
+            border-radius: var(--radius-lg);
+        }
+
+        .message .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 8px;
+            text-align: right;
+            display: block;
+        }
+
+        .message .message-icon {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            background: var(--primary-yellow);
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* ===== TYPING INDICATOR ===== */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            background: white;
+            padding: 16px 24px;
+            border-radius: var(--radius-xl);
+            margin-top: 8px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-light);
+        }
+
+        .typing-indicator.active {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: typingAppear 0.3s ease;
+        }
+
+        @keyframes typingAppear {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: var(--text-light);
+            border-radius: var(--radius-full);
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        /* ===== INPUT AREA ===== */
+        .input-container {
+            border-top: 1px solid var(--border-light);
+            padding: 16px 20px;
+            background: var(--bg-primary);
+            position: relative;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 16px 20px;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-full);
+            font-size: 16px;
+            outline: none;
+            transition: var(--transition-fast);
+            background: var(--bg-secondary);
+            font-family: 'Poppins', sans-serif;
+            resize: none;
+            max-height: 120px;
+            min-height: 56px;
+            line-height: 1.4;
+        }
+
+        #user-input:focus {
+            border-color: var(--primary-blue);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+        }
+
+        #user-input::placeholder {
+            color: var(--text-light);
+        }
+
+        .send-button {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-full);
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark-blue));
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-normal);
+            box-shadow: var(--shadow-md);
+            flex-shrink: 0;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        .send-button i {
+            font-size: 20px;
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ===== QUICK ACTIONS ===== */
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .quick-actions::-webkit-scrollbar {
+            display: none;
+        }
+
+        .quick-btn {
+            padding: 12px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-full);
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+        }
+
+        .quick-btn:hover {
+            background: var(--bg-tertiary);
+            transform: translateY(-1px);
+        }
+
+        .quick-btn i {
+            font-size: 16px;
+        }
+
+        .quick-btn.primary {
+            background: linear-gradient(135deg, var(--primary-yellow), var(--primary-orange));
+            color: white;
+            border: none;
+        }
+
+        /* ===== MODALS ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideUp 0.4s ease;
+            box-shadow: var(--shadow-xl);
+        }
+
+        @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            color: var(--primary-blue);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-light);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-fast);
+        }
+
+        .close-modal:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Order Summary Modal */
+        .order-summary-content {
+            background: var(--bg-secondary);
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            margin: 20px 0;
+        }
+
+        .order-summary-content h3 {
+            color: var(--primary-blue);
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .order-items {
+            margin-bottom: 20px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-item-name {
+            font-weight: 500;
+        }
+
+        .order-item-price {
+            color: var(--text-secondary);
+        }
+
+        .order-total {
+            display: flex;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-top: 2px solid var(--border-medium);
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--primary-blue);
+        }
+
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .whatsapp-btn {
+            padding: 18px;
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: var(--transition-normal);
+            box-shadow: var(--shadow-md);
+        }
+
+        .whatsapp-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .whatsapp-btn i {
+            font-size: 20px;
+        }
+
+        .secondary-btn {
+            padding: 16px;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .secondary-btn:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* ===== MENU MODAL ===== */
+        .menu-categories {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .menu-category {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-light);
+        }
+
+        .category-title {
+            color: var(--primary-blue);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--primary-yellow);
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .category-title i {
+            color: var(--primary-yellow);
+        }
+
+        .products-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .product-card {
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            transition: var(--transition-fast);
+            border: 1px solid transparent;
+        }
+
+        .product-card:hover {
+            border-color: var(--primary-blue);
+            transform: translateY(-2px);
+        }
+
+        .product-image {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark-blue));
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .product-info {
+            flex: 1;
+        }
+
+        .product-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .product-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .product-price {
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--primary-blue);
+        }
+
+        .product-unavailable {
+            opacity: 0.6;
+            position: relative;
+        }
+
+        .product-unavailable::after {
+            content: "NO DISPONIBLE";
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--error-red);
+            color: white;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        /* ===== INSTALL PROMPT ===== */
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+            z-index: 9999;
+            max-width: 90%;
+            width: 400px;
+            animation: slideUp 0.5s ease forwards;
+            border: 2px solid var(--primary-yellow);
+        }
+
+        @keyframes slideUp {
+            to { transform: translateX(-50%) translateY(0); }
+        }
+
+        .install-prompt.active {
+            display: flex;
+        }
+
+        .install-prompt-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .install-prompt-header i {
+            font-size: 28px;
+            color: var(--primary-blue);
+        }
+
+        .install-prompt-header h3 {
+            color: var(--text-primary);
+            font-size: 18px;
+        }
+
+        .install-prompt-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .install-btn {
+            flex: 1;
+            padding: 14px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .install-btn:hover {
+            background: var(--primary-dark-blue);
+        }
+
+        .cancel-install-btn {
+            flex: 1;
+            padding: 14px;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .cancel-install-btn:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* ===== OFFLINE INDICATOR ===== */
+        .offline-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--error-red);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+            z-index: 2000;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        .offline-indicator.active {
+            display: block;
+        }
+
+        /* ===== LOADING SCREEN ===== */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark-blue));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-logo {
+            width: 120px;
+            height: 120px;
+            background: white;
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-xl);
+            animation: logoPulse 2s infinite;
+        }
+
+        @keyframes logoPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: var(--radius-full);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 480px) {
+            .app-container {
+                max-width: 100%;
+            }
+            
+            .app-header {
+                padding: 14px 16px;
+                min-height: 64px;
+            }
+            
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 22px;
+            }
+            
+            .logo-text h1 {
+                font-size: 20px;
+            }
+            
+            .chat-container {
+                padding: 16px;
+            }
+            
+            .message {
+                max-width: 90%;
+                padding: 14px 18px;
+            }
+            
+            .input-container {
+                padding: 14px 16px;
+            }
+            
+            #user-input {
+                padding: 14px 18px;
+                min-height: 52px;
+            }
+            
+            .send-button {
+                width: 52px;
+                height: 52px;
+            }
+            
+            .quick-btn {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+            
+            .modal {
+                padding: 24px;
+            }
+        }
+
+        @media (max-height: 700px) {
+            .chat-container {
+                padding: 12px 16px;
+            }
+            
+            .message {
+                padding: 12px 16px;
+            }
+            
+            .input-container {
+                padding: 12px 16px;
+            }
+        }
+
+        /* ===== UTILITY CLASSES ===== */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-1 { margin-top: 4px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-3 { margin-top: 12px; }
+        .mt-4 { margin-top: 16px; }
+        .mt-5 { margin-top: 20px; }
+
+        .mb-1 { margin-bottom: 4px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-3 { margin-bottom: 12px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mb-5 { margin-bottom: 20px; }
+
+        /* ===== CUSTOM SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: var(--radius-full);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-light);
+        }
+
+        /* ===== PRINT STYLES ===== */
+        @media print {
+            .input-container,
+            .install-prompt,
+            .menu-btn,
+            .send-button {
+                display: none !important;
+            }
+            
+            .app-container {
+                max-width: 100%;
+                box-shadow: none;
+            }
+            
+            .chat-container {
+                overflow: visible;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-logo">
+            <i class="fas fa-hamburger"></i>
+        </div>
+        <div class="loading-text">Cargando EL TACHI...</div>
+        <div class="loading-spinner"></div>
+        <div class="mt-4" style="color: rgba(255,255,255,0.8); font-size: 14px;">
+            Conectando con nuestra inteligencia artificial
+        </div>
+    </div>
+
+    <!-- Offline Indicator -->
+    <div class="offline-indicator" id="offline-indicator">
+        <i class="fas fa-wifi-slash"></i> Estás offline. Puedes ver el menú pero no hacer pedidos.
+    </div>
+
+    <!-- App Container -->
+    <div class="app-container" id="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fas fa-hamburger"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>EL TACHI</h1>
+                    <span class="tagline">Asistente IA de Pedidos</span>
+                </div>
+            </div>
+            
+            <div class="header-controls">
+                <div class="status-badge" id="status-badge">
+                    <i class="fas fa-store"></i>
+                    <span>Abierto</span>
+                </div>
+                <button class="menu-btn" id="menu-btn" aria-label="Abrir menú">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Chat Container -->
+        <main class="chat-container" id="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <!-- Mensajes se agregarán dinámicamente -->
+            </div>
+            
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typing-indicator">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <div style="font-size: 14px; color: var(--text-light);">
+                    El TACHI está escribiendo...
+                </div>
+            </div>
+        </main>
+
+        <!-- Input Area -->
+        <footer class="input-container">
+            <div class="input-wrapper">
+                <textarea 
+                    id="user-input" 
+                    placeholder="Escribe tu mensaje aquí... (ej: Quiero hacer un pedido)" 
+                    rows="1"
+                    maxlength="500"
+                    aria-label="Escribe tu mensaje"
+                ></textarea>
+                <button class="send-button" id="send-button" aria-label="Enviar mensaje">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            
+            <div class="quick-actions">
+                <button class="quick-btn" data-action="menu">
+                    <i class="fas fa-utensils"></i>
+                    Ver Menú
+                </button>
+                <button class="quick-btn" data-action="hours">
+                    <i class="fas fa-clock"></i>
+                    Horarios
+                </button>
+                <button class="quick-btn" data-action="status">
+                    <i class="fas fa-box"></i>
+                    Estado Pedido
+                </button>
+                <button class="quick-btn primary" data-action="order">
+                    <i class="fas fa-shopping-cart"></i>
+                    Hacer Pedido
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Order Summary Modal -->
+    <div class="modal-overlay" id="order-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>✅ Pedido Confirmado</h2>
+                <button class="close-modal" id="close-order-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="order-summary-content" id="order-summary-content">
+                <!-- Resumen del pedido se llenará dinámicamente -->
+            </div>
+            
+            <div class="modal-actions">
+                <button class="whatsapp-btn" id="whatsapp-btn">
+                    <i class="fab fa-whatsapp"></i>
+                    Confirmar por WhatsApp
+                </button>
+                <button class="secondary-btn" id="copy-order-btn">
+                    <i class="fas fa-copy"></i>
+                    Copiar Pedido
+                </button>
+            </div>
+            
+            <div class="mt-4 text-center" style="color: var(--text-light); font-size: 14px;">
+                <i class="fas fa-info-circle"></i>
+                Te enviaremos el número de seguimiento por WhatsApp
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Modal -->
+    <div class="modal-overlay" id="menu-modal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>🍔 Menú EL TACHI</h2>
+                <button class="close-modal" id="close-menu-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="menu-categories" id="menu-categories">
+                <!-- Categorías y productos se cargarán dinámicamente -->
+            </div>
+            
+            <div class="modal-actions">
+                <button class="secondary-btn" id="close-menu-btn">
+                    Cerrar Menú
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Install Prompt -->
+    <div class="install-prompt" id="install-prompt">
+        <div class="install-prompt-header">
+            <i class="fas fa-mobile-alt"></i>
+            <h3>Instalar App EL TACHI</h3>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 14px;">
+            Instala nuestra app para una mejor experiencia. Podrás acceder más rápido y usar sin conexión.
+        </p>
+        <div class="install-prompt-actions">
+            <button class="install-btn" id="install-btn">
+                <i class="fas fa-download"></i>
+                Instalar
+            </button>
+            <button class="cancel-install-btn" id="cancel-install-btn">
+                Ahora no
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="assets/js/firebase-config.js"></script>
+    <script src="assets/js/gemini.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script src="assets/js/pwa.js"></script>
+
+    <!-- Initialization Script -->
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY_AQUI",
+            authDomain: "TU_PROJECT_ID.firebaseapp.com",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_PROJECT_ID.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Global state
+        window.appState = {
+            currentOrder: [],
+            customerData: null,
+            chatHistory: [],
+            isProcessing: false,
+            businessStatus: true,
+            products: [],
+            settings: {},
+            geminiAssistant: null
+        };
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Hide loading screen after 2 seconds or when app is ready
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loading-screen').classList.add('hidden');
+                    document.getElementById('app-container').classList.remove('hidden');
+                }, 500);
+            }, 2000);
+
+            // Initialize application
+            if (window.app) {
+                window.app.initialize();
+            }
+        });
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado con éxito:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Error registrando Service Worker:', error);
+                    });
+            });
+        }
+
+        // Handle beforeinstallprompt event
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install prompt after 30 seconds
+            setTimeout(() => {
+                if (!window.matchMedia('(display-mode: standalone)').matches) {
+                    const installPrompt = document.getElementById('install-prompt');
+                    if (installPrompt) {
+                        installPrompt.classList.add('active');
+                    }
+                }
+            }, 30000);
+        });
+
+        // Install button handler
+        document.getElementById('install-btn')?.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('Usuario aceptó instalar la PWA');
+                }
+                deferredPrompt = null;
+                document.getElementById('install-prompt').classList.remove('active');
+            }
+        });
+
+        // Cancel install button handler
+        document.getElementById('cancel-install-btn')?.addEventListener('click', () => {
+            document.getElementById('install-prompt').classList.remove('active');
+        });
+
+        // Close modal handlers
+        document.getElementById('close-order-modal')?.addEventListener('click', () => {
+            document.getElementById('order-modal').classList.remove('active');
+        });
+
+        document.getElementById('close-menu-modal')?.addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.remove('active');
+        });
+
+        document.getElementById('close-menu-btn')?.addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.remove('active');
+        });
+
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        // Handle quick actions
+        document.querySelectorAll('.quick-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.currentTarget.dataset.action;
+                handleQuickAction(action);
+            });
+        });
+
+        // Handle quick actions function
+        function handleQuickAction(action) {
+            const messages = {
+                menu: "Muéstrame el menú completo",
+                hours: "¿Cuáles son los horarios de atención?",
+                status: "Quiero consultar el estado de un pedido",
+                order: "Quiero hacer un pedido"
+            };
+
+            if (messages[action]) {
+                document.getElementById('user-input').value = messages[action];
+                if (window.app && window.app.sendMessage) {
+                    window.app.sendMessage();
+                }
+            }
+        }
+
+        // Handle menu button
+        document.getElementById('menu-btn')?.addEventListener('click', () => {
+            document.getElementById('menu-modal').classList.add('active');
+            if (window.app && window.app.loadMenu) {
+                window.app.loadMenu();
+            }
+        });
+
+        // Handle offline/online events
+        window.addEventListener('online', () => {
+            document.getElementById('offline-indicator').classList.remove('active');
+        });
+
+        window.addEventListener('offline', () => {
+            document.getElementById('offline-indicator').classList.add('active');
+        });
+
+        // Auto-resize textarea
+        const textarea = document.getElementById('user-input');
+        if (textarea) {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+        }
+
+        // Handle Enter key to send (but allow Shift+Enter for new line)
+        document.getElementById('user-input')?.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (window.app && window.app.sendMessage) {
+                    window.app.sendMessage();
+                }
+            }
+        });
+
+        // Log initialization
+        console.log('🚀 EL TACHI - Asistente IA de Pedidos');
+        console.log('📱 PWA Ready: ', 'serviceWorker' in navigator);
+        console.log('🔥 Firebase Initialized');
+        console.log('💬 Chat Interface Ready');
+    </script>
+</body>
+</html>
