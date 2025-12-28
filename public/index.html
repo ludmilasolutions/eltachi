@@ -16,9 +16,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="EL TACHI">
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
     <!-- Icons -->
     <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
     <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
@@ -34,7 +31,6 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
-    <!-- Styles -->
     <style>
         /* ===== RESET & BASE ===== */
         * {
@@ -1210,125 +1206,394 @@
         </div>
     </div>
 
-    <!-- JavaScript Files -->
-    <script src="assets/js/firebase-config.js"></script>
-    <script src="assets/js/gemini.js"></script>
-    <script src="assets/js/app.js"></script>
-    <script src="assets/js/pwa.js"></script>
-
-<!-- Initialization Script -->
-<script>
+    <!-- Main Application Script -->
+    <script>
         // Global state
-        window.appState = {
+        const appState = {
             currentOrder: [],
             customerData: null,
             chatHistory: [],
             isProcessing: false,
             businessStatus: true,
-            products: [],
-            settings: {},
-            geminiAssistant: null
-        };
- </script>
-
-    
-
-        // Initialize when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Hide loading screen after 2 seconds or when app is ready
-            setTimeout(() => {
-                document.getElementById('loading-screen').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('loading-screen').classList.add('hidden');
-                    document.getElementById('app-container').classList.remove('hidden');
-                }, 500);
-            }, 2000);
-
-            // Initialize application
-            if (window.app) {
-                window.app.initialize();
+            products: [
+                {
+                    id: 1,
+                    name: "Hamburguesa Clásica",
+                    description: "Carne 150g, lechuga, tomate, cebolla, queso y salsa especial",
+                    price: 1200,
+                    category: "hamburguesas",
+                    available: true,
+                    icon: "fa-hamburger"
+                },
+                {
+                    id: 2,
+                    name: "Hamburguesa Doble",
+                    description: "Dos carnes de 150g, doble queso, panceta, huevo y salsa BBQ",
+                    price: 1800,
+                    category: "hamburguesas",
+                    available: true,
+                    icon: "fa-cheeseburger"
+                },
+                {
+                    id: 3,
+                    name: "Pizza Margarita",
+                    description: "Mozzarella fresca, salsa de tomate y albahaca",
+                    price: 2200,
+                    category: "pizzas",
+                    available: true,
+                    icon: "fa-pizza-slice"
+                },
+                {
+                    id: 4,
+                    name: "Pizza Especial",
+                    description: "Mozzarella, jamón, morrones, huevo y aceitunas",
+                    price: 2800,
+                    category: "pizzas",
+                    available: true,
+                    icon: "fa-pizza-slice"
+                },
+                {
+                    id: 5,
+                    name: "Papas Fritas",
+                    description: "Porción grande con cheddar y panceta",
+                    price: 800,
+                    category: "acompañamientos",
+                    available: true,
+                    icon: "fa-french-fries"
+                },
+                {
+                    id: 6,
+                    name: "Ensalada César",
+                    description: "Lechuga, pollo, croutons, parmesano y aderezo césar",
+                    price: 1500,
+                    category: "ensaladas",
+                    available: true,
+                    icon: "fa-leaf"
+                },
+                {
+                    id: 7,
+                    name: "Gaseosa 1.5L",
+                    description: "Coca-Cola, Sprite o Fanta",
+                    price: 600,
+                    category: "bebidas",
+                    available: true,
+                    icon: "fa-wine-bottle"
+                },
+                {
+                    id: 8,
+                    name: "Helado 1kg",
+                    description: "Chocolate, vainilla, dulce de leche o mixto",
+                    price: 1800,
+                    category: "postres",
+                    available: false,
+                    icon: "fa-ice-cream"
+                }
+            ],
+            settings: {
+                businessName: "EL TACHI",
+                businessHours: "Lunes a Domingo: 11:00 - 23:00",
+                whatsappNumber: "+5491122334455",
+                deliveryFee: 300,
+                minOrder: 1500
             }
-        });
+        };
 
-        // Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('Service Worker registrado con éxito:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('Error registrando Service Worker:', error);
-                    });
-            });
+        // DOM Elements
+        const domElements = {
+            loadingScreen: document.getElementById('loading-screen'),
+            appContainer: document.getElementById('app-container'),
+            chatMessages: document.getElementById('chat-messages'),
+            userInput: document.getElementById('user-input'),
+            sendButton: document.getElementById('send-button'),
+            typingIndicator: document.getElementById('typing-indicator'),
+            statusBadge: document.getElementById('status-badge'),
+            orderModal: document.getElementById('order-modal'),
+            menuModal: document.getElementById('menu-modal'),
+            orderSummaryContent: document.getElementById('order-summary-content'),
+            menuCategories: document.getElementById('menu-categories'),
+            whatsappBtn: document.getElementById('whatsapp-btn'),
+            copyOrderBtn: document.getElementById('copy-order-btn')
+        };
+
+        // Initialize the application
+        function initializeApp() {
+            // Hide loading screen
+            setTimeout(() => {
+                domElements.loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    domElements.loadingScreen.classList.add('hidden');
+                    domElements.appContainer.classList.remove('hidden');
+                    addWelcomeMessage();
+                }, 500);
+            }, 1500);
+
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Initialize offline detection
+            updateOnlineStatus();
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+            
+            // Load initial data
+            loadMenuData();
+            
+            console.log('🚀 EL TACHI - Asistente IA de Pedidos inicializado');
         }
 
-        // Handle beforeinstallprompt event
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
+        // Set up event listeners
+        function setupEventListeners() {
+            // Send message on button click
+            domElements.sendButton.addEventListener('click', sendMessage);
             
-            // Show install prompt after 30 seconds
-            setTimeout(() => {
-                if (!window.matchMedia('(display-mode: standalone)').matches) {
-                    const installPrompt = document.getElementById('install-prompt');
-                    if (installPrompt) {
-                        installPrompt.classList.add('active');
-                    }
-                }
-            }, 30000);
-        });
-
-        // Install button handler
-        document.getElementById('install-btn')?.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    console.log('Usuario aceptó instalar la PWA');
-                }
-                deferredPrompt = null;
-                document.getElementById('install-prompt').classList.remove('active');
-            }
-        });
-
-        // Cancel install button handler
-        document.getElementById('cancel-install-btn')?.addEventListener('click', () => {
-            document.getElementById('install-prompt').classList.remove('active');
-        });
-
-        // Close modal handlers
-        document.getElementById('close-order-modal')?.addEventListener('click', () => {
-            document.getElementById('order-modal').classList.remove('active');
-        });
-
-        document.getElementById('close-menu-modal')?.addEventListener('click', () => {
-            document.getElementById('menu-modal').classList.remove('active');
-        });
-
-        document.getElementById('close-menu-btn')?.addEventListener('click', () => {
-            document.getElementById('menu-modal').classList.remove('active');
-        });
-
-        // Close modals when clicking outside
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.remove('active');
+            // Send message on Enter key (but allow Shift+Enter for new line)
+            domElements.userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
                 }
             });
-        });
+            
+            // Auto-resize textarea
+            domElements.userInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+            
+            // Quick action buttons
+            document.querySelectorAll('.quick-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const action = e.currentTarget.dataset.action;
+                    handleQuickAction(action);
+                });
+            });
+            
+            // Menu button
+            document.getElementById('menu-btn').addEventListener('click', () => {
+                domElements.menuModal.classList.add('active');
+                loadMenuData();
+            });
+            
+            // Close modal buttons
+            document.getElementById('close-order-modal').addEventListener('click', () => {
+                domElements.orderModal.classList.remove('active');
+            });
+            
+            document.getElementById('close-menu-modal').addEventListener('click', () => {
+                domElements.menuModal.classList.remove('active');
+            });
+            
+            document.getElementById('close-menu-btn').addEventListener('click', () => {
+                domElements.menuModal.classList.remove('active');
+            });
+            
+            // WhatsApp button
+            domElements.whatsappBtn.addEventListener('click', sendOrderToWhatsApp);
+            
+            // Copy order button
+            domElements.copyOrderBtn.addEventListener('click', copyOrderToClipboard);
+            
+            // Close modals when clicking outside
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.remove('active');
+                    }
+                });
+            });
+            
+            // PWA install prompt
+            setupPWAInstall();
+        }
+
+        // Add welcome message
+        function addWelcomeMessage() {
+            const welcomeMessage = `
+                <div class="message welcome">
+                    <div class="message-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>¡Hola! Soy EL TACHI 🤖</h3>
+                    <p>Tu asistente virtual para hacer pedidos en nuestra rotisería.</p>
+                    <p>Puedo ayudarte con:</p>
+                    <ul style="text-align: left; margin: 10px 0 0 20px;">
+                        <li>Realizar pedidos</li>
+                        <li>Mostrarte el menú</li>
+                        <li>Consultar horarios</li>
+                        <li>Verificar estado de pedidos</li>
+                    </ul>
+                    <div class="message-time">${getCurrentTime()}</div>
+                </div>
+            `;
+            
+            domElements.chatMessages.innerHTML += welcomeMessage;
+            scrollToBottom();
+        }
+
+        // Send message function
+        function sendMessage() {
+            const message = domElements.userInput.value.trim();
+            
+            if (!message || appState.isProcessing) return;
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            
+            // Clear input
+            domElements.userInput.value = '';
+            domElements.userInput.style.height = 'auto';
+            
+            // Disable input while processing
+            appState.isProcessing = true;
+            domElements.userInput.disabled = true;
+            domElements.sendButton.disabled = true;
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            // Process the message
+            setTimeout(() => {
+                processUserMessage(message);
+                hideTypingIndicator();
+                
+                // Re-enable input
+                appState.isProcessing = false;
+                domElements.userInput.disabled = false;
+                domElements.sendButton.disabled = false;
+                domElements.userInput.focus();
+            }, 1500 + Math.random() * 1000);
+        }
+
+        // Add message to chat
+        function addMessage(text, sender) {
+            const messageClass = sender === 'user' ? 'user' : 'assistant';
+            const messageHTML = `
+                <div class="message ${messageClass}">
+                    ${sender === 'assistant' ? '<div class="message-icon"><i class="fas fa-robot"></i></div>' : ''}
+                    ${text}
+                    <span class="message-time">${getCurrentTime()}</span>
+                </div>
+            `;
+            
+            domElements.chatMessages.innerHTML += messageHTML;
+            scrollToBottom();
+        }
+
+        // Process user message
+        function processUserMessage(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Check for specific intents
+            if (lowerMessage.includes('hola') || lowerMessage.includes('buenas')) {
+                addMessage(`¡Hola de nuevo! ¿En qué puedo ayudarte hoy? Recuerda que puedes decirme cosas como:
+                <br>- "Quiero hacer un pedido"
+                <br>- "Muéstrame el menú"
+                <br>- "¿Cuáles son los horarios?"
+                <br>- "Quiero una hamburguesa"`, 'assistant');
+            }
+            else if (lowerMessage.includes('menú') || lowerMessage.includes('carta')) {
+                addMessage('Te muestro nuestro menú. También puedes abrir el menú completo tocando el botón de arriba a la derecha.', 'assistant');
+                showMenuPreview();
+            }
+            else if (lowerMessage.includes('horario') || lowerMessage.includes('hora') || lowerMessage.includes('abierto')) {
+                addMessage(`<strong>Horarios de atención:</strong><br>${appState.settings.businessHours}<br><br>Actualmente estamos <strong>${appState.businessStatus ? 'ABIERTOS' : 'CERRADOS'}</strong>.`, 'assistant');
+            }
+            else if (lowerMessage.includes('pedido') || lowerMessage.includes('orden') || lowerMessage.includes('comprar')) {
+                if (lowerMessage.includes('estado') || lowerMessage.includes('seguimiento')) {
+                    addMessage('Para consultar el estado de tu pedido, necesito tu número de seguimiento. Puedes enviármelo o contactarnos directamente por WhatsApp.', 'assistant');
+                } else {
+                    addMessage('¡Excelente! Comencemos tu pedido. Te mostraré nuestro menú. ¿Qué te gustaría ordenar?', 'assistant');
+                    showMenuPreview();
+                }
+            }
+            else if (lowerMessage.includes('hamburguesa') || lowerMessage.includes('pizza') || lowerMessage.includes('papas') || 
+                     lowerMessage.includes('ensalada') || lowerMessage.includes('gaseosa') || lowerMessage.includes('helado')) {
+                handleProductRequest(lowerMessage);
+            }
+            else if (lowerMessage.includes('precio') || lowerMessage.includes('cuánto') || lowerMessage.includes('cuesta')) {
+                addMessage('Te muestro algunos precios de referencia:<br>' +
+                          '🍔 Hamburguesa Clásica: $1.200<br>' +
+                          '🍕 Pizza Margarita: $2.200<br>' +
+                          '🍟 Papas Fritas: $800<br>' +
+                          '🥤 Gaseosa 1.5L: $600<br><br>' +
+                          'Para ver todos los precios, abre el menú completo.', 'assistant');
+            }
+            else if (lowerMessage.includes('gracias')) {
+                addMessage('¡De nada! Estoy aquí para ayudarte. ¿Necesitas algo más?', 'assistant');
+            }
+            else if (lowerMessage.includes('adiós') || lowerMessage.includes('chau') || lowerMessage.includes('hasta luego')) {
+                addMessage('¡Hasta luego! Que tengas un buen día. Recuerda que puedes volver cuando quieras hacer un pedido. 😊', 'assistant');
+            }
+            else {
+                // Default response for unrecognized messages
+                addMessage('Entiendo que dijiste: "' + message + '". Como asistente de pedidos, puedo ayudarte con:<br>' +
+                          '1. Realizar pedidos<br>' +
+                          '2. Mostrarte el menú y precios<br>' +
+                          '3. Informarte sobre horarios<br>' +
+                          '4. Consultar estado de pedidos<br><br>' +
+                          '¿En qué te puedo ayudar específicamente?', 'assistant');
+            }
+        }
+
+        // Handle product requests
+        function handleProductRequest(message) {
+            const products = appState.products;
+            let foundProduct = null;
+            
+            // Simple keyword matching
+            if (message.includes('hamburguesa')) {
+                if (message.includes('doble')) {
+                    foundProduct = products.find(p => p.id === 2);
+                } else {
+                    foundProduct = products.find(p => p.id === 1);
+                }
+            } else if (message.includes('pizza')) {
+                if (message.includes('especial')) {
+                    foundProduct = products.find(p => p.id === 4);
+                } else {
+                    foundProduct = products.find(p => p.id === 3);
+                }
+            } else if (message.includes('papas') || message.includes('fritas')) {
+                foundProduct = products.find(p => p.id === 5);
+            } else if (message.includes('ensalada')) {
+                foundProduct = products.find(p => p.id === 6);
+            } else if (message.includes('gaseosa') || message.includes('bebida')) {
+                foundProduct = products.find(p => p.id === 7);
+            } else if (message.includes('helado')) {
+                foundProduct = products.find(p => p.id === 8);
+            }
+            
+            if (foundProduct) {
+                if (foundProduct.available) {
+                    // Add to order
+                    const existingItem = appState.currentOrder.find(item => item.id === foundProduct.id);
+                    
+                    if (existingItem) {
+                        existingItem.quantity += 1;
+                    } else {
+                        appState.currentOrder.push({
+                            ...foundProduct,
+                            quantity: 1
+                        });
+                    }
+                    
+                    addMessage(`¡Perfecto! He añadido <strong>${foundProduct.name}</strong> a tu pedido por $${foundProduct.price}.<br><br>¿Quieres agregar algo más o prefieres finalizar tu pedido?`, 'assistant');
+                    
+                    // Show order summary
+                    setTimeout(() => {
+                        if (appState.currentOrder.length === 1) {
+                            showOrderSummary();
+                        }
+                    }, 500);
+                } else {
+                    addMessage(`Lo siento, <strong>${foundProduct.name}</strong> no está disponible en este momento. ¿Te gustaría elegir otro producto?`, 'assistant');
+                }
+            } else {
+                addMessage('¿Te refieres a algún producto específico de nuestro menú? Por favor, dime qué producto te interesa.', 'assistant');
+            }
+        }
 
         // Handle quick actions
-        document.querySelectorAll('.quick-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const action = e.currentTarget.dataset.action;
-                handleQuickAction(action);
-            });
-        });
-
-        // Handle quick actions function
         function handleQuickAction(action) {
             const messages = {
                 menu: "Muéstrame el menú completo",
@@ -1338,54 +1603,319 @@
             };
 
             if (messages[action]) {
-                document.getElementById('user-input').value = messages[action];
-                if (window.app && window.app.sendMessage) {
-                    window.app.sendMessage();
-                }
+                domElements.userInput.value = messages[action];
+                sendMessage();
             }
         }
 
-        // Handle menu button
-        document.getElementById('menu-btn')?.addEventListener('click', () => {
-            document.getElementById('menu-modal').classList.add('active');
-            if (window.app && window.app.loadMenu) {
-                window.app.loadMenu();
+        // Show menu preview
+        function showMenuPreview() {
+            const categories = {
+                hamburguesas: appState.products.filter(p => p.category === 'hamburguesas'),
+                pizzas: appState.products.filter(p => p.category === 'pizzas'),
+                acompañamientos: appState.products.filter(p => p.category === 'acompañamientos'),
+                bebidas: appState.products.filter(p => p.category === 'bebidas')
+            };
+            
+            let menuPreview = '<div class="menu-preview">';
+            menuPreview += '<h4>🍔 Hamburguesas</h4>';
+            categories.hamburguesas.forEach(product => {
+                menuPreview += `<div>• ${product.name}: $${product.price} ${!product.available ? '(No disponible)' : ''}</div>`;
+            });
+            
+            menuPreview += '<h4 class="mt-3">🍕 Pizzas</h4>';
+            categories.pizzas.forEach(product => {
+                menuPreview += `<div>• ${product.name}: $${product.price}</div>`;
+            });
+            
+            menuPreview += '<h4 class="mt-3">🥤 Bebidas y Acompañamientos</h4>';
+            categories.acompañamientos.forEach(product => {
+                menuPreview += `<div>• ${product.name}: $${product.price}</div>`;
+            });
+            categories.bebidas.forEach(product => {
+                menuPreview += `<div>• ${product.name}: $${product.price}</div>`;
+            });
+            
+            menuPreview += '<div class="mt-3"><em>Para ver descripciones completas y precios, abre el menú completo.</em></div>';
+            menuPreview += '</div>';
+            
+            addMessage(menuPreview, 'assistant');
+        }
+
+        // Load menu data into modal
+        function loadMenuData() {
+            const categories = {};
+            
+            // Group products by category
+            appState.products.forEach(product => {
+                if (!categories[product.category]) {
+                    categories[product.category] = [];
+                }
+                categories[product.category].push(product);
+            });
+            
+            // Category titles in Spanish
+            const categoryTitles = {
+                hamburguesas: '🍔 Hamburguesas',
+                pizzas: '🍕 Pizzas',
+                acompañamientos: '🍟 Acompañamientos',
+                ensaladas: '🥗 Ensaladas',
+                bebidas: '🥤 Bebidas',
+                postres: '🍦 Postres'
+            };
+            
+            let menuHTML = '';
+            
+            for (const [category, products] of Object.entries(categories)) {
+                menuHTML += `
+                    <div class="menu-category">
+                        <div class="category-title">
+                            <i class="fas ${products[0].icon}"></i>
+                            <span>${categoryTitles[category] || category}</span>
+                        </div>
+                        <div class="products-list">
+                `;
+                
+                products.forEach(product => {
+                    menuHTML += `
+                        <div class="product-card ${!product.available ? 'product-unavailable' : ''}">
+                            <div class="product-image">
+                                <i class="fas ${product.icon}"></i>
+                            </div>
+                            <div class="product-info">
+                                <div class="product-name">${product.name}</div>
+                                <div class="product-description">${product.description}</div>
+                                <div class="product-price">$${product.price}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                menuHTML += `
+                        </div>
+                    </div>
+                `;
             }
-        });
+            
+            domElements.menuCategories.innerHTML = menuHTML;
+        }
 
-        // Handle offline/online events
-        window.addEventListener('online', () => {
-            document.getElementById('offline-indicator').classList.remove('active');
-        });
+        // Show order summary
+        function showOrderSummary() {
+            if (appState.currentOrder.length === 0) {
+                addMessage('Tu pedido está vacío. Agrega algunos productos primero.', 'assistant');
+                return;
+            }
+            
+            let total = 0;
+            let summaryHTML = '<h3>Resumen de tu Pedido</h3><div class="order-items">';
+            
+            appState.currentOrder.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                
+                summaryHTML += `
+                    <div class="order-item">
+                        <div class="order-item-name">${item.quantity}x ${item.name}</div>
+                        <div class="order-item-price">$${itemTotal}</div>
+                    </div>
+                `;
+            });
+            
+            // Add delivery fee if applicable
+            if (total < appState.settings.minOrder) {
+                summaryHTML += `
+                    <div class="order-item">
+                        <div class="order-item-name">Envío a domicilio</div>
+                        <div class="order-item-price">$${appState.settings.deliveryFee}</div>
+                    </div>
+                `;
+                total += appState.settings.deliveryFee;
+            }
+            
+            summaryHTML += '</div>';
+            summaryHTML += `
+                <div class="order-total">
+                    <span>TOTAL</span>
+                    <span>$${total}</span>
+                </div>
+            `;
+            
+            if (total < appState.settings.minOrder) {
+                summaryHTML += `<div class="mt-3" style="color: var(--warning-orange); font-size: 14px;">
+                    <i class="fas fa-exclamation-triangle"></i> Pedido mínimo: $${appState.settings.minOrder}
+                </div>`;
+            }
+            
+            domElements.orderSummaryContent.innerHTML = summaryHTML;
+            domElements.orderModal.classList.add('active');
+        }
 
-        window.addEventListener('offline', () => {
-            document.getElementById('offline-indicator').classList.add('active');
-        });
+        // Send order to WhatsApp
+        function sendOrderToWhatsApp() {
+            if (appState.currentOrder.length === 0) {
+                alert('No hay productos en tu pedido');
+                return;
+            }
+            
+            let orderText = `*NUEVO PEDIDO - EL TACHI*%0A%0A`;
+            let total = 0;
+            
+            appState.currentOrder.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                orderText += `• ${item.quantity}x ${item.name}: $${itemTotal}%0A`;
+            });
+            
+            // Add delivery fee if applicable
+            if (total < appState.settings.minOrder) {
+                orderText += `• Envío: $${appState.settings.deliveryFee}%0A`;
+                total += appState.settings.deliveryFee;
+            }
+            
+            orderText += `%0A*TOTAL: $${total}*%0A%0A`;
+            orderText += `_Pedido realizado a través del Asistente IA EL TACHI_`;
+            
+            const whatsappUrl = `https://wa.me/${appState.settings.whatsappNumber}?text=${orderText}`;
+            
+            // Open WhatsApp in new tab
+            window.open(whatsappUrl, '_blank');
+            
+            // Show confirmation message
+            addMessage('¡Perfecto! He abierto WhatsApp para que confirmes tu pedido. Por favor, completa los detalles de envío y pago allí.', 'assistant');
+            
+            // Close modal
+            domElements.orderModal.classList.remove('active');
+            
+            // Clear current order
+            appState.currentOrder = [];
+        }
 
-        // Auto-resize textarea
-        const textarea = document.getElementById('user-input');
-        if (textarea) {
-            textarea.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = (this.scrollHeight) + 'px';
+        // Copy order to clipboard
+        function copyOrderToClipboard() {
+            if (appState.currentOrder.length === 0) {
+                alert('No hay productos en tu pedido');
+                return;
+            }
+            
+            let orderText = `NUEVO PEDIDO - EL TACHI\n\n`;
+            let total = 0;
+            
+            appState.currentOrder.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                orderText += `• ${item.quantity}x ${item.name}: $${itemTotal}\n`;
+            });
+            
+            // Add delivery fee if applicable
+            if (total < appState.settings.minOrder) {
+                orderText += `• Envío: $${appState.settings.deliveryFee}\n`;
+                total += appState.settings.deliveryFee;
+            }
+            
+            orderText += `\nTOTAL: $${total}\n\n`;
+            orderText += `Pedido realizado a través del Asistente IA EL TACHI`;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(orderText).then(() => {
+                alert('Pedido copiado al portapapeles. Puedes pegarlo en WhatsApp o donde necesites.');
+            }).catch(err => {
+                console.error('Error al copiar: ', err);
+                alert('No se pudo copiar el pedido. Por favor, hazlo manualmente.');
             });
         }
 
-        // Handle Enter key to send (but allow Shift+Enter for new line)
-        document.getElementById('user-input')?.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if (window.app && window.app.sendMessage) {
-                    window.app.sendMessage();
-                }
-            }
-        });
+        // Show typing indicator
+        function showTypingIndicator() {
+            domElements.typingIndicator.classList.add('active');
+            scrollToBottom();
+        }
 
-        // Log initialization
-        console.log('🚀 EL TACHI - Asistente IA de Pedidos');
-        console.log('📱 PWA Ready: ', 'serviceWorker' in navigator);
-        console.log('🔥 Firebase Initialized');
-        console.log('💬 Chat Interface Ready');
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            domElements.typingIndicator.classList.remove('active');
+        }
+
+        // Scroll chat to bottom
+        function scrollToBottom() {
+            setTimeout(() => {
+                const chatContainer = document.getElementById('chat-container');
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 100);
+        }
+
+        // Get current time in HH:MM format
+        function getCurrentTime() {
+            const now = new Date();
+            return now.getHours().toString().padStart(2, '0') + ':' + 
+                   now.getMinutes().toString().padStart(2, '0');
+        }
+
+        // Update online/offline status
+        function updateOnlineStatus() {
+            const offlineIndicator = document.getElementById('offline-indicator');
+            const statusBadge = document.getElementById('status-badge');
+            
+            if (!navigator.onLine) {
+                offlineIndicator.classList.add('active');
+                statusBadge.classList.add('closed');
+                statusBadge.innerHTML = '<i class="fas fa-wifi-slash"></i><span>Offline</span>';
+            } else {
+                offlineIndicator.classList.remove('active');
+                statusBadge.classList.remove('closed');
+                statusBadge.innerHTML = '<i class="fas fa-store"></i><span>Abierto</span>';
+            }
+        }
+
+        // Setup PWA install prompt
+        function setupPWAInstall() {
+            let deferredPrompt;
+            
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                
+                // Show install prompt after 30 seconds
+                setTimeout(() => {
+                    if (!window.matchMedia('(display-mode: standalone)').matches) {
+                        const installPrompt = document.getElementById('install-prompt');
+                        if (installPrompt) {
+                            installPrompt.classList.add('active');
+                        }
+                    }
+                }, 30000);
+            });
+            
+            // Install button handler
+            document.getElementById('install-btn').addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        console.log('Usuario aceptó instalar la PWA');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('install-prompt').classList.remove('active');
+                }
+            });
+            
+            // Cancel install button handler
+            document.getElementById('cancel-install-btn').addEventListener('click', () => {
+                document.getElementById('install-prompt').classList.remove('active');
+            });
+        }
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(error => {
+                    console.log('Error registrando Service Worker:', error);
+                });
+            });
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
 </body>
 </html>
