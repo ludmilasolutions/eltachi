@@ -1,46 +1,66 @@
+// ===============================
+// CONFIGURACIÓN
+// ===============================
+const GEMINI_API_KEY = 'AIzaSyDP6ZuOG0TEBM973TVlIO1jrED7CJxTVAk'; // <-- PEGÁ TU KEY ACÁ
+
+
+// ===============================
+// CLASE GEMINI ASSISTANT
+// ===============================
 class GeminiAssistant {
     constructor(apiKey) {
         this.apiKey = apiKey;
-        this.apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+        this.apiUrl =
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
         this.context = '';
     }
 
     async initialize(products, settings) {
-        // Construir contexto inicial con menú y reglas
-        this.context = `Eres "EL TACHI", asistente virtual de una rotisería. 
-        Tono: Amigable, vendedor, claro. No inventes información.
-        
-        MENÚ DISPONIBLE:
-        ${JSON.stringify(products, null, 2)}
-        
-        REGLAS:
-        1. Al primer contacto: saludar y mostrar el menú completo.
-        2. Preguntar: "¿Qué te gustaría ordenar?"
-        3. Por cada producto: preguntar cantidad y personalización.
-        4. Para hamburguesas: "¿Cómo la querés? ¿Con todos los aderezos o alguno específico?"
-        5. Ejemplo: Usuario pide 2 hamburguesas:
-           - Preguntar: "¿Las dos iguales o diferente?"
-           - Si diferente: "Decime cómo querés cada una"
-        6. Confirmar resumen antes de tomar datos.
-        7. Si preguntan por estado: pedir ID y consultar base.
-        8. Horarios: ${settings.horarios}
-        9. Envío: $${settings.envios.precio} (${settings.envios.tiempo_min}-${settings.envios.tiempo_max} min)
-        10. Retiro: ${settings.envios.retiro_habilitado ? 'Sí, disponible' : 'No disponible'}
-        
-        RESPUESTAS CORTAS. No más de 3 líneas por mensaje.`;
+        this.context = `Eres "EL TACHI", asistente virtual de una rotisería.
+Tono: Amigable, vendedor, claro. No inventes información.
+
+MENÚ DISPONIBLE:
+${JSON.stringify(products, null, 2)}
+
+REGLAS:
+1. Al primer contacto: saludar y mostrar el menú completo.
+2. Preguntar: "¿Qué te gustaría ordenar?"
+3. Por cada producto: preguntar cantidad y personalización.
+4. Para hamburguesas: "¿Cómo la querés? ¿Con todos los aderezos o alguno específico?"
+5. Si pide más de una hamburguesa:
+   - Preguntar: "¿Las querés iguales o diferentes?"
+6. Confirmar resumen antes de tomar datos del cliente.
+7. Estado del pedido: pedir ID y responder estado.
+8. Horarios: ${settings.horarios}
+9. Envío: $${settings.envios.precio} (${settings.envios.tiempo_min}-${settings.envios.tiempo_max} min)
+10. Retiro: ${settings.envios.retiro_habilitado ? 'Sí disponible' : 'No disponible'}
+
+RESPUESTAS CORTAS. Máximo 3 líneas.`;
     }
 
     async sendMessage(userMessage, orderContext = '') {
-        const fullContext = `${this.context}\n\n${orderContext}\n\nCliente: ${userMessage}\nAsistente:`;
-        
+        const fullContext = `
+${this.context}
+
+PEDIDO ACTUAL:
+${orderContext}
+
+Cliente: ${userMessage}
+Asistente:
+        `;
+
         try {
             const response = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{text: fullContext}]
-                    }],
+                    contents: [
+                        {
+                            parts: [{ text: fullContext }]
+                        }
+                    ],
                     generationConfig: {
                         temperature: 0.7,
                         maxOutputTokens: 150
@@ -52,23 +72,44 @@ class GeminiAssistant {
             return data.candidates[0].content.parts[0].text;
         } catch (error) {
             console.error('Error Gemini:', error);
-            return "Disculpá, estoy teniendo problemas técnicos. ¿Podés repetir?";
+            return "Disculpá, tuve un problema técnico. ¿Podés repetir?";
         }
     }
 
-    // Método específico para consultar estado
     async checkOrderStatus(orderId, ordersCollection) {
-        const context = `El cliente pregunta por el estado del pedido ${orderId}. 
-        Buscá en la base de datos y respondé solo con el estado actual. 
-        Si no existe: "No encontré ese número de pedido. Verificá el ID."`;
-        
-        const orders = ordersCollection.map(o => `${o.id}: ${o.estado}`);
-        const orderInfo = orders.find(o => o.includes(orderId));
-        
-        if (!orderInfo) {
+        const order = ordersCollection.find(o => o.id === orderId);
+        if (!order) {
             return "No encontré ese número de pedido. Verificá el ID.";
         }
-        
-        return `Tu pedido ${orderId} está en estado: ${orderInfo.split(':')[1].trim()}`;
+        return `Tu pedido ${orderId} está en estado: ${order.estado}`;
     }
 }
+
+
+// ===============================
+// EJEMPLO DE USO
+// ===============================
+(async () => {
+    const assistant = new GeminiAssistant(GEMINI_API_KEY);
+
+    const products = [
+        { nombre: "Hamburguesa completa", precio: 3500 },
+        { nombre: "Hamburguesa simple", precio: 3000 },
+        { nombre: "Milanesa con papas", precio: 4200 }
+    ];
+
+    const settings = {
+        horarios: "Todos los días de 19 a 23 hs",
+        envios: {
+            precio: 800,
+            tiempo_min: 30,
+            tiempo_max: 45,
+            retiro_habilitado: true
+        }
+    };
+
+    await assistant.initialize(products, settings);
+
+    const respuesta = await assistant.sendMessage("Hola");
+    console.log("EL TACHI:", respuesta);
+})();
