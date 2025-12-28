@@ -1,11 +1,8 @@
-// gemini-chat.js - Sistema COMPLETO con Gemini Pro 2.5 integrado
-// Versión lista para producción - EL TACHI
-
+// gemini-chat.js - Versión corregida con API Key protegida
 class TachiChatManager {
     constructor() {
         this.conversation = [];
         this.currentOrder = {
-            id: '',
             items: [],
             subtotal: 0,
             deliveryFee: 0,
@@ -31,168 +28,28 @@ class TachiChatManager {
         this.storeSettings = null;
         this.menuData = [];
         this.isStoreOpen = true;
-        this.geminiApiKey = '';
         
-        this.initialize();
-    }
-    
-    async initialize() {
-        console.log("🔄 Inicializando sistema EL TACHI...");
+        // Cargar configuración inicial
+        this.loadInitialConfig();
         
-        try {
-            // 1. Configurar listeners primero
+        // Configurar event listeners después de un breve delay
+        setTimeout(() => {
             this.setupEventListeners();
-            
-            // 2. Intentar cargar Firebase
-            await this.waitForFirebase();
-            
-            // 3. Cargar configuración y menú
-            await this.loadConfiguration();
-            
-            // 4. Verificar horarios
-            await this.checkStoreStatus();
-            
-            // 5. Configurar Gemini
-            await this.setupGemini();
-            
-            // 6. Mostrar bienvenida
-            await this.showWelcomeMessage();
-            
-            console.log("✅ Sistema inicializado correctamente");
-            
-        } catch (error) {
-            console.error("❌ Error inicializando:", error);
-            this.showFallbackInterface();
-        }
+            this.initializeChat();
+        }, 1000);
     }
     
-    setupEventListeners() {
-        const sendButton = document.getElementById('sendButton');
-        const userInput = document.getElementById('userInput');
-        
-        if (sendButton) {
-            sendButton.addEventListener('click', () => this.sendMessage());
-        }
-        
-        if (userInput) {
-            userInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.sendMessage();
-                }
-            });
-        }
-        
-        // Cargar historial
-        this.loadConversationHistory();
-    }
-    
-    async waitForFirebase() {
-        return new Promise((resolve, reject) => {
-            const maxAttempts = 50;
-            let attempts = 0;
-            
-            const checkInterval = setInterval(() => {
-                attempts++;
-                
-                if (window.firebase && firebase.firestore) {
-                    clearInterval(checkInterval);
-                    
-                    // Configurar Firestore
-                    try {
-                        if (!firebase.apps.length) {
-                            // Firebase no está inicializado, usar configuración directa
-                            this.initializeFirebaseDirectly();
-                        }
-                        
-                        this.db = firebase.firestore();
-                        this.auth = firebase.auth();
-                        
-                        console.log("✅ Firebase conectado");
-                        resolve();
-                    } catch (error) {
-                        console.warn("⚠️ Firebase no configurado, usando modo offline");
-                        this.db = null;
-                        resolve(); // Continuar sin Firebase
-                    }
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(checkInterval);
-                    console.warn("⚠️ Firebase no disponible después de 5 segundos");
-                    this.db = null;
-                    resolve(); // Continuar sin Firebase
-                }
-            }, 100);
-        });
-    }
-    
-    initializeFirebaseDirectly() {
-        // Configuración mínima para Firebase
-        // El usuario deberá configurar esto en producción
-        const firebaseConfig = {
-            apiKey: "AIzaSyCwZ5J7Xq9pY0QwY8V2s8nLmKjHp7Gt3vE",
-            authDomain: "el-tachi-rotiseria.firebaseapp.com",
-            projectId: "el-tachi-rotiseria",
-            storageBucket: "el-tachi-rotiseria.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abcdef123456"
+    loadInitialConfig() {
+        // Configuración por defecto
+        this.storeSettings = {
+            nombre_local: "EL TACHI",
+            precio_envio: 300,
+            tiempo_base_estimado: 40,
+            retiro_habilitado: true
         };
         
-        try {
-            firebase.initializeApp(firebaseConfig);
-        } catch (error) {
-            if (!error.message.includes('already exists')) {
-                throw error;
-            }
-        }
-    }
-    
-    async loadConfiguration() {
-        // Cargar configuración desde localStorage o valores por defecto
-        const savedConfig = localStorage.getItem('el_tachi_config');
-        
-        if (savedConfig) {
-            this.storeSettings = JSON.parse(savedConfig);
-            this.geminiApiKey = this.storeSettings.gemini_api_key || '';
-        } else {
-            // Valores por defecto
-            this.storeSettings = {
-                nombre_local: "EL TACHI",
-                precio_envio: 300,
-                tiempo_base_estimado: 40,
-                retiro_habilitado: true,
-                gemini_api_key: ""
-            };
-        }
-        
-        // Cargar menú
-        await this.loadMenu();
-    }
-    
-    async loadMenu() {
-        try {
-            if (this.db) {
-                const productsSnapshot = await this.db
-                    .collection('products')
-                    .where('disponible', '==', true)
-                    .orderBy('categoria')
-                    .orderBy('nombre')
-                    .get();
-                
-                this.menuData = [];
-                productsSnapshot.forEach(doc => {
-                    this.menuData.push({ id: doc.id, ...doc.data() });
-                });
-                
-                console.log(`✅ Menú cargado desde Firestore: ${this.menuData.length} productos`);
-            }
-        } catch (error) {
-            console.warn("⚠️ Error cargando menú de Firestore:", error);
-        }
-        
-        // Si no hay productos o Firestore falló, usar menú por defecto
-        if (!this.menuData || this.menuData.length === 0) {
-            this.menuData = this.getDefaultMenu();
-            console.log("✅ Usando menú por defecto");
-        }
+        // Cargar menú por defecto
+        this.menuData = this.getDefaultMenu();
     }
     
     getDefaultMenu() {
@@ -203,9 +60,7 @@ class TachiChatManager {
                 descripcion: "Carne 150g, queso, lechuga, tomate, aderezo especial",
                 precio: 1200,
                 disponible: true,
-                categoria: "Hamburguesas",
-                aderezos_disponibles: ["Extra queso", "Sin tomate", "Sin cebolla"],
-                precios_extra_aderezos: { "Extra queso": 100 }
+                categoria: "Hamburguesas"
             },
             {
                 id: "hamburguesa-doble",
@@ -213,9 +68,7 @@ class TachiChatManager {
                 descripcion: "Doble carne, doble queso, panceta, cebolla crispy",
                 precio: 1800,
                 disponible: true,
-                categoria: "Hamburguesas",
-                aderezos_disponibles: ["Extra panceta", "Sin cebolla"],
-                precios_extra_aderezos: { "Extra panceta": 150 }
+                categoria: "Hamburguesas"
             },
             {
                 id: "pizza-muzzarella",
@@ -223,9 +76,7 @@ class TachiChatManager {
                 descripcion: "Clásica pizza con salsa de tomate y queso muzzarella",
                 precio: 1500,
                 disponible: true,
-                categoria: "Pizzas",
-                aderezos_disponibles: ["Extra queso", "Aceitunas", "Orégano"],
-                precios_extra_aderezos: { "Extra queso": 200, "Aceitunas": 100 }
+                categoria: "Pizzas"
             },
             {
                 id: "coca-cola-500ml",
@@ -241,17 +92,72 @@ class TachiChatManager {
                 descripcion: "Porción de papas fritas crocantes",
                 precio: 600,
                 disponible: true,
-                categoria: "Acompañamientos",
-                aderezos_disponibles: ["Con cheddar", "Con panceta"],
-                precios_extra_aderezos: { "Con cheddar": 150, "Con panceta": 200 }
+                categoria: "Acompañamientos"
             }
         ];
     }
     
+    async initializeChat() {
+        console.log("🔄 Inicializando chat EL TACHI...");
+        
+        try {
+            // 1. Intentar cargar Firebase si está disponible
+            if (window.firebaseApp && window.firebaseApp.db) {
+                await this.loadFirestoreData();
+            }
+            
+            // 2. Verificar horario del local
+            await this.checkStoreStatus();
+            
+            // 3. Configurar Gemini (si hay API Key)
+            await this.setupGemini();
+            
+            // 4. Mostrar mensaje de bienvenida
+            this.showWelcomeMessage();
+            
+            console.log("✅ Chat inicializado correctamente");
+            
+        } catch (error) {
+            console.error("❌ Error inicializando chat:", error);
+            this.showWelcomeMessage(); // Mostrar welcome de todas formas
+        }
+    }
+    
+    async loadFirestoreData() {
+        try {
+            // Cargar menú desde Firestore (sin ordenar para evitar índice)
+            const productsSnapshot = await window.firebaseApp.db
+                .collection('products')
+                .where('disponible', '==', true)
+                .get();
+            
+            if (!productsSnapshot.empty) {
+                this.menuData = [];
+                productsSnapshot.forEach(doc => {
+                    this.menuData.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Ordenar por categoría y nombre localmente
+                this.menuData.sort((a, b) => {
+                    if (a.categoria < b.categoria) return -1;
+                    if (a.categoria > b.categoria) return 1;
+                    if (a.nombre < b.nombre) return -1;
+                    if (a.nombre > b.nombre) return 1;
+                    return 0;
+                });
+                
+                console.log(`✅ Menú cargado desde Firestore: ${this.menuData.length} productos`);
+            }
+            
+        } catch (error) {
+            console.warn("⚠️ Error cargando datos de Firestore:", error);
+        }
+    }
+    
     async checkStoreStatus() {
         try {
-            if (this.db) {
-                const hoursDoc = await this.db
+            if (window.firebaseApp && window.firebaseApp.db) {
+                const hoursDoc = await window.firebaseApp.db
                     .collection('settings')
                     .doc('store_hours')
                     .get();
@@ -269,39 +175,55 @@ class TachiChatManager {
             return true;
         } catch (error) {
             console.warn("⚠️ Error verificando horario:", error);
-            return true; // Por defecto, asumir abierto
+            return true; // Por defecto, abierto
         }
     }
     
     async setupGemini() {
-        // Si no hay API key, usar modo simulado
-        if (!this.geminiApiKey || this.geminiApiKey === "AIzaSyBPRH8XZ0WfRMN9ZaPlVN_YaYvI9FTnkqU") {
-            console.warn("⚠️ No hay API Key de Gemini, usando modo simulado");
-            this.geminiModel = null;
-            return;
-        }
-        
         try {
-            // Cargar SDK de Gemini dinámicamente si no está cargado
-            if (typeof google === 'undefined' || !google.generativeAI) {
-                await this.loadGeminiSDK();
+            // Intentar cargar API Key de Firestore
+            if (window.firebaseApp && window.firebaseApp.db) {
+                const configDoc = await window.firebaseApp.db
+                    .collection('settings')
+                    .doc('store_config')
+                    .get();
+                
+                if (configDoc.exists) {
+                    const config = configDoc.data();
+                    this.storeSettings = { ...this.storeSettings, ...config };
+                    
+                    // Verificar si hay API Key válida
+                    if (config.gemini_api_key && 
+                        config.gemini_api_key !== "AIzaSyBPRH8XZ0WfRMN9ZaPlVN_YaYvI9FTnkqU" &&
+                        config.gemini_api_key.length > 30) {
+                        
+                        // Cargar SDK de Gemini dinámicamente
+                        await this.loadGeminiSDK();
+                        
+                        // Inicializar Gemini con API Key
+                        const genAI = new google.generativeAI(config.gemini_api_key);
+                        this.geminiModel = genAI.getGenerativeModel({ 
+                            model: "gemini-1.5-pro",
+                            generationConfig: {
+                                temperature: 0.7,
+                                topP: 0.8,
+                                topK: 40,
+                                maxOutputTokens: 1024,
+                            }
+                        });
+                        
+                        console.log("✅ Gemini configurado correctamente");
+                        return;
+                    }
+                }
             }
             
-            // Configurar modelo Gemini
-            const genAI = new google.generativeAI(this.geminiApiKey);
-            this.geminiModel = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-pro",
-                generationConfig: {
-                    temperature: 0.7,
-                    topP: 0.8,
-                    topK: 40,
-                    maxOutputTokens: 1024,
-                }
-            });
+            // Si no hay API Key, usar modo simulado
+            console.log("ℹ️ Usando modo conversacional sin Gemini");
+            this.geminiModel = null;
             
-            console.log("✅ Gemini configurado correctamente");
         } catch (error) {
-            console.error("❌ Error configurando Gemini:", error);
+            console.warn("⚠️ Error configurando Gemini:", error);
             this.geminiModel = null;
         }
     }
@@ -318,20 +240,17 @@ class TachiChatManager {
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/@google/generative-ai@0.1.2/dist/index.min.js';
             script.onload = resolve;
-            script.onerror = reject;
+            script.onerror = () => {
+                console.warn("⚠️ No se pudo cargar Gemini SDK");
+                resolve(); // Continuar sin Gemini
+            };
             document.head.appendChild(script);
         });
     }
     
-    async showWelcomeMessage() {
+    showWelcomeMessage() {
         if (this.conversation.length > 0) return;
         
-        // Mostrar mensaje de bienvenida
-        const welcomeMessage = this.generateWelcomeMessage();
-        this.addMessage('ia', welcomeMessage);
-    }
-    
-    generateWelcomeMessage() {
         const localName = this.storeSettings.nombre_local || "EL TACHI";
         const deliveryPrice = this.storeSettings.precio_envio || 300;
         const estimatedTime = this.storeSettings.tiempo_base_estimado || 40;
@@ -339,7 +258,7 @@ class TachiChatManager {
         
         let message = `¡Hola! Soy la atención de **${localName}** 👋\n\n`;
         
-        // Mostrar categorías disponibles
+        // Agrupar por categorías
         const categories = {};
         this.menuData.forEach(item => {
             if (!categories[item.categoria]) {
@@ -348,8 +267,7 @@ class TachiChatManager {
             categories[item.categoria].push(item);
         });
         
-        message += "**NUESTRA CARTA:**\n\n";
-        
+        // Mostrar menú ordenado
         Object.keys(categories).sort().forEach(category => {
             message += `**${category}:**\n`;
             categories[category].forEach(item => {
@@ -372,23 +290,7 @@ class TachiChatManager {
         this.conversationState.isTakingOrder = true;
         this.conversationState.step = 'menu';
         
-        return message;
-    }
-    
-    showFallbackInterface() {
-        // Mostrar interfaz de fallback
-        this.addMessage('ia', 
-            "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
-            "Por el momento, nuestro sistema de IA no está disponible, " +
-            "pero podés hacer tu pedido directamente.\n\n" +
-            "**Para ordenar:**\n" +
-            "1. Escribí lo que querés pedir\n" +
-            "2. Te confirmaré y pediré tus datos\n" +
-            "3. Te daré un número de pedido\n\n" +
-            "¿Qué te gustaría pedir?"
-        );
-        
-        this.conversationState.isTakingOrder = true;
+        this.addMessage('ia', message);
     }
     
     showStoreClosedMessage(customMessage) {
@@ -411,17 +313,36 @@ class TachiChatManager {
         if (sendButton) sendButton.disabled = true;
     }
     
-    async sendMessage() {
+    setupEventListeners() {
+        const sendButton = document.getElementById('sendButton');
         const userInput = document.getElementById('userInput');
-        const message = userInput ? userInput.value.trim() : '';
+        
+        if (sendButton) {
+            sendButton.addEventListener('click', () => this.sendMessage());
+        }
+        
+        if (userInput) {
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.sendMessage();
+                }
+            });
+        }
+    }
+    
+    async sendMessage() {
+        if (!this.isStoreOpen) return;
+        
+        const userInput = document.getElementById('userInput');
+        const message = userInput.value.trim();
         
         if (!message) return;
         
         // Agregar mensaje del usuario
         this.addMessage('user', message);
-        if (userInput) userInput.value = '';
+        userInput.value = '';
         
-        // Verificar si es consulta de estado
+        // Verificar si es consulta de pedido
         if (await this.handleOrderStatusQuery(message)) {
             return;
         }
@@ -430,23 +351,24 @@ class TachiChatManager {
         this.showTypingIndicator();
         
         // Procesar mensaje
-        await this.processUserMessage(message);
+        setTimeout(() => {
+            this.processUserMessage(message);
+            this.removeTypingIndicator();
+        }, 1000);
     }
     
     async handleOrderStatusQuery(message) {
-        // Buscar ID de pedido (TACHI-000000)
-        const orderIdMatch = message.toUpperCase().match(/TACHI-\d{6}/);
+        // Buscar ID de pedido
+        const orderIdMatch = message.toUpperCase().match(/TACHI-\d+/);
         if (orderIdMatch) {
-            const orderId = orderIdMatch[0];
-            await this.showOrderStatus(orderId);
+            await this.showOrderStatus(orderIdMatch[0]);
             return true;
         }
         
-        // Buscar número de pedido simple
+        // Buscar número simple
         const numberMatch = message.match(/\d{6}/);
         if (numberMatch && message.toLowerCase().includes('pedido')) {
-            const orderId = `TACHI-${numberMatch[0]}`;
-            await this.showOrderStatus(orderId);
+            await this.showOrderStatus(`TACHI-${numberMatch[0]}`);
             return true;
         }
         
@@ -454,20 +376,18 @@ class TachiChatManager {
     }
     
     async showOrderStatus(orderId) {
-        this.removeTypingIndicator();
-        
         try {
             let order = null;
             
-            // Buscar en localStorage primero
+            // Buscar en localStorage
             const localOrders = JSON.parse(localStorage.getItem('el_tachi_orders') || '{}');
             if (localOrders[orderId]) {
                 order = localOrders[orderId];
             }
             
-            // Si no está en localStorage y hay conexión a Firebase, buscar allí
-            if (!order && this.db) {
-                const orderDoc = await this.db
+            // Buscar en Firestore si hay conexión
+            if (!order && window.firebaseApp && window.firebaseApp.db) {
+                const orderDoc = await window.firebaseApp.db
                     .collection('orders')
                     .doc(orderId)
                     .get();
@@ -496,7 +416,6 @@ class TachiChatManager {
     }
     
     showOrderDetails(orderId, order) {
-        // Formatear fecha
         let fechaStr = 'Fecha no disponible';
         if (order.fecha) {
             const fecha = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
@@ -508,7 +427,6 @@ class TachiChatManager {
             });
         }
         
-        // Mapear estados a emojis
         const statusEmojis = {
             'Recibido': '📥',
             'En preparación': '👨‍🍳',
@@ -532,7 +450,6 @@ class TachiChatManager {
         message += `\n**Detalles del pedido:**\n\`\`\`\n${order.pedido_detallado}\n\`\`\`\n`;
         message += `💰 **Total:** $${order.total}\n\n`;
         
-        // Mensaje según estado
         if (order.estado === 'Recibido') {
             message += "Tu pedido fue recibido y pronto comenzaremos con la preparación. ¡Gracias!";
         } else if (order.estado === 'En preparación') {
@@ -551,20 +468,20 @@ class TachiChatManager {
         this.addMessage('ia', message);
     }
     
-    async processUserMessage(message) {
-        // Usar Gemini si está disponible, sino usar lógica local
-        if (this.geminiModel) {
-            await this.processWithGemini(message);
-        } else {
-            await this.processWithoutGemini(message);
-        }
+    processUserMessage(message) {
+        const lowerMessage = message.toLowerCase();
         
-        this.removeTypingIndicator();
+        // Si hay Gemini, usarlo
+        if (this.geminiModel) {
+            this.processWithGemini(message);
+        } else {
+            this.processWithoutGemini(message);
+        }
     }
     
     async processWithGemini(message) {
         try {
-            // Construir prompt para Gemini
+            // Construir prompt
             const prompt = this.buildGeminiPrompt(message);
             
             // Generar respuesta
@@ -574,21 +491,17 @@ class TachiChatManager {
             
             // Procesar respuesta
             this.addMessage('ia', responseText);
-            await this.processGeminiResponse(responseText, message);
-            
-            // Guardar en historial
-            this.conversation.push({ role: 'user', content: message });
-            this.conversation.push({ role: 'assistant', content: responseText });
+            this.analyzeGeminiResponse(responseText, message);
             
         } catch (error) {
             console.error("Error con Gemini:", error);
-            // Fallback a procesamiento local
-            await this.processWithoutGemini(message);
+            // Fallback a procesamiento simple
+            this.processWithoutGemini(message);
         }
     }
     
     buildGeminiPrompt(userMessage) {
-        // PROMPT EXACTO según especificaciones
+        // PROMPT INTERNO EXACTO según especificaciones
         const systemPrompt = `Sos la persona que atiende pedidos de la rotisería EL TACHI.
 
 ⚠️ NO sos un bot.
@@ -747,15 +660,8 @@ Cualquier cosa escribime."
 
 ---
 
-**MENÚ ACTUAL DE EL TACHI:**
-
-${this.formatMenuForPrompt()}
-
-**ESTADO ACTUAL DE LA CONVERSACIÓN:**
-${this.formatConversationState()}
-
-**ÚLTIMOS MENSAJES:**
-${this.getRecentMessages()}
+**MENÚ DE EL TACHI:**
+${this.formatMenuForGemini()}
 
 **MENSAJE DEL CLIENTE:**
 "${userMessage}"
@@ -765,7 +671,7 @@ ${this.getRecentMessages()}
         return systemPrompt;
     }
     
-    formatMenuForPrompt() {
+    formatMenuForGemini() {
         let menuText = "";
         const categories = {};
         
@@ -777,7 +683,7 @@ ${this.getRecentMessages()}
         });
         
         Object.keys(categories).sort().forEach(category => {
-            menuText += `\n${category.toUpperCase()}:\n`;
+            menuText += `\n${category}:\n`;
             categories[category].forEach(item => {
                 menuText += `- ${item.nombre}: $${item.precio}`;
                 if (item.descripcion) {
@@ -790,167 +696,42 @@ ${this.getRecentMessages()}
         return menuText;
     }
     
-    formatConversationState() {
-        if (this.conversationState.step === 'welcome') {
-            return "Recién empieza la conversación. Mostrar menú completo.";
-        } else if (this.conversationState.step === 'menu') {
-            return "El cliente está viendo el menú y puede hacer un pedido.";
-        } else if (this.conversationState.isTakingOrder) {
-            return "El cliente está haciendo un pedido.";
-        } else if (this.conversationState.orderConfirmed) {
-            return "El cliente confirmó el pedido. Pedir datos del cliente.";
-        } else if (this.conversationState.isGettingCustomerData) {
-            return "Pidiendo datos del cliente (nombre, teléfono, dirección).";
-        }
-        return "Estado no definido.";
-    }
-    
-    getRecentMessages() {
-        if (this.conversation.length === 0) return "No hay mensajes previos.";
-        
-        return this.conversation.slice(-4).map(msg => 
-            `${msg.role === 'user' ? 'Cliente' : 'Vendedor'}: ${msg.content}`
-        ).join('\n');
-    }
-    
-    async processGeminiResponse(responseText, userMessage) {
-        // Analizar respuesta para extraer acciones
-        this.analyzeResponseForActions(responseText, userMessage);
-        
-        // Guardar conversación
-        this.saveConversation();
-    }
-    
-    analyzeResponseForActions(responseText, userMessage) {
+    analyzeGeminiResponse(responseText, userMessage) {
+        // Analizar respuesta para detectar acciones
         const lowerResponse = responseText.toLowerCase();
         const lowerUserMessage = userMessage.toLowerCase();
         
-        // Detectar si se está confirmando el pedido
-        if (lowerResponse.includes('confirmamos así') || 
-            lowerResponse.includes('¿está bien así?') ||
-            lowerResponse.includes('te parece bien')) {
-            
+        // Detectar confirmación de pedido
+        if (lowerResponse.includes('confirmamos así') || lowerResponse.includes('¿está bien así?')) {
             this.conversationState.step = 'summary';
-            this.showConfirmationButtons();
         }
         
-        // Detectar si se están pidiendo datos
-        if ((lowerResponse.includes('nombre') && lowerResponse.includes('teléfono')) ||
-            lowerResponse.includes('datos')) {
-            
+        // Detectar que se están pidiendo datos
+        if (lowerResponse.includes('nombre') && lowerResponse.includes('teléfono')) {
             this.conversationState.step = 'customer_data';
             this.conversationState.isGettingCustomerData = true;
         }
         
-        // Detectar si el cliente está pidiendo algo
-        if (this.isOrderMessage(lowerUserMessage)) {
-            this.conversationState.isTakingOrder = true;
-            this.extractOrderFromMessage(userMessage);
-        }
-        
-        // Detectar confirmación del cliente
-        if (this.isConfirmationMessage(lowerUserMessage)) {
-            if (this.conversationState.step === 'summary') {
-                this.conversationState.orderConfirmed = true;
-            } else if (this.conversationState.step === 'customer_data') {
-                this.saveOrder();
-            }
-        }
-        
-        // Extraer datos del cliente del mensaje
+        // Extraer datos del cliente
         if (this.conversationState.isGettingCustomerData) {
-            this.extractCustomerDataFromMessage(userMessage);
+            this.extractCustomerData(userMessage);
         }
     }
     
-    isOrderMessage(message) {
-        const orderKeywords = ['quiero', 'dame', 'pedir', 'una', 'un', 'dos', 'tres', 'por favor'];
-        return orderKeywords.some(keyword => message.includes(keyword));
-    }
-    
-    isConfirmationMessage(message) {
-        return message.includes('sí') || 
-               message === 'si' || 
-               message.includes('confirm') ||
-               message.includes('correcto') ||
-               message.includes('dale');
-    }
-    
-    extractOrderFromMessage(message) {
-        // Extraer productos del mensaje (simplificado)
-        // En producción, esto se haría con análisis más avanzado
-        
-        this.menuData.forEach(product => {
-            const productNameLower = product.nombre.toLowerCase();
-            const messageLower = message.toLowerCase();
-            
-            if (messageLower.includes(productNameLower)) {
-                // Buscar cantidad
-                let quantity = 1;
-                const quantityMatch = messageLower.match(/(\d+)\s*[x\*]?\s*" + productNameLower + "|" + productNameLower + "\s*[x\*]?\s*(\d+)/);
-                if (quantityMatch) {
-                    quantity = parseInt(quantityMatch[1] || quantityMatch[2]);
-                }
-                
-                // Buscar modificaciones
-                let modifications = '';
-                if (messageLower.includes('sin ')) {
-                    const start = messageLower.indexOf('sin ');
-                    const end = messageLower.indexOf(' ', start + 4);
-                    modifications = message.substring(start, end > start ? end : undefined);
-                } else if (messageLower.includes('con ')) {
-                    const start = messageLower.indexOf('con ');
-                    const end = messageLower.indexOf(' ', start + 4);
-                    modifications = message.substring(start, end > start ? end : undefined);
-                }
-                
-                // Agregar al pedido
-                this.currentOrder.items.push({
-                    id: product.id,
-                    name: product.nombre,
-                    quantity: quantity,
-                    price: product.precio,
-                    modifications: modifications
-                });
-            }
-        });
-        
-        // Recalcular total
-        this.recalculateOrderTotal();
-    }
-    
-    recalculateOrderTotal() {
-        this.currentOrder.subtotal = this.currentOrder.items.reduce((sum, item) => {
-            return sum + (item.price * item.quantity);
-        }, 0);
-        
-        this.currentOrder.total = this.currentOrder.subtotal + this.currentOrder.deliveryFee;
-    }
-    
-    extractCustomerDataFromMessage(message) {
-        // Extraer nombre (patrón simple)
+    extractCustomerData(message) {
+        // Extraer nombre
         if (!this.currentOrder.customerName) {
-            const namePatterns = [
-                /me llamo\s+([^\.,]+)/i,
-                /soy\s+([^\.,]+)/i,
-                /nombre es\s+([^\.,]+)/i,
-                /^([a-záéíóúñ]{2,}\s+[a-záéíóúñ]{2,})$/i
-            ];
-            
-            for (const pattern of namePatterns) {
-                const match = message.match(pattern);
-                if (match) {
-                    this.currentOrder.customerName = match[1].trim();
-                    break;
-                }
+            const nameMatch = message.match(/(?:me llamo|soy|nombre es)\s+([^,\.]+)/i);
+            if (nameMatch) {
+                this.currentOrder.customerName = nameMatch[1].trim();
             }
         }
         
         // Extraer teléfono
         if (!this.currentOrder.customerPhone) {
-            const phoneMatch = message.match(/(\d{8,15})/);
+            const phoneMatch = message.match(/\b\d{8,15}\b/);
             if (phoneMatch) {
-                this.currentOrder.customerPhone = phoneMatch[1];
+                this.currentOrder.customerPhone = phoneMatch[0];
             }
         }
         
@@ -967,177 +748,41 @@ ${this.getRecentMessages()}
         
         // Extraer dirección
         if (this.currentOrder.deliveryType === 'envio' && !this.currentOrder.address) {
-            const addressKeywords = ['calle', 'avenida', 'av.', 'número', 'numero', 'nro', 'entre', 'altura'];
+            const addressKeywords = ['calle', 'avenida', 'av.', 'número', 'numero', 'nro', 'entre'];
             const hasAddressKeyword = addressKeywords.some(keyword => 
                 message.toLowerCase().includes(keyword)
             );
             
-            if (hasAddressKeyword || message.length > 40) {
+            if (hasAddressKeyword || message.length > 30) {
                 this.currentOrder.address = message;
             }
         }
     }
     
-    async saveOrder() {
-        this.removeTypingIndicator();
-        
-        try {
-            // Generar ID único
-            const orderCount = await this.getOrderCount();
-            const orderId = `TACHI-${(orderCount + 1).toString().padStart(6, '0')}`;
-            this.currentOrder.id = orderId;
-            
-            // Crear detalles del pedido
-            let orderDetails = "";
-            this.currentOrder.items.forEach(item => {
-                orderDetails += `${item.quantity}x ${item.name}`;
-                if (item.modifications) {
-                    orderDetails += ` (${item.modifications})`;
-                }
-                orderDetails += ` - $${item.price * item.quantity}\n`;
-            });
-            
-            // Crear objeto del pedido
-            const orderData = {
-                id_pedido: orderId,
-                fecha: new Date().toISOString(),
-                nombre_cliente: this.currentOrder.customerName,
-                telefono: this.currentOrder.customerPhone,
-                tipo_pedido: this.currentOrder.deliveryType || 'retiro',
-                direccion: this.currentOrder.address || '',
-                pedido_detallado: orderDetails,
-                subtotal: this.currentOrder.subtotal,
-                envio: this.currentOrder.deliveryFee,
-                total: this.currentOrder.total,
-                estado: 'Recibido',
-                tiempo_estimado_actual: this.storeSettings.tiempo_base_estimado || 40,
-                notas: this.currentOrder.specialInstructions
-            };
-            
-            // Guardar en localStorage
-            const localOrders = JSON.parse(localStorage.getItem('el_tachi_orders') || '{}');
-            localOrders[orderId] = orderData;
-            localStorage.setItem('el_tachi_orders', JSON.stringify(localOrders));
-            
-            // Intentar guardar en Firebase si está disponible
-            if (this.db) {
-                try {
-                    await this.db
-                        .collection('orders')
-                        .doc(orderId)
-                        .set(orderData);
-                    
-                    console.log("✅ Pedido guardado en Firebase");
-                } catch (firebaseError) {
-                    console.warn("⚠️ No se pudo guardar en Firebase:", firebaseError);
-                }
-            }
-            
-            // Mostrar confirmación
-            this.showOrderConfirmation(orderId, orderData);
-            
-            // Reiniciar estado
-            this.resetOrderState();
-            
-        } catch (error) {
-            console.error("Error guardando pedido:", error);
-            this.addMessage('ia', 
-                "Hubo un error al guardar tu pedido. " +
-                "¿Podés intentarlo de nuevo o contactarnos por teléfono? " +
-                "Disculpá las molestias."
-            );
-        }
-    }
-    
-    async getOrderCount() {
-        // Obtener conteo de pedidos
-        try {
-            if (this.db) {
-                const countSnapshot = await this.db
-                    .collection('orders')
-                    .count()
-                    .get();
-                
-                return countSnapshot.data().count || 0;
-            }
-        } catch (error) {
-            console.warn("Error contando pedidos en Firebase:", error);
-        }
-        
-        // Fallback a localStorage
-        const localOrders = JSON.parse(localStorage.getItem('el_tachi_orders') || '{}');
-        return Object.keys(localOrders).length;
-    }
-    
-    showOrderConfirmation(orderId, orderData) {
-        const message = 
-            `**¡Pedido confirmado!** 🎉\n\n` +
-            `**ID del pedido:** ${orderId}\n` +
-            `**Estado:** Recibido\n` +
-            `**Tiempo estimado:** ${orderData.tiempo_estimado_actual} minutos\n` +
-            `**Total:** $${orderData.total}\n\n` +
-            `Para consultar el estado de tu pedido, escribí: **${orderId}**\n\n` +
-            `¡Gracias por elegir EL TACHI! 👨‍🍳`;
-        
-        this.addMessage('ia', message);
-    }
-    
-    resetOrderState() {
-        this.currentOrder = {
-            id: '',
-            items: [],
-            subtotal: 0,
-            deliveryFee: 0,
-            total: 0,
-            customerName: '',
-            customerPhone: '',
-            deliveryType: '',
-            address: '',
-            specialInstructions: '',
-            status: 'Recibido',
-            estimatedTime: 40
-        };
-        
-        this.conversationState = {
-            isTakingOrder: false,
-            isGettingCustomerData: false,
-            orderConfirmed: false,
-            waitingForAddress: false,
-            step: 'welcome'
-        };
-    }
-    
-    async processWithoutGemini(message) {
-        // Lógica de conversación sin Gemini
+    processWithoutGemini(message) {
         const lowerMessage = message.toLowerCase();
         
-        if (this.conversationState.step === 'welcome' || 
-            lowerMessage.includes('hola') || 
-            lowerMessage.includes('menú')) {
-            
-            // Mostrar menú
-            this.addMessage('ia', this.generateWelcomeMessage());
+        // Respuestas predefinidas
+        if (this.conversationState.step === 'welcome' || lowerMessage.includes('hola')) {
+            this.showWelcomeMessage();
             
         } else if (this.conversationState.isTakingOrder) {
-            
             // Procesar pedido
-            this.extractOrderFromMessage(message);
-            
-            // Preguntar si quiere algo más
-            this.addMessage('ia', 
-                `Perfecto, ${this.getLastItemDescription()}. ¿Algo más?`
-            );
-            
-            // Si el cliente dice que no quiere más
-            if (lowerMessage.includes('no') && 
-               (lowerMessage.includes('más') || lowerMessage.includes('eso es todo'))) {
+            if (this.isOrderMessage(lowerMessage)) {
+                this.addMessage('ia', `Perfecto, ${this.getProductDescription(message)}. ¿Algo más?`);
                 
-                // Mostrar resumen
-                this.showOrderSummary();
+                // Agregar al pedido
+                this.extractProductFromMessage(message);
+                
+                // Si el cliente dice que no quiere más
+                if (lowerMessage.includes('no') && 
+                   (lowerMessage.includes('más') || lowerMessage.includes('eso es todo'))) {
+                    
+                    this.showOrderSummary();
+                }
             }
             
         } else if (this.conversationState.step === 'summary') {
-            
             // Confirmar pedido
             if (this.isConfirmationMessage(lowerMessage)) {
                 this.conversationState.orderConfirmed = true;
@@ -1155,19 +800,17 @@ ${this.getRecentMessages()}
             }
             
         } else if (this.conversationState.step === 'customer_data') {
+            // Procesar datos del cliente
+            this.extractCustomerData(message);
             
-            // Extraer datos del cliente
-            this.extractCustomerDataFromMessage(message);
-            
-            // Verificar si ya tenemos todos los datos
+            // Verificar si tenemos todos los datos
             if (this.currentOrder.customerName && this.currentOrder.customerPhone) {
-                
                 // Confirmar datos
                 let confirmationMsg = 
                     `**Para confirmar:**\n` +
                     `👤 **Nombre:** ${this.currentOrder.customerName}\n` +
                     `📞 **Teléfono:** ${this.currentOrder.customerPhone}\n` +
-                    `🚚 **Tipo:** ${this.currentOrder.deliveryType === 'envio' ? 'Envío' : 'Retiro'}\n`;
+                    `🚚 **Tipo:** ${this.currentOrder.deliveryType || 'Retiro'}\n`;
                 
                 if (this.currentOrder.deliveryType === 'envio' && this.currentOrder.address) {
                     confirmationMsg += `📍 **Dirección:** ${this.currentOrder.address}\n`;
@@ -1176,41 +819,59 @@ ${this.getRecentMessages()}
                 confirmationMsg += `\n¿Está todo correcto?`;
                 
                 this.addMessage('ia', confirmationMsg);
-                
-            } else {
-                // Pedir datos faltantes
-                let missingData = [];
-                if (!this.currentOrder.customerName) missingData.push("nombre");
-                if (!this.currentOrder.customerPhone) missingData.push("teléfono");
-                if (!this.currentOrder.deliveryType) missingData.push("tipo (envío o retiro)");
-                
-                this.addMessage('ia', 
-                    `Todavía necesito tu ${missingData.join(', ')}. ` +
-                    `¿Podés proporcionarlo?`
-                );
             }
-            
         }
-        
-        // Guardar conversación
-        this.conversation.push({ role: 'user', content: message });
-        this.saveConversation();
     }
     
-    getLastItemDescription() {
-        if (this.currentOrder.items.length === 0) return "anoté tu pedido";
+    isOrderMessage(message) {
+        const orderKeywords = ['quiero', 'dame', 'pedir', 'una', 'un', 'dos', 'tres'];
+        return orderKeywords.some(keyword => message.includes(keyword));
+    }
+    
+    isConfirmationMessage(message) {
+        return message.includes('sí') || 
+               message === 'si' || 
+               message.includes('confirm') ||
+               message.includes('correcto');
+    }
+    
+    getProductDescription(message) {
+        // Buscar productos en el mensaje
+        let description = "anoté tu pedido";
         
-        const lastItem = this.currentOrder.items[this.currentOrder.items.length - 1];
-        let description = `${lastItem.quantity} ${lastItem.name}`;
-        
-        if (lastItem.modifications) {
-            description += ` ${lastItem.modifications}`;
-        }
+        this.menuData.forEach(product => {
+            if (message.toLowerCase().includes(product.nombre.toLowerCase())) {
+                description = `una ${product.nombre.toLowerCase()}`;
+            }
+        });
         
         return description;
     }
     
+    extractProductFromMessage(message) {
+        // Extraer producto del mensaje (simplificado)
+        this.menuData.forEach(product => {
+            if (message.toLowerCase().includes(product.nombre.toLowerCase())) {
+                this.currentOrder.items.push({
+                    id: product.id,
+                    name: product.nombre,
+                    quantity: 1,
+                    price: product.precio,
+                    modifications: ''
+                });
+                
+                this.currentOrder.subtotal += product.precio;
+                this.currentOrder.total = this.currentOrder.subtotal + this.currentOrder.deliveryFee;
+            }
+        });
+    }
+    
     showOrderSummary() {
+        if (this.currentOrder.items.length === 0) {
+            this.addMessage('ia', "No hay productos en el pedido. ¿Qué te gustaría pedir?");
+            return;
+        }
+        
         let summary = "**RESUMEN DEL PEDIDO:**\n\n";
         
         this.currentOrder.items.forEach((item, index) => {
@@ -1254,11 +915,6 @@ ${this.getRecentMessages()}
         
         // Scroll al final
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        
-        // Guardar en historial
-        if (sender === 'ia') {
-            this.conversation.push({ role: 'assistant', content: text });
-        }
     }
     
     showTypingIndicator() {
@@ -1284,94 +940,12 @@ ${this.getRecentMessages()}
             typingIndicator.remove();
         }
     }
-    
-    showConfirmationButtons() {
-        const chatMessages = document.getElementById('chatMessages');
-        if (!chatMessages) return;
-        
-        const buttonsDiv = document.createElement('div');
-        buttonsDiv.className = 'confirmation-buttons';
-        buttonsDiv.innerHTML = `
-            <button class="confirm-btn" onclick="window.chatManager.userConfirmed(true)">
-                ✅ Sí, confirmar pedido
-            </button>
-            <button class="cancel-btn" onclick="window.chatManager.userConfirmed(false)">
-                ✏️ No, cambiar algo
-            </button>
-        `;
-        
-        chatMessages.appendChild(buttonsDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
-    userConfirmed(confirmed) {
-        if (confirmed) {
-            this.addMessage('user', 'Sí, confirmo el pedido');
-            this.conversationState.orderConfirmed = true;
-            this.conversationState.step = 'customer_data';
-            
-            setTimeout(() => {
-                this.addMessage('ia', 
-                    "¡Perfecto! Ahora necesito unos datos para terminar el pedido:\n\n" +
-                    "1. ¿Cuál es tu **nombre**?\n" +
-                    "2. ¿Tu **teléfono**?\n" +
-                    "3. ¿Es para **envío** o **retiro** en el local?\n\n" +
-                    "Podés enviarme toda la información junta."
-                );
-            }, 500);
-        } else {
-            this.addMessage('user', 'Quiero cambiar algo');
-            this.addMessage('ia', 
-                "Dale, decime qué querés cambiar. " +
-                "Podés modificar cantidades, productos o pedir algo nuevo."
-            );
-        }
-        
-        // Remover botones
-        const buttonsDiv = document.querySelector('.confirmation-buttons');
-        if (buttonsDiv) {
-            buttonsDiv.remove();
-        }
-    }
-    
-    loadConversationHistory() {
-        try {
-            const saved = localStorage.getItem('el_tachi_chat_history');
-            if (saved) {
-                this.conversation = JSON.parse(saved);
-                
-                // Mostrar últimos 5 mensajes
-                const lastMessages = this.conversation.slice(-5);
-                lastMessages.forEach(msg => {
-                    this.addMessage(msg.role === 'user' ? 'user' : 'ia', msg.content);
-                });
-            }
-        } catch (error) {
-            console.error("Error cargando historial:", error);
-        }
-    }
-    
-    saveConversation() {
-        try {
-            localStorage.setItem('el_tachi_chat_history', JSON.stringify(this.conversation));
-        } catch (error) {
-            console.error("Error guardando conversación:", error);
-        }
-    }
 }
 
-// Inicializar cuando el DOM esté listo
+// Inicializar chat
+let chatManager;
+
 function initializeChat() {
-    window.chatManager = new TachiChatManager();
-}
-
-// Hacer disponible globalmente
-window.TachiChatManager = TachiChatManager;
-window.initializeChat = initializeChat;
-
-// Auto-inicializar cuando se cargue la página
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeChat);
-} else {
-    initializeChat();
+    chatManager = new TachiChatManager();
+    window.chatManager = chatManager;
 }
