@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformá Tu Negocio Local con Soluciones Digitales</title>
+    <meta name="description" content="Automatización, marketing digital y soluciones a medida para ferreterías, comercios y pymes. Más ventas, menos trabajo.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+</head>
+<body>
+    <!-- Chat IA Flotante -->
+    <div class="chat-widget">
+        <div class="chat-header">
+            <div class="chat-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="chat-info">
+                <h4>Asistente Digital</h4>
+                <p class="status"><span class="status-dot"></span> En línea</p>
+            </div>
+            <button class="chat-toggle">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="chat-body">
+            <div class="chat-messages" id="chatMessages">
+                <!-- Los mensajes se cargan aquí -->
+            </div>
+            <div class="chat-input-area">
+                <textarea id="userInput" placeholder="Escribí tu mensaje..." rows="1"></textarea>
+                <button id="sendButton">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="chat-disclaimer">
+                <small><i class="fas fa-info-circle"></i> Atención con IA real. Los precios son estimativos.</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <span class="badge">SOLUCIONES PARA NEGOCIOS LOCALES</span>
+                <h1>No pierdas ni una venta más por <span class="highlight">falta de tiempo o tecnología</span></h1>
+                <p class="hero-subtitle">Automatizamos tu negocio, manejamos tus redes y creamos herramientas digitales a medida. Más ventas, menos trabajo.</p>
+                <div class="hero-cta">
+                    <a href="#contact" class="btn btn-primary" id="heroWhatsAppBtn">
+                        <i class="fab fa-whatsapp"></i> Consultá gratis por WhatsApp
+                    </a>
+                    <a href="#services" class="btn btn-secondary">
+                        <i class="fas fa-play-circle"></i> Ver soluciones
+                    </a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <h3>+24/7</h3>
+                        <p>Atención automática</p>
+                    </div>
+                    <div class="stat">
+                        <h3>+30%</h3>
+                        <p>Ventas en promedio</p>
+                    </div>
+                    <div class="stat">
+                        <h3>-70%</h3>
+                        <p>Tareas manuales</p>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-image">
+                <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Negocio local digitalizado">
+            </div>
+        </div>
+    </section>
+
+    <!-- Problemas del Negocio -->
+    <section class="problems" id="problems">
+        <div class="container">
+            <h2>¿Te suenan estos problemas?</h2>
+            <div class="problems-grid">
+                <div class="problem-card">
+                    <div class="problem-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>No llegás a responder todos los mensajes</h3>
+                    <p>WhatsApp e Instagram llenos de consultas que se pierden o tardás horas en responder.</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Perdés ventas por no estar visible</h3>
+                    <p>Tu competencia aparece primero en redes y Google, vos te quedás atrás.</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <h3>No tenés tiempo para el marketing</h3>
+                    <p>Entre atender, administrar y facturar, las redes sociales quedan para "después".</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>Procesos manuales que consumen horas</h3>
+                    <p>Presupuestos, consultas de stock, recordatorios... todo a mano y con errores.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Servicios -->
+    <section class="services" id="services">
+        <div class="container">
+            <h2>Soluciones que implementamos</h2>
+            <p class="section-subtitle">Todo lo que tu negocio necesita para vender más y trabajar menos</p>
+            
+            <div class="services-tabs">
+                <button class="tab-btn active" data-tab="automation">
+                    <i class="fas fa-robot"></i> Automatización
+                </button>
+                <button class="tab-btn" data-tab="marketing">
+                    <i class="fas fa-bullhorn"></i> Marketing
+                </button>
+                <button class="tab-btn" data-tab="custom">
+                    <i class="fas fa-puzzle-piece"></i> A Medida
+                </button>
+            </div>
+            
+            <div class="tab-content active" id="automation">
+                <div class="service-grid">
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fab fa-whatsapp"></i>
+                        </div>
+                        <h3>Bot de WhatsApp</h3>
+                        <p>Atendé consultas, enviá presupuestos y confirmá pedidos automáticamente 24/7.</p>
+                        <div class="price-tag">
+                            <span class="price">Desde $80.000</span>
+                            <span class="price-note">+ $15.000/mes</span>
+                        </div>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <h3>Presupuestos automáticos con IA</h3>
+                        <p>Los clientes reciben presupuestos al instante, con descuentos y opciones.</p>
+                        <div class="price-tag">
+                            <span class="price">Desde $60.000</span>
+                        </div>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <h3>Web catálogo para comercios</h3>
+                        <p>Tu negocio en línea, con productos, precios y contacto directo. No es una tienda online.</p>
+                        <div class="price-tag">
+                            <span class="price">Desde $150.000</span>
+                        </div>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h3>Automatizaciones a medida</h3>
+                        <p>Integramos WhatsApp con tu sistema, automatizamos pedidos, stock, recordatorios.</p>
+                        <div class="price-tag">
+                            <span class="price">Consultar</span>
+                            <span class="price-note">Desde $120.000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="marketing">
+                <div class="service-grid">
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-hashtag"></i>
+                        </div>
+                        <h3>Manejo de redes sociales</h3>
+                        <p>Gestión completa de Instagram y Facebook para tu negocio.</p>
+                        <div class="service-detail">
+                            <h4>📅 Contenido semanal:</h4>
+                            <ul>
+                                <li><strong>Primera semana:</strong> 3 imágenes + 1 video promocional</li>
+                                <li><strong>Semanas siguientes:</strong> 2 videos + 4 imágenes por semana</li>
+                            </ul>
+                            <p><em>Todo basado en tus productos o servicios, optimizado para redes.</em></p>
+                        </div>
+                        <div class="price-tag">
+                            <span class="price">Desde $45.000/mes</span>
+                        </div>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-ad"></i>
+                        </div>
+                        <h3>Publicidad digital</h3>
+                        <p>Campañas en Instagram, Facebook y Google para llegar a clientes locales.</p>
+                        <div class="price-tag">
+                            <span class="price">Desde $30.000</span>
+                            <span class="price-note">+ inversión en anuncios</span>
+                        </div>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                        <h3>Creación de imágenes y videos</h3>
+                        <p>Contenido profesional de tus productos, para redes, WhatsApp y catálogos.</p>
+                        <div class="price-tag">
+                            <span class="price">Paquetes desde $20.000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="custom">
+                <div class="custom-solution">
+                    <div class="custom-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3>Soluciones a medida para tu negocio</h3>
+                    <p class="custom-text">
+                        <strong>No trabajamos con paquetes cerrados.</strong> Nos adaptamos a cada negocio y desarrollamos exactamente lo que necesitás.
+                    </p>
+                    <div class="custom-examples">
+                        <h4>Ejemplos de lo que podemos crear:</h4>
+                        <ul>
+                            <li>Sistemas internos de gestión</li>
+                            <li>Automatización de tareas repetitivas</li>
+                            <li>Integraciones especiales con WhatsApp</li>
+                            <li>Herramientas personalizadas para tu rubro</li>
+                            <li>Digitalización de procesos manuales</li>
+                            <li>Soporte y mejoras continuas</li>
+                        </ul>
+                    </div>
+                    <div class="custom-cta">
+                        <p class="highlight-phrase">
+                            <i class="fas fa-arrow-right"></i> 
+                            <strong>"Si tu negocio necesita algo distinto, lo analizamos y lo hacemos a medida."</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cómo Trabajamos -->
+    <section class="process">
+        <div class="container">
+            <h2>Cómo transformamos tu negocio</h2>
+            <div class="process-steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Analizamos tu negocio</h3>
+                    <p>Charlamos por WhatsApp para entender tus procesos, problemas y objetivos.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Proponemos la mejor solución</h3>
+                    <p>Te presentamos opciones claras, con precios y plazos realistas.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Implementamos</h3>
+                    <p>Desarrollamos y configuramos todo. Vos seguís trabajando normal.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Te ayudamos a vender más</h3>
+                    <p>Soporte continuo, ajustes y mejoras para que sigas creciendo.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Beneficios -->
+    <section class="benefits">
+        <div class="container">
+            <h2>¿Qué lográs con nuestras soluciones?</h2>
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <i class="fas fa-headset"></i>
+                    <h3>Atención 24/7 sin estar presente</h3>
+                    <p>Los bots atienden consultas, dan precios y toman pedidos incluso de madrugada.</p>
+                </div>
+                <div class="benefit-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>Más ventas y clientes nuevos</h3>
+                    <p>Presencia en redes + publicidad + web catálogo = más oportunidades de venta.</p>
+                </div>
+                <div class="benefit-card">
+                    <i class="fas fa-user-clock"></i>
+                    <h3>Menos trabajo manual</h3>
+                    <p>Automatizá tareas repetitivas y concentrate en lo importante: atender personalmente.</p>
+                </div>
+                <div class="benefit-card">
+                    <i class="fas fa-cogs"></i>
+                    <h3>Soluciones adaptadas a tu realidad</h3>
+                    <p>No es un paquete estándar. Es lo que tu negocio realmente necesita.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Final -->
+    <section class="final-cta" id="contact">
+        <div class="container">
+            <div class="cta-box">
+                <h2>¿Listo para digitalizar tu negocio?</h2>
+                <p class="cta-subtitle">Hablá ahora con nuestro equipo por WhatsApp. Sin compromiso, te asesoramos en minutos.</p>
+                <a href="#" class="btn btn-whatsapp" id="finalWhatsAppBtn">
+                    <i class="fab fa-whatsapp"></i> 
+                    <div class="cta-text">
+                        <strong>Consultar por WhatsApp</strong>
+                        <small>Respuesta en menos de 5 minutos</small>
+                    </div>
+                </a>
+                <p class="cta-note">
+                    <i class="fas fa-shield-alt"></i> No pedimos tarjeta de crédito. Charlamos, te asesoramos y decidís.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 Soluciones Digitales para Negocios Locales. Hecho en Argentina.</p>
+            <p class="footer-contact">
+                <i class="fab fa-whatsapp"></i> Solo contacto por WhatsApp | 
+                <i class="fas fa-map-marker-alt"></i> Para ferreterías, comercios, talleres, pymes
+            </p>
+        </div>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
