@@ -1,56 +1,87 @@
-// Service Worker Registration
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('Service Worker registrado:', registration);
-            })
-            .catch(error => {
-                console.log('Error registrando Service Worker:', error);
-            });
-    });
-}
-
-// Install Prompt
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
+// Configuración PWA para EL TACHI
+class PWAInstaller {
+    constructor() {
+        this.deferredPrompt = null;
+        this.isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        
+        this.initializeServiceWorker();
+        this.initializeInstallPrompt();
+        this.checkDisplayMode();
+    }
     
-    // Mostrar botón de instalación personalizado
-    const installBtn = document.getElementById('install-btn');
-    if (installBtn) {
-        installBtn.style.display = 'block';
-        installBtn.addEventListener('click', () => {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then(choiceResult => {
-                if (choiceResult.outcome === 'accepted') {
-                    console.log('Usuario aceptó instalación');
-                }
-                deferredPrompt = null;
+    initializeServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('✅ ServiceWorker registrado:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ Error registrando ServiceWorker:', error);
+                    });
             });
+        }
+    }
+    
+    initializeInstallPrompt() {
+        // Detectar evento de instalación
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this.deferredPrompt = e;
+            
+            // Mostrar botón de instalación
+            const installButton = document.getElementById('installPWA');
+            if (installButton) {
+                installButton.style.display = 'block';
+                installButton.addEventListener('click', () => this.installPWA());
+            }
+        });
+        
+        // Detectar si ya está instalado
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA instalado');
+            this.deferredPrompt = null;
+            
+            const installButton = document.getElementById('installPWA');
+            if (installButton) {
+                installButton.style.display = 'none';
+            }
         });
     }
-});
-
-// Detectar si ya está instalado
-window.addEventListener('appinstalled', () => {
-    console.log('PWA instalado');
-    localStorage.setItem('pwa_installed', 'true');
-});
-
-// Cargar datos offline
-if ('caches' in window) {
-    caches.open('el-tachi-v1').then(cache => {
-        return cache.addAll([
-            '/',
-            '/index.html',
-            '/assets/css/main.css',
-            '/assets/js/app.js',
-            '/assets/js/firebase-config.js',
-            '/assets/js/gemini.js',
-            '/manifest.json',
-            '/assets/icons/icon-192.png'
-        ]);
-    });
+    
+    installPWA() {
+        if (!this.deferredPrompt) {
+            return;
+        }
+        
+        this.deferredPrompt.prompt();
+        
+        this.deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('✅ Usuario aceptó instalar');
+            } else {
+                console.log('❌ Usuario rechazó instalar');
+            }
+            
+            this.deferredPrompt = null;
+        });
+    }
+    
+    checkDisplayMode() {
+        // Aplicar estilos específicos para modo standalone
+        if (this.isStandalone) {
+            document.documentElement.classList.add('standalone-mode');
+            
+            // Ajustar altura para evitar el notch en iOS
+            const meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
+            document.head.appendChild(meta);
+        }
+    }
 }
+
+// Inicializar PWA
+document.addEventListener('DOMContentLoaded', function() {
+    new PWAInstaller();
+});
