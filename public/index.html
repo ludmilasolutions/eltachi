@@ -8,48 +8,18 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icon-192.png">
     
-    <!-- Firebase y Gemini -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Google Generative AI SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@google/generative-ai@0.1.2/dist/index.min.js"></script>
 </head>
 <body>
-    <!-- Header con logo -->
-    <header class="app-header">
-        <div class="logo-container">
-            <div class="logo-placeholder">🍔</div>
-            <h1>EL TACHI</h1>
-            <button id="installPWA" class="install-btn" style="display:none;">📱 Instalar App</button>
-        </div>
-    </header>
+    <!-- ... tu header y contenido ... -->
 
-    <!-- Contenedor principal del chat -->
-    <main class="chat-container">
-        <!-- Mensajes del chat -->
-        <div id="chatMessages" class="chat-messages">
-            <!-- Los mensajes se cargan aquí -->
-        </div>
-
-        <!-- Input para enviar mensajes -->
-        <div class="input-container">
-            <input 
-                type="text" 
-                id="userInput" 
-                placeholder="Escribe tu pedido aquí..." 
-                autocomplete="off"
-                autofocus
-            >
-            <button id="sendButton" class="send-btn">Enviar</button>
-        </div>
-
-        <!-- Estado de conexión -->
-        <div class="status-indicator">
-            <span id="connectionStatus">● Conectado</span>
-        </div>
-    </main>
-
-    <!-- Scripts -->
+    <!-- Scripts en orden correcto -->
     <script src="js/firebase-init.js"></script>
     <script src="js/gemini-chat.js"></script>
     <script src="js/pwa.js"></script>
@@ -57,7 +27,14 @@
     <script>
         // Inicializar cuando la página cargue
         document.addEventListener('DOMContentLoaded', function() {
-            initializeChat();
+            // Esperar un momento para que Firebase se inicialice
+            setTimeout(() => {
+                if (typeof initializeChat === 'function') {
+                    initializeChat();
+                } else {
+                    console.error('initializeChat no está definido');
+                }
+            }, 1000);
         });
     </script>
 </body>
