@@ -1,4 +1,4 @@
-// Motor de conversación con Gemini Pro
+// Motor de conversación con Gemini 2.5 Flash
 class ConversationEngine {
     constructor(apiKey, settings, products) {
         this.apiKey = apiKey;
@@ -11,7 +11,7 @@ class ConversationEngine {
             total: 0,
             deliveryType: null
         };
-        this.conversationStage = 'greeting'; // greeting, taking_order, asking_info, confirming
+        this.conversationStage = 'greeting';
     }
     
     // Generar prompt para Gemini
@@ -213,7 +213,7 @@ CONFIGURACIÓN DEL LOCAL:
 - Retiro habilitado: ${this.settings.retiro_habilitado ? 'Sí' : 'No'}
 
 ESTADO DE LA CONVERSACIÓN: ${this.conversationStage}
-${this.currentOrder.items.length > 0 ? `PEDIDO ACTUAL EN PROCESO: ${JSON.stringify(this.currentOrder.items)}` : 'Aún no hay pedido'}
+${this.currentOrder.items.length > 0 ? `PEDIDO ACTUAL EN PROCESO: ${this.generateCurrentOrderSummary()}` : 'Aún no hay pedido'}
 
 Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriores.`;
     }
@@ -223,7 +223,6 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         let list = '';
         const categories = {};
         
-        // Agrupar por categoría
         this.products.forEach(product => {
             if (!categories[product.categoria]) {
                 categories[product.categoria] = [];
@@ -243,6 +242,21 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         }
         
         return list;
+    }
+    
+    // Generar resumen del pedido actual
+    generateCurrentOrderSummary() {
+        if (this.currentOrder.items.length === 0) return 'Sin productos';
+        
+        let summary = '';
+        this.currentOrder.items.forEach(item => {
+            summary += `- ${item.nombre} x${item.cantidad}`;
+            if (item.modificaciones) {
+                summary += ` (${item.modificaciones})`;
+            }
+            summary += `\n`;
+        });
+        return summary;
     }
     
     // Procesar mensaje del usuario
@@ -287,38 +301,28 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         }
     }
     
-    // Llamar a Gemini API - CORRECCIÓN: Modelos correctos
+    // Llamar a Gemini API - FORMATO CORRECTO según documentación
     async callGeminiAPI(userMessage) {
         // Verificar API Key
         if (!this.apiKey || this.apiKey.trim() === '') {
             throw new Error('API Key de Gemini no configurada');
         }
         
-        // MODELOS CORRECTOS DE GEMINI (elige uno):
-        // Opción 1: Gemini 1.0 Pro (recomendado para free tier)
-        const model = 'gemini-1.0-pro';
+        // MODELO CORRECTO: gemini-2.5-flash
+        const model = 'gemini-2.5-flash';
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         
-        // Opción 2: Gemini Pro (alias)
-        // const model = 'gemini-pro';
-        
-        // Opción 3: Gemini 1.5 Flash (más rápido)
-        // const model = 'gemini-1.5-flash';
-        
-        // URL CORRECTA
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
-        
-        // Preparar mensajes para la API
-        const messages = [
-            {
-                role: "user",
-                parts: [{
-                    text: this.generateSystemPrompt() + `\n\nMensaje del cliente: "${userMessage}"\n\nTu respuesta:`
-                }]
-            }
-        ];
-        
-        const requestBody = {
-            contents: messages,
+        // FORMATO CORRECTO según documentación de Google
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { 
+                            text: this.generateSystemPrompt() + `\n\nCliente dice: "${userMessage}"\n\nTu respuesta como vendedor de EL TACHI (sigue todas las reglas):`
+                        }
+                    ]
+                }
+            ],
             generationConfig: {
                 temperature: 0.8,
                 topK: 40,
@@ -340,17 +344,18 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-goog-api-key': this.apiKey
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(payload)
         });
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
+            const errorText = await response.text();
             console.error('Error Gemini API:', {
                 status: response.status,
                 statusText: response.statusText,
-                error: errorData
+                error: errorText
             });
             
             throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -358,7 +363,11 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         
         const data = await response.json();
         
-        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        if (!data.candidates || 
+            !data.candidates[0] || 
+            !data.candidates[0].content ||
+            !data.candidates[0].content.parts ||
+            !data.candidates[0].content.parts[0]) {
             console.error('Respuesta inválida de Gemini:', data);
             throw new Error('Respuesta inválida de la API');
         }
@@ -404,16 +413,13 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         this.products.forEach(product => {
             const productNameLower = product.nombre.toLowerCase();
             
-            // Verificar si el producto está mencionado
             if (lowerMessage.includes(productNameLower)) {
-                // Detectar cantidad
                 let quantity = 1;
                 const quantityMatch = message.match(/(\d+)\s*/);
                 if (quantityMatch) {
                     quantity = parseInt(quantityMatch[1]);
                 }
                 
-                // Detectar modificaciones
                 let modifications = null;
                 if (product.aderezos_disponibles && product.aderezos_disponibles.length > 0) {
                     product.aderezos_disponibles.forEach(aderezo => {
@@ -457,13 +463,13 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             this.currentOrder.deliveryType = 'retiro';
         }
         
-        // Detectar teléfono (patrón simple)
+        // Detectar teléfono
         const phoneMatch = userMessage.match(/(\d{8,15})/);
         if (phoneMatch) {
             this.currentOrder.customerInfo.telefono = phoneMatch[1];
         }
         
-        // Detectar nombre (si hay "me llamo", "soy", "nombre es")
+        // Detectar nombre
         if (lowerMessage.includes('me llamo') || lowerMessage.includes('soy ') || 
             lowerMessage.includes('nombre es')) {
             const nameMatch = userMessage.match(/(?:me llamo|soy|nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ\s]+)/i);
@@ -477,23 +483,19 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
     getFallbackResponse(userMessage) {
         const lowerMessage = userMessage.toLowerCase();
         
-        // Primera vez que habla
         if (lowerMessage.includes('hola') || lowerMessage.includes('buenas')) {
-            return `¡Hola! 👋 Soy la atención de EL TACHI.\n\n${this.generateSimpleMenu()}\n\nTiempo estimado: ${this.settings.tiempo_base_estimado} minutos\nEnvió: $${this.settings.precio_envio}\nRetiro: ${this.settings.retiro_habilitado ? 'Sí' : 'No'}\n\nSi necesitás cambiar algo del pedido, avisame.`;
+            return `¡Hola! 👋 Soy la atención de EL TACHI.\n\n${this.generateSimpleMenu()}\n\nTiempo estimado: ${this.settings.tiempo_base_estimado} minutos\nEnvío: $${this.settings.precio_envio}\nRetiro: ${this.settings.retiro_habilitado ? 'Sí' : 'No'}\n\nSi necesitás cambiar algo del pedido, avisame.`;
         }
         
-        // Si pide menú
         if (lowerMessage.includes('menu') || lowerMessage.includes('carta')) {
             return this.generateSimpleMenu();
         }
         
-        // Si pide un producto
         const productResponse = this.getProductResponse(lowerMessage);
         if (productResponse) {
             return productResponse;
         }
         
-        // Si dice que ya terminó
         if (lowerMessage.includes('nada más') || lowerMessage.includes('eso es todo') || 
             lowerMessage.includes('listo')) {
             
@@ -505,7 +507,6 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             return `*RESUMEN DE PEDIDO*\n\n${summary}\n\n¿Es para envío o retiro?`;
         }
         
-        // Si da información de envío/retiro
         if (lowerMessage.includes('envío') || lowerMessage.includes('domicilio')) {
             this.currentOrder.deliveryType = 'envío';
             return 'Perfecto, para envío a domicilio. ¿Me podrías dar tu nombre, teléfono y dirección completa?';
@@ -516,13 +517,11 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             return 'Perfecto, para retiro en el local. ¿Me podrías dar tu nombre y teléfono?';
         }
         
-        // Confirmación
         if (lowerMessage.includes('sí') || lowerMessage.includes('si') || 
             lowerMessage.includes('confirm') || lowerMessage.includes('correcto')) {
             
             if (this.conversationStage === 'confirming') {
                 this.saveOrderToFirebase().then(orderId => {
-                    // Esta respuesta se enviará en el próximo ciclo
                     console.log('Pedido guardado:', orderId);
                 }).catch(error => {
                     console.error('Error guardando pedido:', error);
@@ -532,7 +531,6 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             }
         }
         
-        // Respuesta genérica
         return 'Entendido. ¿Algo más que quieras agregar a tu pedido?';
     }
     
@@ -575,7 +573,6 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
                     }
                 }
                 
-                // Agregar al pedido
                 this.addToOrder({
                     productId: product.id,
                     nombre: product.nombre,
@@ -633,7 +630,6 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
     // Guardar pedido en Firebase
     async saveOrderToFirebase() {
         try {
-            // Generar ID único
             const orderId = await this.generateOrderId();
             
             const orderData = {
@@ -651,7 +647,6 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             
             await db.collection('orders').doc(orderId).set(orderData);
             
-            // Reiniciar pedido
             this.resetOrder();
             
             return orderId;
@@ -848,22 +843,11 @@ function resetConversation() {
     }
 }
 
-// Función para verificar si Gemini está disponible
-async function checkGeminiAvailability() {
-    try {
-        const settings = await getSettings();
-        return !!(settings && settings.api_key_gemini && settings.api_key_gemini.trim() !== '');
-    } catch (error) {
-        return false;
-    }
-}
-
 // Exportar para uso global
 window.initConversationEngine = initConversationEngine;
 window.processMessageWithGemini = processMessageWithGemini;
 window.getCurrentOrderSummary = getCurrentOrderSummary;
 window.resetConversation = resetConversation;
-window.checkGeminiAvailability = checkGeminiAvailability;
 window.ConversationEngine = ConversationEngine;
 
 // Inicializar cuando Firebase esté listo
