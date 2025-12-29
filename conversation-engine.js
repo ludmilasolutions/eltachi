@@ -92,7 +92,7 @@ Ejemplo correcto:
 "Perfecto, una hamburguesa y unas papas."
 
 Ejemplo incorrecto:
-"¿La hamburguesa la querés completa?"
+"¿La hamburguesa la querés completo?"
 
 🧂 CAMBIOS Y ADEREZOS (SOLO SI EL CLIENTE LOS PIDE)
 
@@ -116,6 +116,7 @@ Ejemplo:
 "Entonces serían:
 1 hamburguesa sin tomate
 1 hamburguesa común
+1 papas fritas
 ¿Está bien así?"
 
 📄 RESUMEN FINAL (OBLIGATORIO)
@@ -180,6 +181,25 @@ Tiempo estimado (si existe)
 Ejemplo:
 "Tu pedido TACHI-000123 está en preparación.
 Te avisamos cuando esté listo 👌"
+
+🍔 PRODUCTOS GENÉRICOS (NUEVA REGLA)
+
+Si el cliente pide un producto genérico (ej: "hamburguesa", "papas", "bebida") y hay más de una opción en esa categoría, mostrale las opciones disponibles de esa categoría y pedile que elija una.
+
+Si solo hay una opción en esa categoría, tomala como la que el cliente quiere.
+
+Ejemplo:
+Cliente: "Quiero una hamburguesa"
+Vos: "Tenemos estas hamburguesas:
+- Hamburguesa Clásica: $1200 (Carne 150g, queso, lechuga, tomate, cebolla y aderezo especial)
+- Hamburguesa Especial: $1500 (Doble carne, doble queso, bacon, huevo)
+
+¿Cuál querés?"
+
+Cliente: "Quiero una hamburguesa clásica"
+Vos: "Perfecto, hamburguesa clásica. ¿Algo más?"
+
+Usá siempre los nombres exactos de los productos que te proporciono en la lista de productos.
 
 ❌ COSAS PROHIBIDAS ABSOLUTAMENTE
 
@@ -266,11 +286,14 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             return this.settings.mensaje_cerrado;
         }
         
-        // Agregar al historial
+        // Agregar al historial ANTES de procesar
         this.conversationHistory.push({
             role: 'user',
             parts: [{ text: userMessage }]
         });
+        
+        // Limitar historial
+        this.trimConversationHistory();
         
         // Verificar si es un ID de pedido
         const orderIdMatch = userMessage.match(/TACHI-\d{6}/i);
@@ -285,7 +308,7 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             // Llamar a Gemini API
             const response = await this.callGeminiAPI(userMessage);
             
-            // Agregar respuesta al historial
+            // Agregar respuesta al historial DESPUÉS de obtenerla
             this.conversationHistory.push({
                 role: 'model',
                 parts: [{ text: response }]
@@ -297,7 +320,13 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             return response;
         } catch (error) {
             console.error('Error procesando mensaje con Gemini:', error);
-            return this.getFallbackResponse(userMessage);
+            // Respuesta de fallback
+            const fallbackResponse = this.getFallbackResponse(userMessage);
+            this.conversationHistory.push({
+                role: 'model',
+                parts: [{ text: fallbackResponse }]
+            });
+            return fallbackResponse;
         }
     }
     
@@ -312,13 +341,33 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         const model = 'gemini-2.5-flash';
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         
+        // Construir el historial de conversación para Gemini
+        let conversationHistoryText = '';
+        if (this.conversationHistory.length > 0) {
+            this.conversationHistory.forEach(msg => {
+                const role = msg.role === 'user' ? 'Cliente' : 'Vendedor';
+                conversationHistoryText += `${role}: ${msg.parts[0].text}\n\n`;
+            });
+        }
+        
+        const systemPrompt = this.generateSystemPrompt();
+        
+        const fullPrompt = `${systemPrompt}
+
+HISTORIAL DE CONVERSACIÓN ANTERIOR:
+${conversationHistoryText}
+
+ÚLTIMO MENSAJE DEL CLIENTE: "${userMessage}"
+
+Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conversación donde quedó, y usa los nombres exactos de los productos):`;
+        
         // FORMATO CORRECTO según documentación de Google
         const payload = {
             contents: [
                 {
                     parts: [
                         { 
-                            text: this.generateSystemPrompt() + `\n\nCliente dice: "${userMessage}"\n\nTu respuesta como vendedor de EL TACHI (sigue todas las reglas):`
+                            text: fullPrompt
                         }
                     ]
                 }
@@ -413,7 +462,34 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         this.products.forEach(product => {
             const productNameLower = product.nombre.toLowerCase();
             
+            // Verificar si alguna palabra del nombre del producto está en el mensaje
+            const productWords = productNameLower.split(' ');
+            let found = false;
+            
+            // Si el mensaje contiene el nombre completo del producto, es una coincidencia fuerte
             if (lowerMessage.includes(productNameLower)) {
+                found = true;
+            } else {
+                // Si no, verificar si todas las palabras del producto están en el mensaje (en cualquier orden)
+                // Esto es más flexible
+                const allWordsFound = productWords.every(word => lowerMessage.includes(word));
+                if (allWordsFound) {
+                    found = true;
+                } else if (productWords.length > 1) {
+                    // Si el producto tiene más de una palabra, permitir que el cliente use la primera palabra (ej: "hamburguesa" para "hamburguesa clásica")
+                    // Pero solo si no hay otro producto que empiece con la misma palabra
+                    const firstWord = productWords[0];
+                    const otherProductsWithSameFirstWord = this.products.filter(p => 
+                        p.id !== product.id && 
+                        p.nombre.toLowerCase().startsWith(firstWord)
+                    );
+                    if (otherProductsWithSameFirstWord.length === 0 && lowerMessage.includes(firstWord)) {
+                        found = true;
+                    }
+                }
+            }
+            
+            if (found) {
                 let quantity = 1;
                 const quantityMatch = message.match(/(\d+)\s*/);
                 if (quantityMatch) {
@@ -483,7 +559,9 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
     getFallbackResponse(userMessage) {
         const lowerMessage = userMessage.toLowerCase();
         
-        if (lowerMessage.includes('hola') || lowerMessage.includes('buenas')) {
+        // Solo mostrar menú en el primer mensaje
+        if (this.conversationHistory.length <= 2 && 
+            (lowerMessage.includes('hola') || lowerMessage.includes('buenas'))) {
             return `¡Hola! 👋 Soy la atención de EL TACHI.\n\n${this.generateSimpleMenu()}\n\nTiempo estimado: ${this.settings.tiempo_base_estimado} minutos\nEnvío: $${this.settings.precio_envio}\nRetiro: ${this.settings.retiro_habilitado ? 'Sí' : 'No'}\n\nSi necesitás cambiar algo del pedido, avisame.`;
         }
         
@@ -531,7 +609,12 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             }
         }
         
-        return 'Entendido. ¿Algo más que quieras agregar a tu pedido?';
+        // Respuesta genérica mejorada
+        if (this.currentOrder.items.length > 0) {
+            return '¿Algo más que quieras agregar a tu pedido?';
+        } else {
+            return '¿Qué te gustaría ordenar?';
+        }
     }
     
     // Generar menú simple
@@ -746,6 +829,14 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
                    lowerMessage.includes('retiro') ||
                    lowerMessage.includes('domicilio'))) {
             this.conversationStage = 'confirming';
+        }
+    }
+    
+    // Limitar el tamaño del historial para no exceder tokens
+    trimConversationHistory() {
+        const maxHistory = 10; // Mantener solo los últimos 10 intercambios
+        if (this.conversationHistory.length > maxHistory * 2) {
+            this.conversationHistory = this.conversationHistory.slice(-maxHistory * 2);
         }
     }
     
