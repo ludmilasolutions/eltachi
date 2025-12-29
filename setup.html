@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup EL TACHI - Inicialización desde Navegador</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .logo-circle {
+            width: 100px;
+            height: 100px;
+            background: #f59e0b;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #1e40af;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+        
+        .step {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .step-number {
+            display: inline-block;
+            background: #f59e0b;
+            color: #1e40af;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 36px;
+            font-weight: bold;
+            margin-right: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .step-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            margin: 16px 0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .button {
+            display: inline-block;
+            background: #f59e0b;
+            color: #1e40af;
+            border: none;
+            border-radius: 12px;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: transform 0.2s;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .error {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .status {
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-top: 16px;
+            display: none;
+        }
+        
+        .status.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .note {
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .note strong {
+            color: #f59e0b;
+        }
+    </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-circle">T</div>
+            <h1>EL TACHI</h1>
+            <p class="subtitle">Script de Inicialización - SIN CONSOLA</p>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-title">Configurar Firebase</div>
+            <p>Reemplaza estos valores con TU configuración de Firebase:</p>
+            
+            <div class="code-block" id="firebaseConfig">
+// REEMPLAZA ESTOS VALORES
+const firebaseConfig = {
+    apiKey: "TU_API_KEY_AQUI",
+    authDomain: "TU_PROYECTO.firebaseapp.com",
+    projectId: "TU_PROYECTO",
+    storageBucket: "TU_PROYECTO.appspot.com",
+    messagingSenderId: "TU_SENDER_ID",
+    appId: "TU_APP_ID"
+};</div>
+            
+            <button class="button" onclick="copyFirebaseConfig()">📋 Copiar Plantilla</button>
+            
+            <div class="note">
+                <strong>¿Dónde consigo estos datos?</strong><br>
+                1. Ve a <a href="https://console.firebase.google.com" target="_blank" style="color: #f59e0b;">console.firebase.google.com</a><br>
+                2. Haz clic en tu proyecto "EL-TACHI-Rotisería"<br>
+                3. Haz clic en ⚙️ → Configuración del proyecto<br>
+                4. Haz clic en "Aplicaciones web" (</>)<br>
+                5. Copia los valores que aparecen
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-title">Configurar API Key de Gemini</div>
+            <p>Obtén tu API Key de Google AI Studio:</p>
+            
+            <div class="code-block">
+1. Ve a: <a href="https://makersuite.google.com/app/apikey" target="_blank" style="color: #f59e0b;">https://makersuite.google.com/app/apikey</a>
+2. Inicia sesión con tu cuenta Google
+3. Haz clic en "Crear API Key"
+4. Ponle nombre: "EL-TACHI-Gemini"
+5. Copia la clave generada</div>
+            
+            <button class="button" onclick="copyGeminiInstructions()">📋 Copiar Instrucciones</button>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-title">Crear Usuario Admin</div>
+            <p>Configura el usuario administrador del sistema:</p>
+            
+            <div class="code-block">
+Email: admin@eltachi.com
+Contraseña: AdminTachi123! (cambiala después)</div>
+            
+            <button class="button" onclick="createAdminUser()">👑 Crear Usuario Admin</button>
+            
+            <div class="status" id="userStatus"></div>
+            
+            <div class="note">
+                <strong>Importante:</strong> Este usuario se crea en Firebase Authentication.
+                Después de iniciar sesión por primera vez, cambia la contraseña desde el panel admin.
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-title">Inicializar Base de Datos</div>
+            <p>Este script creará todas las colecciones necesarias:</p>
+            
+            <button class="button" onclick="initializeDatabase()">🚀 Inicializar Base de Datos</button>
+            
+            <div class="status" id="dbStatus"></div>
+            
+            <div class="note">
+                Se crearán:
+                <strong>settings</strong> (configuración),
+                <strong>products</strong> (4 productos de ejemplo),
+                <strong>categories</strong> (6 categorías),
+                <strong>orders</strong> (estructura vacía)
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-title">Probar el Sistema</div>
+            <p>Una vez completados todos los pasos:</p>
+            
+            <button class="button success" onclick="window.open('/', '_blank')">📱 Abrir App Cliente</button>
+            <button class="button success" onclick="window.open('/admin.html', '_blank')">🖥️ Abrir Panel Admin</button>
+            
+            <div class="note">
+                <strong>Credenciales para probar:</strong><br>
+                Email: admin@eltachi.com<br>
+                Contraseña: AdminTachi123!
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuración de Firebase - REEMPLAZAR CON TUS DATOS
+        const firebaseConfig = {
+            apiKey: "AIzaSyTUAhDmUqX9Q-3MZ8o8f7qWlPkLmNOPQRST",
+            authDomain: "el-tachi-rotiseria.firebaseapp.com",
+            projectId: "el-tachi-rotiseria",
+            storageBucket: "el-tachi-rotiseria.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890abcdef"
+        };
+        
+        // Inicializar Firebase
+        try {
+            firebase.initializeApp(firebaseConfig);
+            console.log("Firebase inicializado");
+        } catch (error) {
+            console.error("Error inicializando Firebase:", error);
+        }
+        
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        // Copiar configuración de Firebase
+        function copyFirebaseConfig() {
+            const configText = document.getElementById('firebaseConfig').textContent;
+            navigator.clipboard.writeText(configText).then(() => {
+                alert('Configuración copiada al portapapeles. Ahora reemplaza los valores con los tuyos.');
+            });
+        }
+        
+        // Copiar instrucciones de Gemini
+        function copyGeminiInstructions() {
+            const text = "1. Ve a: https://makersuite.google.com/app/apikey\n2. Inicia sesión con tu cuenta Google\n3. Haz clic en 'Crear API Key'\n4. Ponle nombre: 'EL-TACHI-Gemini'\n5. Copia la clave generada";
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Instrucciones copiadas al portapapeles.');
+            });
+        }
+        
+        // Crear usuario admin
+        async function createAdminUser() {
+            const status = document.getElementById('userStatus');
+            status.className = 'status';
+            status.textContent = 'Creando usuario...';
+            
+            try {
+                // Primero intentar crear el usuario
+                const userCredential = await auth.createUserWithEmailAndPassword(
+                    'admin@eltachi.com',
+                    'AdminTachi123!'
+                );
+                
+                status.className = 'status success show';
+                status.textContent = '✅ Usuario admin creado exitosamente!';
+                
+                // Actualizar el display name
+                await userCredential.user.updateProfile({
+                    displayName: 'Administrador EL TACHI'
+                });
+                
+                // Cerrar sesión para que el admin inicie manualmente
+                setTimeout(() => {
+                    auth.signOut();
+                }, 2000);
+                
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    status.className = 'status success show';
+                    status.textContent = '✅ El usuario admin ya existe. Perfecto!';
+                } else {
+                    status.className = 'status error show';
+                    status.textContent = `❌ Error: ${error.message}`;
+                }
+            }
+        }
+        
+        // Inicializar base de datos
+        async function initializeDatabase() {
+            const status = document.getElementById('dbStatus');
+            status.className = 'status';
+            status.textContent = 'Inicializando base de datos...';
+            
+            try {
+                // Verificar si ya existe configuración
+                const settingsRef = db.collection('settings').doc('config');
+                const settingsDoc = await settingsRef.get();
+                
+                if (!settingsDoc.exists) {
+                    // Crear configuración inicial
+                    await settingsRef.set({
+                        nombre_local: "EL TACHI Rotisería",
+                        horarios_por_dia: {
+                            lunes: "11:00 - 23:00",
+                            martes: "11:00 - 23:00",
+                            miércoles: "11:00 - 23:00",
+                            jueves: "11:00 - 23:00",
+                            viernes: "11:00 - 00:00",
+                            sábado: "11:00 - 00:00",
+                            domingo: "11:00 - 23:00"
+                        },
+                        abierto: true,
+                        mensaje_cerrado: "Lo sentimos, estamos cerrados en este momento. Volvemos mañana a las 11:00.",
+                        precio_envio: 300,
+                        tiempo_base_estimado: 30,
+                        retiro_habilitado: true,
+                        colores_marca: {
+                            azul: "#1e40af",
+                            amarillo: "#f59e0b"
+                        },
+                        telefono_whatsapp: "5491122334455",
+                        api_key_gemini: ""
+                    });
+                    status.textContent += '\n✅ Configuración creada';
+                } else {
+                    status.textContent += '\n✅ La configuración ya existe';
+                }
+                
+                // Verificar productos
+                const productsSnapshot = await db.collection('products').get();
+                if (productsSnapshot.empty) {
+                    // Crear productos de ejemplo
+                    const productosIniciales = [
+                        {
+                            id: "hamburguesa-clasica",
+                            nombre: "Hamburguesa Clásica",
+                            descripcion: "Carne 150g, queso, lechuga, tomate, cebolla y aderezo especial",
+                            precio: 1200,
+                            disponible: true,
+                            categoria: "hamburguesas",
+                            aderezos_disponibles: ["Sin cebolla", "Sin tomate", "Extra queso", "Picante"],
+                            precios_extra_aderezos: {
+                                "Extra queso": 100,
+                                "Picante": 50
+                            }
+                        },
+                        {
+                            id: "papas-fritas",
+                            nombre: "Papas Fritas",
+                            descripcion: "Porción grande con sal y perejil",
+                            precio: 800,
+                            disponible: true,
+                            categoria: "acompañamientos",
+                            aderezos_disponibles: ["Con cheddar", "Con bacon"],
+                            precios_extra_aderezos: {
+                                "Con cheddar": 150,
+                                "Con bacon": 200
+                            }
+                        },
+                        {
+                            id: "empanadas",
+                            nombre: "Empanadas (docena)",
+                            descripcion: "12 empanadas (carne, pollo, jamón y queso)",
+                            precio: 2200,
+                            disponible: true,
+                            categoria: "entradas",
+                            aderezos_disponibles: [],
+                            precios_extra_aderezos: {}
+                        },
+                        {
+                            id: "gaseosa",
+                            nombre: "Gaseosa 500ml",
+                            descripcion: "Coca-Cola, Sprite o Fanta",
+                            precio: 400,
+                            disponible: true,
+                            categoria: "bebidas",
+                            aderezos_disponibles: [],
+                            precios_extra_aderezos: {}
+                        }
+                    ];
+                    
+                    for (const producto of productosIniciales) {
+                        await db.collection('products').doc(producto.id).set(producto);
+                    }
+                    status.textContent += '\n✅ 4 productos creados';
+                } else {
+                    status.textContent += `\n✅ Ya existen ${productsSnapshot.size} productos`;
+                }
+                
+                // Verificar categorías
+                const categoriesSnapshot = await db.collection('categories').get();
+                if (categoriesSnapshot.empty) {
+                    const categoriasIniciales = [
+                        { id: "hamburguesas", nombre: "Hamburguesas", orden: 1 },
+                        { id: "pizzas", nombre: "Pizzas", orden: 2 },
+                        { id: "entradas", nombre: "Entradas", orden: 3 },
+                        { id: "acompañamientos", nombre: "Acompañamientos", orden: 4 },
+                        { id: "bebidas", nombre: "Bebidas", orden: 5 },
+                        { id: "postres", nombre: "Postres", orden: 6 }
+                    ];
+                    
+                    for (const categoria of categoriasIniciales) {
+                        await db.collection('categories').doc(categoria.id).set(categoria);
+                    }
+                    status.textContent += '\n✅ 6 categorías creadas';
+                } else {
+                    status.textContent += `\n✅ Ya existen ${categoriesSnapshot.size} categorías`;
+                }
+                
+                // Crear contador para pedidos
+                const counterRef = db.collection('counters').doc('orders');
+                const counterDoc = await counterRef.get();
+                
+                if (!counterDoc.exists) {
+                    await counterRef.set({ lastNumber: 0 });
+                    status.textContent += '\n✅ Contador de pedidos creado';
+                }
+                
+                status.className = 'status success show';
+                status.textContent += '\n\n🎉 ¡Base de datos inicializada exitosamente!';
+                
+            } catch (error) {
+                status.className = 'status error show';
+                status.textContent = `❌ Error: ${error.message}`;
+                console.error("Error inicializando DB:", error);
+            }
+        }
+    </script>
+</body>
+</html>

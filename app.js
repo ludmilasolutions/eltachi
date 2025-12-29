@@ -1,0 +1,367 @@
+// Estado global de la aplicación
+const appState = {
+    conversation: [],
+    cart: [],
+    currentOrder: null,
+    isStoreOpen: true,
+    settings: null,
+    products: [],
+    categories: [],
+    geminiAPIKey: "",
+    isProcessing: false
+};
+
+// Elementos DOM
+const chatContainer = document.getElementById('chatContainer');
+const messageInput = document.getElementById('messageInput');
+const sendButton = document.getElementById('sendButton');
+const viewMenuButton = document.getElementById('viewMenuButton');
+const initialLoading = document.getElementById('initialLoading');
+
+// Inicializar aplicación
+async function initializeApp() {
+    try {
+        // Verificar conexión Firebase
+        const isConnected = await testFirebaseConnection();
+        if (!isConnected) {
+            showError("No se pudo conectar a la base de datos. Recarga la página.");
+            return;
+        }
+        
+        // Cargar configuración
+        appState.settings = await getSettings();
+        if (!appState.settings) {
+            showError("Error cargando configuración");
+            return;
+        }
+        
+        // Verificar si el local está abierto
+        appState.isStoreOpen = appState.settings.abierto;
+        appState.geminiAPIKey = appState.settings.api_key_gemini;
+        
+        // Cargar productos y categorías
+        await loadProductsAndCategories();
+        
+        // Ocultar loading inicial
+        if (initialLoading) {
+            initialLoading.style.display = 'none';
+        }
+        
+        // Mostrar mensaje inicial de la IA
+        if (appState.isStoreOpen) {
+            await showInitialIAMessage();
+        } else {
+            addMessageToChat('ai', appState.settings.mensaje_cerrado);
+        }
+        
+        // Configurar eventos
+        setupEventListeners();
+        
+        console.log("Aplicación inicializada correctamente");
+    } catch (error) {
+        console.error("Error inicializando app:", error);
+        showError("Error al cargar la aplicación. Intenta recargar la página.");
+    }
+}
+
+// Cargar productos y categorías
+async function loadProductsAndCategories() {
+    try {
+        // Cargar productos
+        const productsSnapshot = await db.collection('products')
+            .where('disponible', '==', true)
+            .get();
+        
+        appState.products = productsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        // Cargar categorías
+        const categoriesSnapshot = await db.collection('categories')
+            .orderBy('orden')
+            .get();
+        
+        appState.categories = categoriesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        console.log(`Cargados ${appState.products.length} productos y ${appState.categories.length} categorías`);
+    } catch (error) {
+        console.error("Error cargando productos:", error);
+    }
+}
+
+// Mostrar mensaje inicial de la IA
+async function showInitialIAMessage() {
+    const productsByCategory = groupProductsByCategory();
+    
+    let message = `¡Hola! 👋 Soy la atención de *EL TACHI*.\n\n`;
+    message += `Te muestro nuestra carta:\n\n`;
+    
+    // Mostrar productos por categoría
+    appState.categories.forEach(category => {
+        const products = productsByCategory[category.id];
+        if (products && products.length > 0) {
+            message += `*${category.nombre.toUpperCase()}*\n`;
+            products.forEach(product => {
+                message += `• ${product.nombre} - $${product.precio}\n`;
+                if (product.descripcion) {
+                    message += `  ${product.descripcion}\n`;
+                }
+            });
+            message += `\n`;
+        }
+    });
+    
+    message += `\n*Información importante:*\n`;
+    message += `⏰ Tiempo estimado: ${appState.settings.tiempo_base_estimado} minutos\n`;
+    message += `🚚 Envío a domicilio: $${appState.settings.precio_envio}\n`;
+    
+    if (appState.settings.retiro_habilitado) {
+        message += `🏪 Retiro en local: SIN CARGO\n`;
+    }
+    
+    message += `\n_Si necesitás cambiar algo del pedido, avisame_`;
+    
+    addMessageToChat('ai', message);
+    
+    // Mostrar botón para ver menú completo
+    viewMenuButton.classList.add('show');
+}
+
+// Agrupar productos por categoría
+function groupProductsByCategory() {
+    return appState.products.reduce((acc, product) => {
+        if (!acc[product.categoria]) {
+            acc[product.categoria] = [];
+        }
+        acc[product.categoria].push(product);
+        return acc;
+    }, {});
+}
+
+// Configurar event listeners
+function setupEventListeners() {
+    // Enviar mensaje al hacer clic
+    sendButton.addEventListener('click', sendMessage);
+    
+    // Enviar mensaje al presionar Enter
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // Ver menú completo
+    viewMenuButton.addEventListener('click', showFullMenu);
+    
+    // Auto-enfoque en el input
+    messageInput.focus();
+}
+
+// Enviar mensaje del usuario
+async function sendMessage() {
+    const message = messageInput.value.trim();
+    
+    if (!message || appState.isProcessing) return;
+    
+    // Agregar mensaje del usuario al chat
+    addMessageToChat('user', message);
+    messageInput.value = '';
+    
+    // Procesar con la IA
+    appState.isProcessing = true;
+    sendButton.disabled = true;
+    messageInput.disabled = true;
+    
+    try {
+        // Detectar si es un ID de pedido (ej: TACHI-000123)
+        if (message.match(/TACHI-\d{6}/i)) {
+            await handleOrderStatusCheck(message.toUpperCase());
+        } else {
+            // Procesar con Gemini
+            await processWithGemini(message);
+        }
+    } catch (error) {
+        console.error("Error procesando mensaje:", error);
+        addMessageToChat('ai', "Ups, hubo un error procesando tu mensaje. ¿Podrías intentarlo de nuevo?");
+    } finally {
+        appState.isProcessing = false;
+        sendButton.disabled = false;
+        messageInput.disabled = false;
+        messageInput.focus();
+    }
+}
+
+// Procesar mensaje con Gemini
+async function processWithGemini(message) {
+    // Aquí iría la integración con Gemini Pro 2.5
+    // Por ahora simulamos una respuesta
+    const response = await simulateGeminiResponse(message);
+    addMessageToChat('ai', response);
+}
+
+// Simular respuesta de Gemini (esto se reemplaza con la API real)
+async function simulateGeminiResponse(message) {
+    // Simular delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Respuestas simuladas basadas en el mensaje
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('hola') || lowerMessage.includes('buenas')) {
+        return '¡Hola! ¿En qué te puedo ayudar hoy?';
+    } else if (lowerMessage.includes('menu') || lowerMessage.includes('carta')) {
+        return showFullMenuText();
+    } else if (lowerMessage.includes('hamburguesa')) {
+        if (lowerMessage.includes('sin') || lowerMessage.includes('sin tomate') || lowerMessage.includes('sin cebolla')) {
+            const change = lowerMessage.includes('sin tomate') ? 'sin tomate' : 'sin cebolla';
+            return `Perfecto, hamburguesa ${change}. ¿Algo más?`;
+        }
+        return 'Perfecto, una hamburguesa. ¿Algo más?';
+    } else if (lowerMessage.includes('papas')) {
+        return 'Genial, papas fritas. ¿Algo más?';
+    } else if (lowerMessage.includes('nada') || lowerMessage.includes('listo') || lowerMessage.includes('eso es todo')) {
+        return showOrderSummary();
+    } else {
+        return 'Entendido. ¿Algo más que quieras agregar al pedido?';
+    }
+}
+
+// Mostrar menú completo como texto
+function showFullMenuText() {
+    let menuText = '*NUESTRA CARTA COMPLETA*\n\n';
+    
+    appState.categories.forEach(category => {
+        const products = appState.products.filter(p => p.categoria === category.id);
+        if (products.length > 0) {
+            menuText += `*${category.nombre.toUpperCase()}*\n`;
+            products.forEach(product => {
+                menuText += `• ${product.nombre} - $${product.precio}\n`;
+                if (product.descripcion) {
+                    menuText += `  ${product.descripcion}\n`;
+                }
+            });
+            menuText += `\n`;
+        }
+    });
+    
+    return menuText;
+}
+
+// Mostrar menú completo en el chat
+function showFullMenu() {
+    const menuText = showFullMenuText();
+    addMessageToChat('ai', menuText);
+    viewMenuButton.classList.remove('show');
+}
+
+// Mostrar resumen del pedido
+function showOrderSummary() {
+    if (appState.cart.length === 0) {
+        return 'No hay productos en tu pedido todavía. ¿Qué te gustaría ordenar?';
+    }
+    
+    let summary = '*RESUMEN DE TU PEDIDO*\n\n';
+    let total = 0;
+    
+    appState.cart.forEach(item => {
+        summary += `• ${item.nombre} x${item.cantidad}`;
+        if (item.modificaciones) {
+            summary += ` (${item.modificaciones})`;
+        }
+        summary += ` - $${item.precio * item.cantidad}\n`;
+        total += item.precio * item.cantidad;
+    });
+    
+    summary += `\n*Total: $${total}*\n\n`;
+    
+    if (appState.settings.retiro_habilitado) {
+        summary += '¿Es para envío o retiro en el local?';
+    } else {
+        summary += 'Para envío a domicilio. Necesito tu dirección.';
+    }
+    
+    return summary;
+}
+
+// Manejar consulta de estado de pedido
+async function handleOrderStatusCheck(orderId) {
+    try {
+        const orderRef = db.collection('orders').doc(orderId);
+        const orderDoc = await orderRef.get();
+        
+        if (!orderDoc.exists) {
+            addMessageToChat('ai', `No encontré el pedido ${orderId}. Verificá el número e intentá de nuevo.`);
+            return;
+        }
+        
+        const order = orderDoc.data();
+        let response = `*Pedido ${orderId}*\n`;
+        response += `Estado: ${order.estado}\n`;
+        
+        if (order.tiempo_estimado_actual) {
+            response += `Tiempo estimado: ${order.tiempo_estimado_actual} minutos\n`;
+        }
+        
+        if (order.estado === 'Listo') {
+            response += '\n¡Tu pedido está listo para retirar!';
+        }
+        
+        addMessageToChat('ai', response);
+    } catch (error) {
+        console.error("Error consultando pedido:", error);
+        addMessageToChat('ai', 'Hubo un error consultando el estado. Intentá de nuevo más tarde.');
+    }
+}
+
+// Agregar mensaje al chat
+function addMessageToChat(sender, text) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}-message`;
+    messageDiv.innerHTML = formatMessageText(text);
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    // Guardar en historial
+    appState.conversation.push({ sender, text, timestamp: new Date() });
+}
+
+// Formatear texto del mensaje
+function formatMessageText(text) {
+    // Convertir negritas (*texto*)
+    let formatted = text.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+    
+    // Convertir saltos de línea
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    // Convertir guiones a listas
+    formatted = formatted.replace(/^•\s+/gm, '• ');
+    
+    return formatted;
+}
+
+// Mostrar error
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'message ai-message';
+    errorDiv.style.background = '#fee2e2';
+    errorDiv.style.color = '#991b1b';
+    errorDiv.style.border = '1px solid #fca5a5';
+    errorDiv.innerHTML = `⚠️ ${message}`;
+    
+    chatContainer.appendChild(errorDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', initializeApp);
+
+// Exportar para uso global
+window.appState = appState;
+window.addMessageToChat = addMessageToChat;
+window.showFullMenu = showFullMenu;

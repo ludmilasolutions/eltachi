@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - EL TACHI</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        
+        :root {
+            --azul: #1e40af;
+            --azul-claro: #3b82f6;
+            --amarillo: #f59e0b;
+            --amarillo-claro: #fbbf24;
+            --gris: #6b7280;
+            --gris-claro: #f3f4f6;
+            --blanco: #ffffff;
+            --negro: #111827;
+            --verde: #10b981;
+            --rojo: #ef4444;
+        }
+        
+        body {
+            background: var(--gris-claro);
+            color: var(--negro);
+        }
+        
+        /* Login Screen */
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            background: var(--amarillo);
+            border-radius: 50%;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: var(--azul);
+        }
+        
+        .login-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--azul);
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 16px;
+            margin: 12px 0;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .login-input:focus {
+            border-color: var(--azul);
+            outline: none;
+        }
+        
+        .login-button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: transform 0.2s;
+        }
+        
+        .login-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .login-error {
+            color: var(--rojo);
+            margin-top: 12px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        /* Admin Panel */
+        .admin-container {
+            display: none;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .admin-nav {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 16px;
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .nav-button {
+            padding: 12px 24px;
+            border: none;
+            background: var(--gris-claro);
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+        
+        .nav-button.active {
+            background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
+            color: white;
+        }
+        
+        .admin-content {
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--azul);
+        }
+        
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--negro);
+        }
+        
+        .card-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--azul);
+        }
+        
+        .card-subtitle {
+            color: var(--gris);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-recibido {
+            background: #dbeafe;
+            color: var(--azul);
+        }
+        
+        .status-preparacion {
+            background: #fef3c7;
+            color: var(--amarillo);
+        }
+        
+        .status-listo {
+            background: #dcfce7;
+            color: var(--verde);
+        }
+        
+        .status-entregado {
+            background: #f3f4f6;
+            color: var(--gris);
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: var(--gris-claro);
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--negro);
+        }
+        
+        td {
+            padding: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .action-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 8px;
+            transition: all 0.2s;
+        }
+        
+        .button-whatsapp {
+            background: #25d366;
+            color: white;
+        }
+        
+        .button-edit {
+            background: var(--amarillo);
+            color: var(--azul);
+        }
+        
+        .button-delete {
+            background: var(--rojo);
+            color: white;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--negro);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-input:focus {
+            border-color: var(--azul);
+            outline: none;
+        }
+        
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        .button-primary {
+            background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .button-secondary {
+            background: var(--gris-claro);
+            color: var(--negro);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: var(--verde);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .color-picker {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .cards-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .admin-nav {
+                padding: 12px;
+            }
+            
+            .nav-button {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+            
+            .admin-content {
+                padding: 16px;
+            }
+            
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-logo">T</div>
+        <h1 class="login-title">EL TACHI</h1>
+        <p class="login-subtitle">Panel de Administración</p>
+        
+        <input type="email" class="login-input" id="emailInput" placeholder="Correo electrónico">
+        <input type="password" class="login-input" id="passwordInput" placeholder="Contraseña">
+        
+        <button class="login-button" id="loginButton">Iniciar Sesión</button>
+        
+        <div class="login-error" id="loginError">
+            Error al iniciar sesión. Verifica tus credenciales.
+        </div>
+    </div>
+    
+    <!-- Admin Panel -->
+    <div class="admin-container" id="adminContainer">
+        <div class="admin-header">
+            <div>
+                <h1>EL TACHI - Panel Admin</h1>
+                <p id="storeStatus">Cargando...</p>
+            </div>
+            <button class="button-secondary" id="logoutButton">Cerrar Sesión</button>
+        </div>
+        
+        <div class="admin-nav">
+            <button class="nav-button active" data-tab="dashboard">📊 Dashboard</button>
+            <button class="nav-button" data-tab="orders">📦 Pedidos</button>
+            <button class="nav-button" data-tab="products">🍔 Productos</button>
+            <button class="nav-button" data-tab="categories">🗂 Categorías</button>
+            <button class="nav-button" data-tab="settings">⚙️ Configuración</button>
+            <button class="nav-button" data-tab="reports">📈 Reportes</button>
+        </div>
+        
+        <div class="admin-content">
+            <!-- Dashboard -->
+            <div class="tab-content active" id="dashboardTab">
+                <h2 class="section-title">Dashboard</h2>
+                
+                <div class="cards-container">
+                    <div class="card">
+                        <h3 class="card-title">Pedidos Hoy</h3>
+                        <div class="card-value" id="ordersToday">0</div>
+                        <p class="card-subtitle">Total de pedidos recibidos hoy</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-title">Ventas Hoy</h3>
+                        <div class="card-value" id="salesToday">$0</div>
+                        <p class="card-subtitle">Ingresos totales de hoy</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-title">Pedidos Activos</h3>
+                        <div class="card-value" id="activeOrders">0</div>
+                        <p class="card-subtitle">En preparación o listos</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-title">Estado Local</h3>
+                        <div class="card-value" id="storeStatusValue">Cargando...</div>
+                        <p class="card-subtitle">
+                            <label class="switch">
+                                <input type="checkbox" id="storeToggle">
+                                <span class="slider"></span>
+                            </label>
+                            <span id="storeToggleLabel">Abierto</span>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Pedidos por Hora</h3>
+                    <canvas id="ordersChart" height="100"></canvas>
+                </div>
+                
+                <div class="cards-container">
+                    <div class="card">
+                        <h3 class="card-title">Pedidos Recientes</h3>
+                        <div id="recentOrdersList">
+                            Cargando pedidos recientes...
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-title">Productos Más Vendidos</h3>
+                        <div id="topProductsList">
+                            Cargando productos...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pedidos -->
+            <div class="tab-content" id="ordersTab">
+                <h2 class="section-title">Gestión de Pedidos</h2>
+                
+                <div class="table-container">
+                    <table id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>ID Pedido</th>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Tiempo Est.</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <tr>
+                                <td colspan="7">Cargando pedidos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Productos -->
+            <div class="tab-content" id="productsTab">
+                <h2 class="section-title">Gestión de Productos</h2>
+                
+                <button class="button-primary" id="addProductButton">➕ Agregar Producto</button>
+                
+                <div class="cards-container" id="productsGrid">
+                    <div class="card">
+                        <p>Cargando productos...</p>
+                    </div>
+                </div>
+                
+                <!-- Formulario Producto (oculto inicialmente) -->
+                <div class="card" id="productForm" style="display: none;">
+                    <h3 class="card-title" id="productFormTitle">Nuevo Producto</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre del Producto</label>
+                        <input type="text" class="form-input" id="productName">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-input form-textarea" id="productDescription"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Precio ($)</label>
+                        <input type="number" class="form-input" id="productPrice" min="0" step="100">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Categoría</label>
+                        <select class="form-input" id="productCategory">
+                            <option value="">Seleccionar categoría...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="productAvailable"> Disponible
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Aderezos Disponibles (separados por coma)</label>
+                        <input type="text" class="form-input" id="productAderezos" placeholder="Sin cebolla, Sin tomate, Extra queso...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Precios Extra Aderezos (JSON)</label>
+                        <textarea class="form-input form-textarea" id="productAderezosPrices" placeholder='{"Extra queso": 100, "Picante": 50}'></textarea>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="button-primary" id="saveProductButton">Guardar Producto</button>
+                        <button class="button-secondary" id="cancelProductButton">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Categorías -->
+            <div class="tab-content" id="categoriesTab">
+                <h2 class="section-title">Gestión de Categorías</h2>
+                
+                <div class="cards-container" id="categoriesGrid">
+                    <!-- Las categorías se cargarán aquí -->
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Agregar Nueva Categoría</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre de la Categoría</label>
+                        <input type="text" class="form-input" id="categoryName" placeholder="Ej: Hamburguesas, Bebidas...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Orden de Visualización</label>
+                        <input type="number" class="form-input" id="categoryOrder" min="1" value="1">
+                    </div>
+                    
+                    <button class="button-primary" id="addCategoryButton">Agregar Categoría</button>
+                </div>
+            </div>
+            
+            <!-- Configuración -->
+            <div class="tab-content" id="settingsTab">
+                <h2 class="section-title">Configuración del Local</h2>
+                
+                <div class="card">
+                    <h3 class="card-title">Información Básica</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre del Local</label>
+                        <input type="text" class="form-input" id="storeName">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Teléfono WhatsApp</label>
+                        <input type="text" class="form-input" id="whatsappPhone" placeholder="5491122334455">
+                        <small>Formato: 549 + código área + número (sin + ni espacios)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">API Key Gemini</label>
+                        <input type="text" class="form-input" id="geminiApiKey">
+                        <small>Obtén tu clave en: <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Horarios</h3>
+                    
+                    <div id="hoursContainer">
+                        <!-- Los horarios se generarán dinámicamente -->
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Mensaje cuando está Cerrado</label>
+                        <textarea class="form-input form-textarea" id="closedMessage"></textarea>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Envíos y Retiro</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Precio de Envío ($)</label>
+                        <input type="number" class="form-input" id="deliveryPrice" min="0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Tiempo Base Estimado (minutos)</label>
+                        <input type="number" class="form-input" id="baseDeliveryTime" min="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="retiroEnabled"> Retiro en local habilitado
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Colores de la Marca</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Color Principal (Azul)</label>
+                        <input type="color" class="color-picker" id="colorPrimary" value="#1e40af">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Color Secundario (Amarillo)</label>
+                        <input type="color" class="color-picker" id="colorSecondary" value="#f59e0b">
+                    </div>
+                </div>
+                
+                <button class="button-primary" id="saveSettingsButton">Guardar Configuración</button>
+            </div>
+            
+            <!-- Reportes -->
+            <div class="tab-content" id="reportsTab">
+                <h2 class="section-title">Reportes y Estadísticas</h2>
+                
+                <div class="card">
+                    <h3 class="card-title">Generar Reporte</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Período</label>
+                        <select class="form-input" id="reportPeriod">
+                            <option value="today">Hoy</option>
+                            <option value="yesterday">Ayer</option>
+                            <option value="week">Esta Semana</option>
+                            <option value="month">Este Mes</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
+                    
+                    <div id="customDateRange" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Desde</label>
+                            <input type="date" class="form-input" id="reportDateFrom">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Hasta</label>
+                            <input type="date" class="form-input" id="reportDateTo">
+                        </div>
+                    </div>
+                    
+                    <button class="button-primary" id="generateReportButton">Generar Reporte</button>
+                    <button class="button-secondary" id="exportCSVButton">Exportar a CSV</button>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Resumen del Reporte</h3>
+                    <div id="reportSummary">
+                        Selecciona un período y genera el reporte.
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Gráfico de Ventas</h3>
+                    <canvas id="salesChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para detalles del pedido -->
+    <div id="orderModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-bottom: 20px;" id="modalOrderId"></h3>
+            <div id="modalOrderDetails"></div>
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button class="button-primary" id="closeModalButton">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script src="admin-app.js"></script>
+</body>
+</html>
