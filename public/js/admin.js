@@ -649,7 +649,87 @@ ${order.pedido_detallado || 'Sin detalles'}
         // Esta funcionalidad se implementará en la versión completa
     }
 }
+// Función global para login
+window.loginUser = async function() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const errorElement = document.getElementById('loginError');
+    
+    if (!email || !password) {
+        if (errorElement) {
+            errorElement.textContent = "Por favor completá email y contraseña";
+            errorElement.style.display = 'block';
+        }
+        return;
+    }
+    
+    try {
+        await firebase.auth().signInWithEmailAndPassword(email, password);
+        if (errorElement) errorElement.style.display = 'none';
+    } catch (error) {
+        if (errorElement) {
+            errorElement.textContent = getAuthErrorMessage(error.code);
+            errorElement.style.display = 'block';
+        }
+    }
+};
 
+// Función global para registro
+window.registerUser = async function() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const errorElement = document.getElementById('loginError');
+    
+    if (!email || !password) {
+        if (errorElement) {
+            errorElement.textContent = "Por favor completá email y contraseña";
+            errorElement.style.display = 'block';
+        }
+        return;
+    }
+    
+    if (password.length < 6) {
+        if (errorElement) {
+            errorElement.textContent = "La contraseña debe tener al menos 6 caracteres";
+            errorElement.style.display = 'block';
+        }
+        return;
+    }
+    
+    try {
+        await firebase.auth().createUserWithEmailAndPassword(email, password);
+        if (errorElement) errorElement.style.display = 'none';
+        
+        alert('✅ Administrador registrado exitosamente. Ahora podés iniciar sesión.');
+    } catch (error) {
+        if (errorElement) {
+            errorElement.textContent = getAuthErrorMessage(error.code);
+            errorElement.style.display = 'block';
+        }
+    }
+};
+
+// Función auxiliar para mensajes de error
+function getAuthErrorMessage(errorCode) {
+    const messages = {
+        'auth/invalid-email': 'Email inválido',
+        'auth/user-disabled': 'Usuario deshabilitado',
+        'auth/user-not-found': 'Usuario no encontrado',
+        'auth/wrong-password': 'Contraseña incorrecta',
+        'auth/email-already-in-use': 'El email ya está registrado',
+        'auth/weak-password': 'La contraseña es muy débil',
+        'auth/operation-not-allowed': 'Operación no permitida'
+    };
+    
+    return messages[errorCode] || 'Error desconocido. Intentá de nuevo.';
+}
+
+// Función global para logout
+window.logoutUser = function() {
+    firebase.auth().signOut().then(() => {
+        window.location.reload();
+    });
+};
 // Inicializar panel admin
 let adminPanel;
 
