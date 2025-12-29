@@ -12,6 +12,7 @@ class ConversationEngine {
             deliveryType: null
         };
         this.conversationStage = 'greeting';
+        this.pendingClarification = null; // Para manejar clarificaciones de productos
     }
     
     // Generar prompt para Gemini
@@ -88,11 +89,17 @@ NO ofrecés agregados
 NO ofrecés combos
 NO ofrecés cambios
 
-Ejemplo correcto:
-"Perfecto, una hamburguesa y unas papas."
+IMPORTANTE: Cuando el cliente pida un producto genérico (ej: "hamburguesa", "papas", "bebida"), 
+tenés que preguntarle cuál de las opciones disponibles quiere mostrando las opciones de esa categoría.
 
-Ejemplo incorrecto:
-"¿La hamburguesa la querés completo?"
+Ejemplo correcto:
+Cliente: "Quiero una hamburguesa"
+Vos: "Tenemos estas hamburguesas:
+- Hamburguesa Clásica: $1200
+- Hamburguesa Especial: $1500
+¿Cuál querés?"
+
+SOLO después de que el cliente especifique, confirmás el producto.
 
 🧂 CAMBIOS Y ADEREZOS (SOLO SI EL CLIENTE LOS PIDE)
 
@@ -116,7 +123,6 @@ Ejemplo:
 "Entonces serían:
 1 hamburguesa sin tomate
 1 hamburguesa común
-1 papas fritas
 ¿Está bien así?"
 
 📄 RESUMEN FINAL (OBLIGATORIO)
@@ -181,25 +187,6 @@ Tiempo estimado (si existe)
 Ejemplo:
 "Tu pedido TACHI-000123 está en preparación.
 Te avisamos cuando esté listo 👌"
-
-🍔 PRODUCTOS GENÉRICOS (NUEVA REGLA)
-
-Si el cliente pide un producto genérico (ej: "hamburguesa", "papas", "bebida") y hay más de una opción en esa categoría, mostrale las opciones disponibles de esa categoría y pedile que elija una.
-
-Si solo hay una opción en esa categoría, tomala como la que el cliente quiere.
-
-Ejemplo:
-Cliente: "Quiero una hamburguesa"
-Vos: "Tenemos estas hamburguesas:
-- Hamburguesa Clásica: $1200 (Carne 150g, queso, lechuga, tomate, cebolla y aderezo especial)
-- Hamburguesa Especial: $1500 (Doble carne, doble queso, bacon, huevo)
-
-¿Cuál querés?"
-
-Cliente: "Quiero una hamburguesa clásica"
-Vos: "Perfecto, hamburguesa clásica. ¿Algo más?"
-
-Usá siempre los nombres exactos de los productos que te proporciono en la lista de productos.
 
 ❌ COSAS PROHIBIDAS ABSOLUTAMENTE
 
@@ -286,6 +273,11 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             return this.settings.mensaje_cerrado;
         }
         
+        // Si hay una clarificación pendiente, procesarla primero
+        if (this.pendingClarification) {
+            return this.handleProductClarification(userMessage);
+        }
+        
         // Agregar al historial ANTES de procesar
         this.conversationHistory.push({
             role: 'user',
@@ -308,14 +300,25 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             // Llamar a Gemini API
             const response = await this.callGeminiAPI(userMessage);
             
-            // Agregar respuesta al historial DESPUÉS de obtenerla
-            this.conversationHistory.push({
-                role: 'model',
-                parts: [{ text: response }]
-            });
+            // Verificar si la respuesta indica que necesita clarificación
+            const needsClarification = this.checkIfNeedsClarification(userMessage, response);
+            if (needsClarification) {
+                this.pendingClarification = {
+                    category: needsClarification.category,
+                    originalMessage: userMessage
+                };
+            } else {
+                // Solo agregar al historial si no es clarificación
+                this.conversationHistory.push({
+                    role: 'model',
+                    parts: [{ text: response }]
+                });
+            }
             
             // Procesar para extraer información del pedido
-            await this.processOrderFromMessage(userMessage, response);
+            if (!needsClarification) {
+                await this.processOrderFromMessage(userMessage, response);
+            }
             
             return response;
         } catch (error) {
@@ -328,6 +331,121 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             });
             return fallbackResponse;
         }
+    }
+    
+    // Verificar si necesita clarificación de producto
+    checkIfNeedsClarification(userMessage, aiResponse) {
+        const lowerMessage = userMessage.toLowerCase();
+        
+        // Buscar categorías en el mensaje del usuario
+        const categories = this.getCategoriesFromMessage(lowerMessage);
+        
+        if (categories.length > 0) {
+            // Para cada categoría encontrada, verificar si hay múltiples productos
+            for (const category of categories) {
+                const productsInCategory = this.getProductsByCategory(category);
+                
+                // Si hay más de un producto en la categoría y el usuario no especificó cuál
+                if (productsInCategory.length > 1) {
+                    // Verificar si el usuario ya especificó un producto de esa categoría
+                    const specifiedProduct = this.getSpecifiedProductFromMessage(lowerMessage, productsInCategory);
+                    
+                    if (!specifiedProduct) {
+                        return {
+                            category: category,
+                            products: productsInCategory
+                        };
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    // Manejar clarificación de producto
+    handleProductClarification(userMessage) {
+        const lowerMessage = userMessage.toLowerCase();
+        const category = this.pendingClarification.category;
+        const products = this.getProductsByCategory(category);
+        
+        // Buscar si el usuario especificó un producto de la lista
+        let selectedProduct = null;
+        
+        for (const product of products) {
+            const productNameLower = product.nombre.toLowerCase();
+            if (lowerMessage.includes(productNameLower)) {
+                selectedProduct = product;
+                break;
+            }
+        }
+        
+        // Si el usuario no especificó, preguntar de nuevo
+        if (!selectedProduct) {
+            let clarificationText = `¿Cuál ${category} querés? Tenemos:\n`;
+            products.forEach(product => {
+                clarificationText += `- ${product.nombre}: $${product.precio}`;
+                if (product.descripcion) {
+                    clarificationText += ` (${product.descripcion})`;
+                }
+                clarificationText += `\n`;
+            });
+            
+            // Mantener la clarificación pendiente
+            return clarificationText;
+        }
+        
+        // Si el usuario especificó, agregar al pedido
+        this.addToOrder({
+            productId: selectedProduct.id,
+            nombre: selectedProduct.nombre,
+            precio: selectedProduct.precio,
+            cantidad: 1,
+            modificaciones: null
+        });
+        
+        // Limpiar clarificación pendiente
+        this.pendingClarification = null;
+        
+        // Agregar la interacción al historial
+        this.conversationHistory.push({
+            role: 'model',
+            parts: [{ text: `Perfecto, ${selectedProduct.nombre}. ¿Algo más?` }]
+        });
+        
+        return `Perfecto, ${selectedProduct.nombre}. ¿Algo más?`;
+    }
+    
+    // Obtener categorías del mensaje
+    getCategoriesFromMessage(message) {
+        const categories = [];
+        const allCategories = [...new Set(this.products.map(p => p.categoria.toLowerCase()))];
+        
+        allCategories.forEach(category => {
+            if (message.includes(category)) {
+                categories.push(category);
+            }
+        });
+        
+        return categories;
+    }
+    
+    // Obtener productos por categoría
+    getProductsByCategory(category) {
+        return this.products.filter(product => 
+            product.categoria.toLowerCase() === category.toLowerCase()
+        );
+    }
+    
+    // Obtener producto especificado del mensaje
+    getSpecifiedProductFromMessage(message, products) {
+        for (const product of products) {
+            const productNameLower = product.nombre.toLowerCase();
+            if (message.includes(productNameLower)) {
+                return product;
+            }
+        }
+        return null;
     }
     
     // Llamar a Gemini API - FORMATO CORRECTO según documentación
@@ -359,7 +477,7 @@ ${conversationHistoryText}
 
 ÚLTIMO MENSAJE DEL CLIENTE: "${userMessage}"
 
-Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conversación donde quedó, y usa los nombres exactos de los productos):`;
+Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conversación donde quedó, y si el cliente pide un producto genérico, preguntale cuál de las opciones disponibles quiere):`;
         
         // FORMATO CORRECTO según documentación de Google
         const payload = {
@@ -428,7 +546,7 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
     async processOrderFromMessage(userMessage, aiResponse) {
         const lowerMessage = userMessage.toLowerCase();
         
-        // Detectar productos en el mensaje
+        // Detectar productos en el mensaje (solo si son específicos)
         const detectedProducts = this.detectProductsInMessage(userMessage);
         
         if (detectedProducts.length > 0) {
@@ -462,34 +580,8 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         this.products.forEach(product => {
             const productNameLower = product.nombre.toLowerCase();
             
-            // Verificar si alguna palabra del nombre del producto está en el mensaje
-            const productWords = productNameLower.split(' ');
-            let found = false;
-            
-            // Si el mensaje contiene el nombre completo del producto, es una coincidencia fuerte
+            // Verificar si el mensaje contiene el nombre completo del producto
             if (lowerMessage.includes(productNameLower)) {
-                found = true;
-            } else {
-                // Si no, verificar si todas las palabras del producto están en el mensaje (en cualquier orden)
-                // Esto es más flexible
-                const allWordsFound = productWords.every(word => lowerMessage.includes(word));
-                if (allWordsFound) {
-                    found = true;
-                } else if (productWords.length > 1) {
-                    // Si el producto tiene más de una palabra, permitir que el cliente use la primera palabra (ej: "hamburguesa" para "hamburguesa clásica")
-                    // Pero solo si no hay otro producto que empiece con la misma palabra
-                    const firstWord = productWords[0];
-                    const otherProductsWithSameFirstWord = this.products.filter(p => 
-                        p.id !== product.id && 
-                        p.nombre.toLowerCase().startsWith(firstWord)
-                    );
-                    if (otherProductsWithSameFirstWord.length === 0 && lowerMessage.includes(firstWord)) {
-                        found = true;
-                    }
-                }
-            }
-            
-            if (found) {
                 let quantity = 1;
                 const quantityMatch = message.match(/(\d+)\s*/);
                 if (quantityMatch) {
@@ -569,6 +661,33 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             return this.generateSimpleMenu();
         }
         
+        // Verificar si pide un producto genérico
+        const categories = this.getCategoriesFromMessage(lowerMessage);
+        if (categories.length > 0) {
+            for (const category of categories) {
+                const productsInCategory = this.getProductsByCategory(category);
+                if (productsInCategory.length > 1) {
+                    let clarificationText = `¿Cuál ${category} querés? Tenemos:\n`;
+                    productsInCategory.forEach(product => {
+                        clarificationText += `- ${product.nombre}: $${product.precio}\n`;
+                    });
+                    this.pendingClarification = { category: category };
+                    return clarificationText;
+                } else if (productsInCategory.length === 1) {
+                    // Si solo hay un producto en la categoría, agregarlo automáticamente
+                    const product = productsInCategory[0];
+                    this.addToOrder({
+                        productId: product.id,
+                        nombre: product.nombre,
+                        precio: product.precio,
+                        cantidad: 1,
+                        modificaciones: null
+                    });
+                    return `Perfecto, ${product.nombre}. ¿Algo más?`;
+                }
+            }
+        }
+        
         const productResponse = this.getProductResponse(lowerMessage);
         if (productResponse) {
             return productResponse;
@@ -632,7 +751,11 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         for (const [category, products] of Object.entries(categories)) {
             menu += `*${category.toUpperCase()}*\n`;
             products.forEach(product => {
-                menu += `• ${product.nombre} - $${product.precio}\n`;
+                menu += `• ${product.nombre} - $${product.precio}`;
+                if (product.descripcion) {
+                    menu += ` (${product.descripcion})`;
+                }
+                menu += `\n`;
             });
             menu += '\n';
         }
@@ -849,6 +972,7 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             deliveryType: null
         };
         this.conversationStage = 'greeting';
+        this.pendingClarification = null;
     }
     
     // Reiniciar conversación completa
