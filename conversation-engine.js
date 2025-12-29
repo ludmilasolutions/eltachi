@@ -834,33 +834,68 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
     }
     
     // Guardar pedido en Firebase
-    async saveOrderToFirebase() {
-        try {
-            const orderId = await this.generateOrderId();
-            
-            const orderData = {
-                id_pedido: orderId,
-                fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                nombre_cliente: this.currentOrder.customerInfo?.nombre || 'Cliente',
-                telefono: this.currentOrder.customerInfo?.telefono || '',
-                tipo_pedido: this.currentOrder.deliveryType || 'retiro',
-                direccion: this.currentOrder.customerInfo?.direccion || '',
-                pedido_detallado: this.generateOrderSummaryText(),
-                total: this.currentOrder.total,
-                estado: 'Recibido',
-                tiempo_estimado_actual: this.settings.tiempo_base_estimado
-            };
-            
-            await db.collection('orders').doc(orderId).set(orderData);
-            
-            this.resetOrder();
-            
-            return orderId;
-        } catch (error) {
-            console.error('Error guardando pedido:', error);
-            throw error;
+async saveOrderToFirebase() {
+    try {
+        const orderId = await this.generateOrderId();
+        
+        // Calcular total con envío si corresponde
+        let total = this.currentOrder.total;
+        let tipoPedido = this.currentOrder.deliveryType || 'retiro';
+        
+        if (tipoPedido === 'envío') {
+            total += this.settings.precio_envio || 0;
         }
+        
+        const orderData = {
+            id_pedido: orderId,
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            nombre_cliente: this.currentOrder.customerInfo?.nombre || 'Cliente',
+            telefono: this.currentOrder.customerInfo?.telefono || '',
+            tipo_pedido: tipoPedido,
+            direccion: this.currentOrder.customerInfo?.direccion || '',
+            pedido_detallado: this.generateOrderSummaryText(),
+            total: total,
+            estado: 'Recibido',
+            tiempo_estimado_actual: this.settings.tiempo_base_estimado || 30,
+            items: this.currentOrder.items.map(item => ({
+                productId: item.productId,
+                nombre: item.nombre,
+                precio: item.precio,
+                cantidad: item.cantidad,
+                modificaciones: item.modificaciones
+            }))
+        };
+        
+        console.log('Guardando pedido en Firebase:', orderData);
+        
+        await this.db.collection('orders').doc(orderId).set(orderData);
+        
+        // Enviar notificación al panel admin (opcional)
+        await this.sendAdminNotification(orderId, orderData.nombre_cliente, total);
+        
+        this.resetOrder();
+        
+        return orderId;
+    } catch (error) {
+        console.error('Error guardando pedido:', error);
+        throw error;
     }
+}
+
+// Agrega esta función para notificaciones (opcional)
+async sendAdminNotification(orderId, cliente, total) {
+    try {
+        await this.db.collection('notifications').add({
+            tipo: 'nuevo_pedido',
+            mensaje: `Nuevo pedido ${orderId} de ${cliente} por $${total}`,
+            pedido_id: orderId,
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            leido: false
+        });
+    } catch (error) {
+        console.error('Error enviando notificación:', error);
+    }
+}
     
     // Generar ID de pedido
 async generateOrderId() {
