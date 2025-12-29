@@ -1,95 +1,136 @@
-// gemini-chat.js - Conversación 100% IA Gemini Pro 2.5
-// EL TACHI - Sin menú por defecto, sin lógica de bot
+// gemini-chat.js - Conversación 100% IA Gemini
+// Sin menú por defecto, solo IA pura
 
-class TachiAIChat {
+class TachiChatManager {
     constructor() {
         this.conversation = [];
         this.isProcessing = false;
         this.geminiModel = null;
-        this.geminiApiKey = '';
-        this.hasFirebase = false;
+        this.storeSettings = null;
+        this.isStoreOpen = true;
         
         this.initialize();
     }
     
     async initialize() {
-        console.log("🧠 Inicializando conversación IA pura...");
+        console.log("🧠 Inicializando IA pura para EL TACHI...");
         
         try {
             // 1. Configurar listeners
             this.setupEventListeners();
             
-            // 2. Cargar API Key
-            await this.loadAPIKey();
+            // 2. Cargar configuración
+            await this.loadConfiguration();
             
-            // 3. Inicializar Gemini
-            await this.initializeGemini();
+            // 3. Verificar horario
+            await this.checkStoreHours();
             
-            // 4. Esperar primer mensaje del usuario
-            this.readyForInput();
+            // 4. Configurar Gemini
+            await this.setupGemini();
             
-            console.log("✅ IA lista para conversación natural");
+            // 5. Mostrar saludo inicial
+            this.showInitialGreeting();
+            
+            console.log("✅ IA inicializada correctamente");
             
         } catch (error) {
             console.error("❌ Error inicializando IA:", error);
-            this.showErrorMessage();
+            this.showErrorState();
         }
     }
     
-    async loadAPIKey() {
-        // Intentar cargar API Key desde múltiples fuentes
-        const sources = [
-            () => {
-                const key = localStorage.getItem('el_tachi_gemini_key');
-                return key && key.length > 30 ? key : null;
-            },
-            () => {
-                if (window.firebaseApp && window.firebaseApp.config) {
-                    return window.firebaseApp.config.GEMINI_API_KEY;
+    setupEventListeners() {
+        const sendButton = document.getElementById('sendButton');
+        const userInput = document.getElementById('userInput');
+        
+        if (sendButton) {
+            sendButton.addEventListener('click', () => this.processUserMessage());
+        }
+        
+        if (userInput) {
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.processUserMessage();
                 }
-                return null;
-            },
-            async () => {
-                if (firebase.firestore) {
-                    try {
-                        const db = firebase.firestore();
-                        const config = await db.collection('settings').doc('gemini_config').get();
-                        return config.exists ? config.data().api_key : null;
-                    } catch (e) {
-                        return null;
+            });
+        }
+    }
+    
+    async loadConfiguration() {
+        // Configuración básica
+        this.storeSettings = {
+            nombre_local: "EL TACHI",
+            precio_envio: 300,
+            tiempo_base_estimado: 40,
+            retiro_habilitado: true
+        };
+    }
+    
+    async checkStoreHours() {
+        try {
+            if (window.firebaseApp && window.firebaseApp.db) {
+                const hoursDoc = await window.firebaseApp.db
+                    .collection('settings')
+                    .doc('store_hours')
+                    .get();
+                
+                if (hoursDoc.exists) {
+                    const hours = hoursDoc.data();
+                    this.isStoreOpen = hours.abierto;
+                    
+                    if (!this.isStoreOpen) {
+                        this.showStoreClosedMessage(hours.mensaje_cerrado);
+                        return false;
                     }
                 }
-                return null;
             }
-        ];
-        
-        for (const source of sources) {
-            try {
-                const key = await (typeof source === 'function' ? source() : source);
-                if (key && key.length > 30) {
-                    this.geminiApiKey = key;
-                    console.log("🔑 API Key cargada");
-                    return;
-                }
-            } catch (error) {
-                continue;
-            }
+            return true;
+        } catch (error) {
+            console.warn("⚠️ Error verificando horario:", error);
+            return true;
         }
-        
-        throw new Error("No se encontró API Key de Gemini");
     }
     
-    async initializeGemini() {
-        if (!this.geminiApiKey) {
-            throw new Error("API Key no disponible");
-        }
-        
-        // Cargar SDK de Gemini
-        await this.loadGeminiSDK();
-        
-        // Configurar modelo
+    async setupGemini() {
         try {
-            const genAI = new google.generativeAI(this.geminiApiKey);
+            let apiKey = "";
+            
+            // Intentar obtener API Key de múltiples fuentes
+            if (window.firebaseApp && window.firebaseApp.db) {
+                const configDoc = await window.firebaseApp.db
+                    .collection('settings')
+                    .doc('store_config')
+                    .get();
+                
+                if (configDoc.exists) {
+                    const config = configDoc.data();
+                    this.storeSettings = { ...this.storeSettings, ...config };
+                    apiKey = config.gemini_api_key;
+                }
+            }
+            
+            // Si no hay API Key en Firestore, buscar en localStorage
+            if (!apiKey || apiKey === "AIzaSyBPRH8XZ0WfRMN9ZaPlVN_YaYvI9FTnkqU") {
+                const savedKey = localStorage.getItem('el_tachi_gemini_key');
+                if (savedKey && savedKey.length > 30) {
+                    apiKey = savedKey;
+                }
+            }
+            
+            // Si no hay API Key, no podemos continuar
+            if (!apiKey || apiKey.length < 30) {
+                console.warn("⚠️ No se encontró API Key de Gemini");
+                throw new Error("API Key no configurada");
+            }
+            
+            // Guardar API Key
+            this.geminiApiKey = apiKey;
+            
+            // Cargar SDK de Gemini
+            await this.loadGeminiSDK();
+            
+            // Configurar modelo
+            const genAI = new google.generativeAI(apiKey);
             this.geminiModel = genAI.getGenerativeModel({ 
                 model: "gemini-1.5-pro",
                 generationConfig: {
@@ -100,24 +141,10 @@ class TachiAIChat {
                 }
             });
             
-            // Probar la conexión con un prompt simple
-            const testPrompt = "Responde solo con 'OK' si estás listo.";
-            const testResult = await this.geminiModel.generateContent(testPrompt);
-            const response = await testResult.response;
-            
-            if (response.text().includes('OK')) {
-                console.log("✅ Gemini conectado y funcionando");
-                return true;
-            }
+            console.log("✅ Gemini configurado correctamente");
             
         } catch (error) {
-            console.error("Error conectando con Gemini:", error);
-            
-            // Si es error de API Key, limpiar
-            if (error.message.includes('API_KEY') || error.status === 403) {
-                localStorage.removeItem('el_tachi_gemini_key');
-            }
-            
+            console.error("❌ Error configurando Gemini:", error);
             throw error;
         }
     }
@@ -130,61 +157,62 @@ class TachiAIChat {
             }
             
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/@google/generative-ai@latest/dist/index.min.js';
+            script.src = 'https://cdn.jsdelivr.net/npm/@google/generative-ai@0.1.2/dist/index.min.js';
             script.onload = resolve;
-            script.onerror = () => reject(new Error('No se pudo cargar Gemini SDK'));
+            script.onerror = reject;
             document.head.appendChild(script);
         });
     }
     
-    setupEventListeners() {
-        const sendButton = document.getElementById('sendButton');
-        const userInput = document.getElementById('userInput');
-        
-        if (sendButton) {
-            sendButton.addEventListener('click', () => this.handleUserMessage());
-        }
-        
-        if (userInput) {
-            userInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.handleUserMessage();
-                }
-            });
-        }
-    }
-    
-    readyForInput() {
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
-        
-        if (userInput) {
-            userInput.disabled = false;
-            userInput.placeholder = "Escribe tu mensaje aquí...";
-            userInput.focus();
-        }
-        
-        if (sendButton) {
-            sendButton.disabled = false;
-        }
-        
-        // Mostrar mensaje inicial solo si no hay conversación
-        if (this.conversation.length === 0) {
-            this.showInitialGreeting();
-        }
-    }
-    
     showInitialGreeting() {
-        const greeting = "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
-                       "Estoy aquí para ayudarte con tu pedido. ¿En qué puedo asistirte?";
+        const greeting = 
+            "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
+            "Estoy aquí para ayudarte con tu pedido.\n\n" +
+            "¿En qué puedo asistirte?";
         
         this.addMessage('ia', greeting);
         this.conversation.push({ role: 'assistant', content: greeting });
     }
     
-    async handleUserMessage() {
-        if (this.isProcessing) return;
+    showStoreClosedMessage(customMessage) {
+        const message = customMessage || 
+            "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
+            "Lamento informarte que en este momento estamos cerrados.\n\n" +
+            "**Nuestros horarios:**\n" +
+            "• Lunes a Viernes: 10:00 - 22:00\n" +
+            "• Sábados: 11:00 - 23:00\n" +
+            "• Domingos: Cerrado\n\n" +
+            "¡Te esperamos en nuestro horario de atención!";
+        
+        this.addMessage('ia', message);
+        
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        
+        if (userInput) userInput.disabled = true;
+        if (sendButton) sendButton.disabled = true;
+    }
+    
+    showErrorState() {
+        const errorMessage = 
+            "¡Hola! Soy la atención de **EL TACHI** 👋\n\n" +
+            "Por el momento, nuestro sistema de IA no está disponible.\n\n" +
+            "Podés contactarnos directamente:\n" +
+            "📱 WhatsApp: [TU NÚMERO AQUÍ]\n" +
+            "📞 Teléfono: [TU TELÉFONO AQUÍ]\n\n" +
+            "¡Disculpá las molestias!";
+        
+        this.addMessage('ia', errorMessage);
+        
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        
+        if (userInput) userInput.disabled = true;
+        if (sendButton) sendButton.disabled = true;
+    }
+    
+    async processUserMessage() {
+        if (this.isProcessing || !this.isStoreOpen) return;
         
         const userInput = document.getElementById('userInput');
         const message = userInput.value.trim();
@@ -196,7 +224,7 @@ class TachiAIChat {
         userInput.value = '';
         userInput.disabled = true;
         
-        // Mostrar indicador de "escribiendo"
+        // Mostrar "escribiendo"
         this.showTypingIndicator();
         
         // Procesar con IA
@@ -205,7 +233,7 @@ class TachiAIChat {
             await this.processWithAI(message);
         } catch (error) {
             console.error("Error procesando mensaje:", error);
-            this.showErrorMessage();
+            this.addMessage('ia', "Uy, hubo un error. ¿Podés repetir eso?");
         } finally {
             this.isProcessing = false;
             this.removeTypingIndicator();
@@ -219,13 +247,18 @@ class TachiAIChat {
             throw new Error("Gemini no está disponible");
         }
         
-        // Construir contexto para la IA
-        const context = await this.buildAIContext();
+        // Verificar si es consulta de estado
+        if (await this.handleStatusQuery(userMessage)) {
+            return;
+        }
         
-        // Construir prompt completo
+        // Construir contexto completo
+        const context = await this.buildContext();
+        
+        // Construir prompt para Gemini
         const prompt = this.buildAIPrompt(userMessage, context);
         
-        // Llamar a Gemini
+        // Generar respuesta
         const result = await this.geminiModel.generateContent(prompt);
         const response = await result.response;
         const responseText = response.text();
@@ -239,75 +272,121 @@ class TachiAIChat {
         
         // Guardar conversación
         this.saveConversation();
-        
-        // Si la respuesta indica que se guardó un pedido, actualizar UI
-        this.checkForOrderConfirmation(responseText);
     }
     
-    async buildAIContext() {
-        const context = {
-            store_info: {},
-            menu_info: "",
-            store_hours: "",
-            recent_orders: []
-        };
+    async handleStatusQuery(message) {
+        // Detectar ID de pedido
+        const orderIdMatch = message.match(/TACHI-\d+/i);
+        if (orderIdMatch) {
+            const orderId = orderIdMatch[0].toUpperCase();
+            await this.showOrderStatus(orderId);
+            return true;
+        }
         
-        // Intentar cargar información del local desde Firestore
+        return false;
+    }
+    
+    async showOrderStatus(orderId) {
+        this.removeTypingIndicator();
+        
         try {
-            if (firebase.firestore) {
-                const db = firebase.firestore();
-                
-                // Cargar información del local
-                const storeDoc = await db.collection('settings').doc('store_config').get();
-                if (storeDoc.exists) {
-                    context.store_info = storeDoc.data();
-                }
-                
-                // Cargar horarios
-                const hoursDoc = await db.collection('settings').doc('store_hours').get();
-                if (hoursDoc.exists) {
-                    const hours = hoursDoc.data();
-                    context.store_hours = `Abierto: ${hours.abierto ? 'Sí' : 'No'}`;
-                    if (!hours.abierto) {
-                        context.store_hours += ` - ${hours.mensaje_cerrado || 'Cerrado'}`;
-                    }
-                }
-                
-                // Cargar productos disponibles
-                const productsSnapshot = await db.collection('products')
-                    .where('disponible', '==', true)
-                    .limit(20)
+            let order = null;
+            
+            // Buscar en localStorage
+            const localOrders = JSON.parse(localStorage.getItem('el_tachi_orders') || '{}');
+            if (localOrders[orderId]) {
+                order = localOrders[orderId];
+            }
+            
+            // Buscar en Firestore
+            if (!order && window.firebaseApp && window.firebaseApp.db) {
+                const orderDoc = await window.firebaseApp.db
+                    .collection('orders')
+                    .doc(orderId)
                     .get();
                 
-                if (!productsSnapshot.empty) {
-                    let menuText = "Productos disponibles:\n";
-                    productsSnapshot.forEach(doc => {
-                        const product = doc.data();
-                        menuText += `• ${product.nombre} - $${product.precio}`;
-                        if (product.descripcion) {
-                            menuText += ` (${product.descripcion})`;
-                        }
-                        menuText += "\n";
-                    });
-                    context.menu_info = menuText;
+                if (orderDoc.exists) {
+                    order = orderDoc.data();
                 }
+            }
+            
+            if (order) {
+                this.showOrderDetails(orderId, order);
+            } else {
+                this.addMessage('ia', 
+                    `No encontré ningún pedido con el código **${orderId}**.\n\n` +
+                    `Verificá el número o contactanos directamente.`
+                );
+            }
+            
+        } catch (error) {
+            console.error("Error consultando pedido:", error);
+            this.addMessage('ia', "Hubo un error al consultar el pedido.");
+        }
+    }
+    
+    showOrderDetails(orderId, order) {
+        let fechaStr = 'Fecha no disponible';
+        if (order.fecha) {
+            const fecha = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
+            fechaStr = fecha.toLocaleDateString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        const statusEmojis = {
+            'Recibido': '📥',
+            'En preparación': '👨‍🍳',
+            'Listo': '✅',
+            'Entregado': '🚚'
+        };
+        
+        let message = 
+            `**Pedido ${orderId}**\n` +
+            `📅 ${fechaStr}\n` +
+            `📋 **Estado:** ${statusEmojis[order.estado] || '📝'} ${order.estado}\n`;
+        
+        if (order.tiempo_estimado_actual) {
+            message += `⏱ **Tiempo estimado:** ${order.tiempo_estimado_actual} minutos\n`;
+        }
+        
+        message += `\n**Detalles del pedido:**\n\`\`\`\n${order.pedido_detallado}\n\`\`\`\n`;
+        message += `💰 **Total:** $${order.total}\n\n`;
+        
+        this.addMessage('ia', message);
+    }
+    
+    async buildContext() {
+        const context = {
+            store_info: {},
+            current_time: new Date().toLocaleString('es-AR'),
+            is_store_open: this.isStoreOpen
+        };
+        
+        try {
+            // Cargar configuración actualizada
+            if (window.firebaseApp && window.firebaseApp.db) {
+                const configDoc = await window.firebaseApp.db
+                    .collection('settings')
+                    .doc('store_config')
+                    .get();
                 
-                // Cargar pedidos recientes del usuario (si hay sesión)
-                const lastOrder = localStorage.getItem('el_tachi_last_order');
-                if (lastOrder) {
-                    context.recent_orders = [JSON.parse(lastOrder)];
+                if (configDoc.exists) {
+                    context.store_info = configDoc.data();
                 }
             }
         } catch (error) {
-            console.warn("No se pudo cargar contexto de Firestore:", error);
-            // Continuar sin contexto de Firestore
+            console.warn("Error cargando contexto:", error);
         }
         
         return context;
     }
     
     buildAIPrompt(userMessage, context) {
-        // PROMPT INTERNO EXACTO como especificaste
+        // PROMPT INTERNO EXACTO
         return `Eres la persona que atiende pedidos de la rotisería EL TACHI.
 
 ⚠️ NO eres un bot.
@@ -466,47 +545,52 @@ Cualquier cosa escribime."
 
 ---
 
-**INFORMACIÓN ACTUAL DEL LOCAL:**
+**INFORMACIÓN DEL LOCAL:**
+Nombre: ${context.store_info.nombre_local || "EL TACHI"}
+Precio envío: $${context.store_info.precio_envio || 300}
+Tiempo estimado: ${context.store_info.tiempo_base_estimado || 40} minutos
+Retiro: ${context.store_info.retiro_habilitado !== false ? 'Disponible' : 'No disponible'}
+Estado: ${context.is_store_open ? 'Abierto' : 'Cerrado'}
 
-${JSON.stringify(context.store_info, null, 2)}
+**HORA ACTUAL:**
+${context.current_time}
 
-**HORARIOS:**
-${context.store_hours}
-
-**CARTA ACTUAL:**
-${context.menu_info || 'Cargando menú...'}
-
-**HISTORIAL DE CONVERSACIÓN (últimos 4 mensajes):**
+**HISTORIAL RECIENTE:**
 ${this.getConversationHistory()}
 
 **MENSAJE DEL CLIENTE:**
 "${userMessage}"
 
-**TU RESPUESTA (sigue TODAS las reglas anteriores, especialmente la regla de oro sobre aderezos):**`;
+**TU RESPUESTA (como vendedor humano, sigue TODAS las reglas anteriores):**`;
     }
     
     getConversationHistory() {
         if (this.conversation.length === 0) return "Sin historial previo.";
         
-        const lastMessages = this.conversation.slice(-6);
-        return lastMessages.map(msg => 
-            `${msg.role === 'user' ? 'Cliente' : 'Vendedor'}: ${msg.content}`
-        ).join('\n');
+        return this.conversation
+            .slice(-6)
+            .map(msg => `${msg.role === 'user' ? 'Cliente' : 'Vendedor'}: ${msg.content}`)
+            .join('\n');
     }
     
-    checkForOrderConfirmation(responseText) {
-        // Detectar si la IA generó un ID de pedido
-        const orderIdMatch = responseText.match(/TACHI-\d+/);
-        if (orderIdMatch) {
-            const orderId = orderIdMatch[0];
-            localStorage.setItem('el_tachi_last_order', JSON.stringify({
-                id: orderId,
-                timestamp: new Date().toISOString(),
-                confirmed: true
-            }));
-            
-            console.log(`✅ Pedido registrado: ${orderId}`);
-        }
+    // Métodos de UI
+    addMessage(sender, text) {
+        const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message`;
+        
+        const formattedText = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\`\`\`([\s\S]*?)\`\`\`/g, '<pre><code>$1</code></pre>')
+            .replace(/\`(.*?)\`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+        
+        messageDiv.innerHTML = formattedText;
+        chatMessages.appendChild(messageDiv);
+        
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
     showTypingIndicator() {
@@ -517,11 +601,7 @@ ${this.getConversationHistory()}
         typingDiv.className = 'message ia-message typing-indicator';
         typingDiv.id = 'typingIndicator';
         
-        typingDiv.innerHTML = 
-            '<div class="typing-dots">' +
-            '<span></span><span></span><span></span>' +
-            '</div>';
-        
+        typingDiv.innerHTML = '<span></span><span></span><span></span>';
         chatMessages.appendChild(typingDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
@@ -533,46 +613,22 @@ ${this.getConversationHistory()}
         }
     }
     
-    addMessage(sender, text) {
-        const chatMessages = document.getElementById('chatMessages');
-        if (!chatMessages) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}-message`;
-        
-        // Formatear texto manteniendo el formato de la IA
-        const formattedText = text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br>')
-            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>');
-        
-        messageDiv.innerHTML = formattedText;
-        chatMessages.appendChild(messageDiv);
-        
-        // Scroll al final
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
     saveConversation() {
         try {
-            // Guardar solo los últimos 50 mensajes para no sobrecargar localStorage
-            const recentMessages = this.conversation.slice(-50);
-            localStorage.setItem('el_tachi_ai_conversation', JSON.stringify(recentMessages));
+            localStorage.setItem('el_tachi_conversation', JSON.stringify(this.conversation));
         } catch (error) {
             console.warn("Error guardando conversación:", error);
         }
     }
     
-    loadConversation() {
+    loadSavedConversation() {
         try {
-            const saved = localStorage.getItem('el_tachi_ai_conversation');
+            const saved = localStorage.getItem('el_tachi_conversation');
             if (saved) {
                 this.conversation = JSON.parse(saved);
                 
                 // Mostrar últimos 5 mensajes
-                const lastMessages = this.conversation.slice(-5);
-                lastMessages.forEach(msg => {
+                this.conversation.slice(-5).forEach(msg => {
                     this.addMessage(msg.role === 'user' ? 'user' : 'ia', msg.content);
                 });
             }
@@ -580,38 +636,19 @@ ${this.getConversationHistory()}
             console.warn("Error cargando conversación:", error);
         }
     }
-    
-    showErrorMessage() {
-        const errorMessage = 
-            "Disculpá, estoy teniendo problemas técnicos momentáneos.\n\n" +
-            "Podés contactarnos directamente:\n" +
-            "📱 WhatsApp: [TU NÚMERO AQUÍ]\n" +
-            "📞 Teléfono: [TU TELÉFONO AQUÍ]\n\n" +
-            "¡Gracias por tu comprensión!";
-        
-        this.addMessage('ia', errorMessage);
-        
-        // Deshabilitar input
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
-        
-        if (userInput) userInput.disabled = true;
-        if (sendButton) sendButton.disabled = true;
-    }
 }
 
-// Inicializar cuando el DOM esté listo
-function initializeAIChat() {
-    window.tachiAI = new TachiAIChat();
+// Inicializar
+let chatManager;
+
+function initializeChat() {
+    chatManager = new TachiChatManager();
+    window.chatManager = chatManager;
 }
 
-// Hacer disponible globalmente
-window.TachiAIChat = TachiAIChat;
-window.initializeAIChat = initializeAIChat;
-
-// Auto-inicialización
+// Iniciar cuando el DOM esté listo
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeAIChat);
+    document.addEventListener('DOMContentLoaded', initializeChat);
 } else {
-    initializeAIChat();
+    initializeChat();
 }
