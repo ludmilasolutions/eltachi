@@ -15,8 +15,8 @@ class ConversationEngine {
     }
     
     // Generar prompt para Gemini
-generateSystemPrompt() {
-    return `Sos la persona que atiende pedidos de la rotisería EL TACHI.
+    generateSystemPrompt() {
+        return `Sos la persona que atiende pedidos de la rotisería EL TACHI.
 
 ⚠️ NO sos un bot.
 NO mencionás inteligencia artificial.
@@ -216,7 +216,7 @@ ESTADO DE LA CONVERSACIÓN: ${this.conversationStage}
 ${this.currentOrder.items.length > 0 ? `PEDIDO ACTUAL EN PROCESO: ${JSON.stringify(this.currentOrder.items)}` : 'Aún no hay pedido'}
 
 Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriores.`;
-}
+    }
     
     // Generar lista de productos
     generateProductsList() {
@@ -293,6 +293,11 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
     
     // Llamar a Gemini API
     async callGeminiAPI(messages) {
+        // Verificar API Key
+        if (!this.apiKey || this.apiKey.trim() === '') {
+            throw new Error('API Key de Gemini no configurada. Configúrala en el panel admin.');
+        }
+        
         // URL de la API de Gemini
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${this.apiKey}`;
         
@@ -329,9 +334,6 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
     
     // Procesar respuesta de la IA
     async processAIResponse(aiResponse, userMessage) {
-        // Aquí podrías extraer información del pedido de la respuesta
-        // Por ejemplo, detectar si el usuario pidió un producto
-        
         // Detectar productos en el mensaje del usuario
         const detectedProducts = this.detectProductsInMessage(userMessage);
         
@@ -342,15 +344,28 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         }
         
         // Si el usuario confirma el pedido
-        if (userMessage.toLowerCase().includes('confirm') || 
-            userMessage.toLowerCase().includes('sí') ||
-            userMessage.toLowerCase().includes('si')) {
+        const lowerMessage = userMessage.toLowerCase();
+        if (lowerMessage.includes('confirm') || 
+            lowerMessage.includes('sí') ||
+            lowerMessage.includes('si') ||
+            lowerMessage.includes('correcto')) {
             
             if (this.conversationStage === 'asking_info') {
                 // Guardar pedido en Firebase
-                const orderId = await this.saveOrderToFirebase();
-                return `Perfecto! Tu pedido quedó registrado con el ID *${orderId}*.\n\nEl tiempo estimado es de ${this.settings.tiempo_base_estimado} minutos.\n\n¡Gracias por tu pedido! 🎉`;
+                try {
+                    const orderId = await this.saveOrderToFirebase();
+                    return `Listo 🙌\nTu pedido quedó registrado con el ID *${orderId}*.\n\nEl tiempo estimado es de ${this.settings.tiempo_base_estimado} minutos.\n\n¡Gracias por tu pedido! Cualquier cosa escribime.`;
+                } catch (error) {
+                    console.error('Error guardando pedido:', error);
+                    return 'Hubo un error guardando tu pedido. ¿Podrías intentarlo de nuevo?';
+                }
             }
+        }
+        
+        // Si el usuario pide datos de contacto
+        if (this.conversationStage === 'asking_info') {
+            // Extraer información del cliente de la respuesta de Gemini
+            this.extractCustomerInfo(aiResponse, userMessage);
         }
         
         return aiResponse;
@@ -362,16 +377,22 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         const detected = [];
         
         this.products.forEach(product => {
-            if (lowerMessage.includes(product.nombre.toLowerCase())) {
+            const productNameLower = product.nombre.toLowerCase();
+            
+            // Buscar coincidencias parciales (ej: "hamburguesa" en "quiero una hamburguesa")
+            if (lowerMessage.includes(productNameLower) || 
+                productNameLower.includes(lowerMessage)) {
+                
                 // Detectar cantidad
-                const quantityMatch = message.match(/(\d+)\s*$/);
+                const quantityMatch = message.match(/(\d+)\s+/);
                 const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 1;
                 
                 // Detectar modificaciones
                 let modifications = null;
                 if (product.aderezos_disponibles && product.aderezos_disponibles.length > 0) {
                     product.aderezos_disponibles.forEach(aderezo => {
-                        if (lowerMessage.includes(aderezo.toLowerCase())) {
+                        const aderezoLower = aderezo.toLowerCase();
+                        if (lowerMessage.includes(aderezoLower)) {
                             modifications = aderezo;
                         }
                     });
@@ -388,6 +409,30 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         });
         
         return detected;
+    }
+    
+    // Extraer información del cliente
+    extractCustomerInfo(aiResponse, userMessage) {
+        // Esta función intenta extraer información del cliente del mensaje
+        // En una implementación real, usarías NLP o prompts específicos
+        
+        // Por ahora, guardamos información básica si se detecta
+        const lowerMessage = userMessage.toLowerCase();
+        
+        if (!this.currentOrder.customerInfo) {
+            this.currentOrder.customerInfo = {
+                nombre: '',
+                telefono: '',
+                direccion: ''
+            };
+        }
+        
+        // Detectar tipo de pedido
+        if (lowerMessage.includes('envío') || lowerMessage.includes('domicilio') || lowerMessage.includes('casa')) {
+            this.currentOrder.deliveryType = 'envío';
+        } else if (lowerMessage.includes('retiro') || lowerMessage.includes('local') || lowerMessage.includes('pasar')) {
+            this.currentOrder.deliveryType = 'retiro';
+        }
     }
     
     // Agregar producto al pedido
@@ -447,6 +492,9 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             
             await db.collection('orders').doc(orderId).set(orderData);
             
+            // Reiniciar el pedido actual
+            this.resetOrder();
+            
             return orderId;
         } catch (error) {
             console.error('Error guardando pedido:', error);
@@ -461,10 +509,13 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             const counterRef = db.collection('counters').doc('orders');
             const counterDoc = await counterRef.get();
             
-            let lastNumber = 1;
+            let lastNumber = 0;
             if (counterDoc.exists) {
-                lastNumber = counterDoc.data().lastNumber + 1;
+                lastNumber = counterDoc.data().lastNumber || 0;
             }
+            
+            // Incrementar
+            lastNumber++;
             
             // Actualizar contador
             await counterRef.set({ lastNumber: lastNumber }, { merge: true });
@@ -475,7 +526,8 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         } catch (error) {
             console.error('Error generando ID:', error);
             // Fallback: usar timestamp
-            return `TACHI-${Date.now().toString().slice(-6)}`;
+            const timestamp = Date.now().toString().slice(-6);
+            return `TACHI-${timestamp}`;
         }
     }
     
@@ -488,7 +540,7 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
             if (item.modificaciones) {
                 summary += ` (${item.modificaciones})`;
             }
-            summary += `\n`;
+            summary += ` - $${item.precio * item.cantidad}\n`;
         });
         
         summary += `\nTotal: $${this.currentOrder.total}`;
@@ -538,7 +590,8 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         } else if (this.conversationStage === 'taking_order' && 
                   (lowerMessage.includes('nada más') || 
                    lowerMessage.includes('eso es todo') ||
-                   lowerMessage.includes('listo'))) {
+                   lowerMessage.includes('listo') ||
+                   lowerMessage.includes('solo eso'))) {
             this.conversationStage = 'asking_info';
         } else if (this.conversationStage === 'asking_info' &&
                   (lowerMessage.includes('envío') || 
@@ -548,9 +601,8 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         }
     }
     
-    // Reiniciar conversación
-    resetConversation() {
-        this.conversationHistory = [];
+    // Reiniciar pedido (mantener historial de conversación)
+    resetOrder() {
         this.currentOrder = {
             items: [],
             customerInfo: null,
@@ -559,6 +611,12 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         };
         this.conversationStage = 'greeting';
     }
+    
+    // Reiniciar conversación completa
+    resetConversation() {
+        this.conversationHistory = [];
+        this.resetOrder();
+    }
 }
 
 // Crear instancia global
@@ -566,14 +624,27 @@ let conversationEngine = null;
 
 // Inicializar motor de conversación
 async function initConversationEngine() {
-    const settings = await getSettings();
-    const products = await loadAllProducts();
-    
-    conversationEngine = new ConversationEngine(
-        settings.api_key_gemini,
-        settings,
-        products
-    );
+    try {
+        const settings = await getSettings();
+        if (!settings) {
+            console.error('No se pudo cargar la configuración');
+            return;
+        }
+        
+        const products = await loadAllProducts();
+        
+        conversationEngine = new ConversationEngine(
+            settings.api_key_gemini,
+            settings,
+            products
+        );
+        
+        console.log('Motor de conversación inicializado correctamente');
+        return conversationEngine;
+    } catch (error) {
+        console.error('Error inicializando motor de conversación:', error);
+        return null;
+    }
 }
 
 // Cargar todos los productos
@@ -590,8 +661,45 @@ async function loadAllProducts() {
     }
 }
 
+// Función para procesar mensaje (para usar desde app.js)
+async function processMessageWithGemini(message) {
+    if (!conversationEngine) {
+        await initConversationEngine();
+    }
+    
+    if (!conversationEngine) {
+        return 'El sistema de conversación no está disponible en este momento. Por favor, intenta más tarde.';
+    }
+    
+    try {
+        return await conversationEngine.processUserMessage(message);
+    } catch (error) {
+        console.error('Error procesando mensaje:', error);
+        return 'Disculpá, hubo un error procesando tu mensaje. ¿Podrías intentarlo de nuevo?';
+    }
+}
+
+// Función para obtener el resumen del pedido actual
+function getCurrentOrderSummary() {
+    if (!conversationEngine || conversationEngine.currentOrder.items.length === 0) {
+        return null;
+    }
+    
+    return conversationEngine.generateOrderSummaryText();
+}
+
+// Función para reiniciar conversación
+function resetConversation() {
+    if (conversationEngine) {
+        conversationEngine.resetConversation();
+    }
+}
+
 // Exportar para uso global
 window.initConversationEngine = initConversationEngine;
+window.processMessageWithGemini = processMessageWithGemini;
+window.getCurrentOrderSummary = getCurrentOrderSummary;
+window.resetConversation = resetConversation;
 window.ConversationEngine = ConversationEngine;
 
 // Inicializar cuando Firebase esté listo
