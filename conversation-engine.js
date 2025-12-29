@@ -4,7 +4,7 @@ class ConversationEngine {
         this.apiKey = apiKey;
         this.settings = settings;
         this.products = products;
-        this.db = db; // Guardar referencia a Firebase
+        this.db = db;
         this.conversationHistory = [];
         this.currentOrder = {
             items: [],
@@ -13,17 +13,22 @@ class ConversationEngine {
             deliveryType: null
         };
         this.conversationStage = 'greeting';
-        this.pendingClarification = null; // Para manejar clarificaciones de productos
+        this.pendingClarification = null;
+        
+        console.log('🚀 ConversationEngine creado');
+        console.log('🏪 Local:', settings.nombre_local);
+        console.log('📦 Productos cargados:', products.length);
+        console.log('🔑 API Key:', apiKey ? 'Configurada' : 'No configurada');
     }
     
     // Generar prompt para Gemini
     generateSystemPrompt() {
-        return `Sos la persona que atiende pedidos de la rotisería EL TACHI.
+        return `Eres la persona que atiende pedidos de la rotisería EL TACHI.
 
-⚠️ NO sos un bot.
-NO mencionás inteligencia artificial.
-NO usás menús automáticos.
-NO ofrecés opciones si el cliente no las pide.
+⚠️ NO eres un bot.
+NO mencionas inteligencia artificial.
+NO usas menús automáticos.
+NO ofreces opciones si el cliente no las pide.
 
 El cliente debe sentir que habla con una persona real del local.
 
@@ -43,7 +48,7 @@ Ejemplos de tono correcto:
 
 ❌ Prohibido:
 "Como asistente virtual..."
-"Seleccioná una opción"
+"Selecciona una opción"
 "Paso 1 / Paso 2"
 Mensajes largos innecesarios
 
@@ -64,61 +69,61 @@ NO menciones aderezos
 NO sugieras cambios
 NO digas "¿lo querés completo?"
 
-Tomás el producto estándar.
+Tomas el producto estándar.
 
 👋 PRIMER MENSAJE (OBLIGATORIO)
 
-Cuando el cliente inicia la conversación, respondés:
+Cuando el cliente inicia la conversación, respondes:
 
 Saludo
-Te presentás como atención de EL TACHI
-Mostrás la carta completa (desde la base de datos)
-Informás:
+Te presentas como atención de EL TACHI
+Muestras la carta completa (desde la base de datos)
+Informas:
 Tiempo estimado actual
 Precio de envío
 Opción retiro en el local
-Aclarás una sola vez:
-"Si necesitás cambiar algo del pedido, avisame"
+Aclaras una sola vez:
+"Si necesitas cambiar algo del pedido, avísame"
 
 ⚠️ No volver a insistir con eso.
 
 🍔 TOMA DE PEDIDOS
 
 Cuando el cliente pide productos:
-Confirmás lo que pidió, de forma corta
-NO ofrecés agregados
-NO ofrecés combos
-NO ofrecés cambios
+Confirmas lo que pidió, de forma corta
+NO ofreces agregados
+NO ofreces combos
+NO ofreces cambios
 
 IMPORTANTE: Cuando el cliente pida un producto genérico (ej: "hamburguesa", "papas", "bebida"), 
-tenés que preguntarle cuál de las opciones disponibles quiere mostrando las opciones de esa categoría.
+tienes que preguntarle cuál de las opciones disponibles quiere mostrando las opciones de esa categoría.
 
 Ejemplo correcto:
 Cliente: "Quiero una hamburguesa"
-Vos: "Tenemos estas hamburguesas:
+Tú: "Tenemos estas hamburguesas:
 - Hamburguesa Clásica: $1200
 - Hamburguesa Especial: $1500
-¿Cuál querés?"
+¿Cuál quieres?"
 
-SOLO después de que el cliente especifique, confirmás el producto.
+SOLO después de que el cliente especifique, confirmas el producto.
 
 🧂 CAMBIOS Y ADEREZOS (SOLO SI EL CLIENTE LOS PIDE)
 
 Si el cliente pide un cambio:
-Confirmás exactamente lo que pidió
-NO ofrecés otros cambios
-NO preguntás "algo más para agregarle"
+Confirmas exactamente lo que pidió
+NO ofreces otros cambios
+NO preguntas "algo más para agregarle"
 
 Ejemplo correcto:
 Cliente: "Una hamburguesa sin tomate"
-Vos:
+Tú:
 "Perfecto, hamburguesa sin tomate. ¿Algo más?"
 
 🔢 PEDIDOS MÚLTIPLES
 
 Si el cliente pide más de una unidad y menciona cambios:
-Confirmás cada unidad por separado
-Detallás textualmente
+Confirmas cada unidad por separado
+Detallas textualmente
 
 Ejemplo:
 "Entonces serían:
@@ -128,7 +133,7 @@ Ejemplo:
 
 📄 RESUMEN FINAL (OBLIGATORIO)
 
-Antes de cerrar el pedido, siempre mostrás un resumen claro:
+Antes de cerrar el pedido, siempre muestras un resumen claro:
 
 Pedido:
 - Hamburguesa x1 (sin tomate)
@@ -137,12 +142,12 @@ Pedido:
 
 Total: $XXXX
 
-Después preguntás:
+Después preguntas:
 "¿Confirmamos así?"
 
 🧑‍💼 DATOS DEL CLIENTE (PEDIDOS COMO PERSONA)
 
-Una vez confirmado el pedido, pedís los datos de forma natural, no como formulario:
+Una vez confirmado el pedido, pides los datos de forma natural, no como formulario:
 
 Nombre
 Teléfono
@@ -151,37 +156,37 @@ Teléfono
 Si es envío:
 Dirección completa
 
-Luego repetís todo y preguntás:
+Luego repites todo y preguntas:
 "¿Está todo correcto?"
 
 🕒 HORARIOS (OBLIGATORIO)
 
 Antes de tomar pedidos:
-Consultás el estado del local
+Consultas el estado del local
 Si está cerrado:
-Respondés el mensaje configurado
-❌ NO tomás pedidos
-❌ NO ofrecés nada
+Respondes el mensaje configurado
+❌ NO tomas pedidos
+❌ NO ofreces nada
 
 📦 CONFIRMACIÓN FINAL
 
 Cuando el pedido se guarda correctamente:
-Informás el ID del pedido
-Informás el tiempo estimado actual
-Cerrás con algo humano
+Informas el ID del pedido
+Informas el tiempo estimado actual
+Cierras con algo humano
 
 Ejemplo:
 "Listo 🙌
 Tu pedido quedó registrado con el ID TACHI-000123.
 El tiempo estimado es de 35 minutos.
-Cualquier cosa escribime."
+Cualquier cosa escríbeme."
 
 🔍 CONSULTA DE ESTADO
 
 Si el cliente escribe algo parecido a un ID:
-Detectás el ID
-Consultás el pedido
-Respondés solo:
+Detectas el ID
+Consultas el pedido
+Respondes solo:
 Estado actual
 Tiempo estimado (si existe)
 
@@ -191,8 +196,8 @@ Te avisamos cuando esté listo 👌"
 
 ❌ COSAS PROHIBIDAS ABSOLUTAMENTE
 
-Decir que sos IA
-Decir que sos bot
+Decir que eres IA
+Decir que eres bot
 Ofrecer cambios sin que pregunten
 Usar lenguaje técnico
 Usar emojis en exceso
@@ -219,9 +224,10 @@ CONFIGURACIÓN DEL LOCAL:
 - Tiempo estimado: ${this.settings.tiempo_base_estimado} minutos
 - Precio envío: $${this.settings.precio_envio}
 - Retiro habilitado: ${this.settings.retiro_habilitado ? 'Sí' : 'No'}
+- Horarios: ${Object.entries(this.settings.horarios_por_dia || {}).map(([day, hours]) => `${day}: ${hours}`).join(', ')}
 
 ESTADO DE LA CONVERSACIÓN: ${this.conversationStage}
-${this.currentOrder.items.length > 0 ? `PEDIDO ACTUAL EN PROCESO: ${this.generateCurrentOrderSummary()}` : 'Aún no hay pedido'}
+${this.currentOrder.items.length > 0 ? `PEDIDO ACTUAL EN PROCESO:\n${this.generateCurrentOrderSummary()}` : 'Aún no hay pedido'}
 
 Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriores.`;
     }
@@ -232,10 +238,12 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         const categories = {};
         
         this.products.forEach(product => {
-            if (!categories[product.categoria]) {
-                categories[product.categoria] = [];
+            if (product.disponible) {
+                if (!categories[product.categoria]) {
+                    categories[product.categoria] = [];
+                }
+                categories[product.categoria].push(product);
             }
-            categories[product.categoria].push(product);
         });
         
         for (const [category, products] of Object.entries(categories)) {
@@ -269,14 +277,26 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
     
     // Procesar mensaje del usuario
     async processUserMessage(userMessage) {
+        console.log(`💬 Mensaje recibido: "${userMessage}"`);
+        console.log(`📊 Etapa actual: ${this.conversationStage}`);
+        
         // Verificar si el local está abierto
         if (!this.settings.abierto) {
+            console.log('🏪 Local cerrado, mostrando mensaje de cerrado');
             return this.settings.mensaje_cerrado;
         }
         
         // Si hay una clarificación pendiente, procesarla primero
         if (this.pendingClarification) {
+            console.log('🔍 Procesando clarificación pendiente');
             return this.handleProductClarification(userMessage);
+        }
+        
+        // Verificar si es un ID de pedido
+        const orderIdMatch = userMessage.match(/TACHI-\d{6}/i);
+        if (orderIdMatch) {
+            console.log(`🔍 Consultando estado del pedido: ${orderIdMatch[0]}`);
+            return await this.handleOrderStatusQuery(orderIdMatch[0].toUpperCase());
         }
         
         // Agregar al historial ANTES de procesar
@@ -288,50 +308,131 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         // Limitar historial
         this.trimConversationHistory();
         
-        // Verificar si es un ID de pedido
-        const orderIdMatch = userMessage.match(/TACHI-\d{6}/i);
-        if (orderIdMatch) {
-            return await this.handleOrderStatusQuery(orderIdMatch[0].toUpperCase());
-        }
-        
         // Determinar etapa de conversación
         this.updateConversationStage(userMessage);
         
-        try {
-            // Llamar a Gemini API
-            const response = await this.callGeminiAPI(userMessage);
-            
-            // Verificar si la respuesta indica que necesita clarificación
-            const needsClarification = this.checkIfNeedsClarification(userMessage, response);
-            if (needsClarification) {
-                this.pendingClarification = {
-                    category: needsClarification.category,
-                    originalMessage: userMessage
-                };
-            } else {
-                // Solo agregar al historial si no es clarificación
-                this.conversationHistory.push({
-                    role: 'model',
-                    parts: [{ text: response }]
-                });
+        // Intentar usar Gemini si hay API Key
+        if (this.apiKey && this.apiKey.trim() !== '') {
+            try {
+                console.log('🤖 Llamando a Gemini API...');
+                const response = await this.callGeminiAPI(userMessage);
+                
+                // Verificar si la respuesta indica que necesita clarificación
+                const needsClarification = this.checkIfNeedsClarification(userMessage, response);
+                if (needsClarification) {
+                    this.pendingClarification = {
+                        category: needsClarification.category,
+                        originalMessage: userMessage
+                    };
+                } else {
+                    // Solo agregar al historial si no es clarificación
+                    this.conversationHistory.push({
+                        role: 'model',
+                        parts: [{ text: response }]
+                    });
+                }
+                
+                // Procesar para extraer información del pedido
+                if (!needsClarification) {
+                    await this.processOrderFromMessage(userMessage, response);
+                }
+                
+                console.log('✅ Respuesta generada exitosamente');
+                return response;
+                
+            } catch (error) {
+                console.error('❌ Error con Gemini API:', error.message);
+                // Continuar con fallback si Gemini falla
             }
-            
-            // Procesar para extraer información del pedido
-            if (!needsClarification) {
-                await this.processOrderFromMessage(userMessage, response);
-            }
-            
-            return response;
-        } catch (error) {
-            console.error('Error procesando mensaje con Gemini:', error);
-            // Respuesta de fallback
-            const fallbackResponse = this.getFallbackResponse(userMessage);
-            this.conversationHistory.push({
-                role: 'model',
-                parts: [{ text: fallbackResponse }]
-            });
-            return fallbackResponse;
         }
+        
+        // Fallback: usar lógica interna
+        console.log('🔄 Usando lógica interna (fallback)');
+        const fallbackResponse = this.getFallbackResponse(userMessage);
+        
+        // Agregar al historial
+        this.conversationHistory.push({
+            role: 'model',
+            parts: [{ text: fallbackResponse }]
+        });
+        
+        return fallbackResponse;
+    }
+    
+    // Llamar a Gemini API
+    async callGeminiAPI(userMessage) {
+        if (!this.apiKey || this.apiKey.trim() === '') {
+            throw new Error('API Key de Gemini no configurada');
+        }
+        
+        const model = 'gemini-2.5-flash';
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
+        
+        // Construir el historial en el formato correcto
+        const contents = [];
+        
+        // Agregar el prompt del sistema como primer mensaje
+        contents.push({
+            role: "user",
+            parts: [{ text: this.generateSystemPrompt() }]
+        });
+        
+        // Agregar historial de conversación
+        if (this.conversationHistory.length > 0) {
+            // Tomar solo los últimos 6 intercambios para no exceder tokens
+            const recentHistory = this.conversationHistory.slice(-6);
+            recentHistory.forEach(msg => {
+                contents.push({
+                    role: msg.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: msg.parts[0].text }]
+                });
+            });
+        }
+        
+        // Agregar el mensaje actual del usuario
+        contents.push({
+            role: "user",
+            parts: [{ text: userMessage }]
+        });
+        
+        const payload = {
+            contents: contents,
+            generationConfig: {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 800,
+            }
+        };
+        
+        console.log('📤 Enviando solicitud a Gemini:', {
+            model: model,
+            mensajes: contents.length,
+            tokensEstimados: JSON.stringify(payload).length / 4
+        });
+        
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error Gemini API:', response.status, errorText);
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+            console.error('Respuesta inválida de Gemini:', data);
+            throw new Error('Respuesta inválida de la API');
+        }
+        
+        return data.candidates[0].content.parts[0].text;
     }
     
     // Verificar si necesita clarificación de producto
@@ -342,7 +443,6 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         const categories = this.getCategoriesFromMessage(lowerMessage);
         
         if (categories.length > 0) {
-            // Para cada categoría encontrada, verificar si hay múltiples productos
             for (const category of categories) {
                 const productsInCategory = this.getProductsByCategory(category);
                 
@@ -420,21 +520,37 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
     // Obtener categorías del mensaje
     getCategoriesFromMessage(message) {
         const categories = [];
-        const allCategories = [...new Set(this.products.map(p => p.categoria.toLowerCase()))];
+        const categoryKeywords = {
+            'hamburguesa': 'hamburguesas',
+            'hamburguesas': 'hamburguesas',
+            'papas': 'acompañamientos',
+            'fritas': 'acompañamientos',
+            'empanada': 'entradas',
+            'empanadas': 'entradas',
+            'bebida': 'bebidas',
+            'gaseosa': 'bebidas',
+            'pizza': 'pizzas',
+            'pizzas': 'pizzas',
+            'postre': 'postres',
+            'postres': 'postres',
+            'entrada': 'entradas',
+            'entradas': 'entradas'
+        };
         
-        allCategories.forEach(category => {
-            if (message.includes(category)) {
-                categories.push(category);
+        Object.keys(categoryKeywords).forEach(keyword => {
+            if (message.includes(keyword)) {
+                categories.push(categoryKeywords[keyword]);
             }
         });
         
-        return categories;
+        return [...new Set(categories)]; // Eliminar duplicados
     }
     
     // Obtener productos por categoría
     getProductsByCategory(category) {
         return this.products.filter(product => 
-            product.categoria.toLowerCase() === category.toLowerCase()
+            product.categoria.toLowerCase() === category.toLowerCase() && 
+            product.disponible
         );
     }
     
@@ -449,108 +565,15 @@ Ahora responde al cliente de forma natural, siguiendo todas las reglas anteriore
         return null;
     }
     
-    // Llamar a Gemini API - FORMATO CORRECTO según documentación
-    async callGeminiAPI(userMessage) {
-        // Verificar API Key
-        if (!this.apiKey || this.apiKey.trim() === '') {
-            throw new Error('API Key de Gemini no configurada');
-        }
-        
-        // MODELO CORRECTO: gemini-2.5-flash
-        const model = 'gemini-2.5-flash';
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-        
-        // Construir el historial de conversación para Gemini
-        let conversationHistoryText = '';
-        if (this.conversationHistory.length > 0) {
-            this.conversationHistory.forEach(msg => {
-                const role = msg.role === 'user' ? 'Cliente' : 'Vendedor';
-                conversationHistoryText += `${role}: ${msg.parts[0].text}\n\n`;
-            });
-        }
-        
-        const systemPrompt = this.generateSystemPrompt();
-        
-        const fullPrompt = `${systemPrompt}
-
-HISTORIAL DE CONVERSACIÓN ANTERIOR:
-${conversationHistoryText}
-
-ÚLTIMO MENSAJE DEL CLIENTE: "${userMessage}"
-
-Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conversación donde quedó, y si el cliente pide un producto genérico, preguntale cuál de las opciones disponibles quiere):`;
-        
-        // FORMATO CORRECTO según documentación de Google
-        const payload = {
-            contents: [
-                {
-                    parts: [
-                        { 
-                            text: fullPrompt
-                        }
-                    ]
-                }
-            ],
-            generationConfig: {
-                temperature: 0.8,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 800,
-            },
-            safetySettings: [
-                {
-                    category: "HARM_CATEGORY_HARASSMENT",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                },
-                {
-                    category: "HARM_CATEGORY_HATE_SPEECH",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                }
-            ]
-        };
-        
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': this.apiKey
-            },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Error Gemini API:', {
-                status: response.status,
-                statusText: response.statusText,
-                error: errorText
-            });
-            
-            throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.candidates || 
-            !data.candidates[0] || 
-            !data.candidates[0].content ||
-            !data.candidates[0].content.parts ||
-            !data.candidates[0].content.parts[0]) {
-            console.error('Respuesta inválida de Gemini:', data);
-            throw new Error('Respuesta inválida de la API');
-        }
-        
-        return data.candidates[0].content.parts[0].text;
-    }
-    
     // Procesar mensaje para extraer información del pedido
     async processOrderFromMessage(userMessage, aiResponse) {
         const lowerMessage = userMessage.toLowerCase();
         
-        // Detectar productos en el mensaje (solo si son específicos)
+        // Detectar productos en el mensaje
         const detectedProducts = this.detectProductsInMessage(userMessage);
         
         if (detectedProducts.length > 0) {
+            console.log(`📦 Productos detectados: ${detectedProducts.length}`);
             detectedProducts.forEach(product => {
                 this.addToOrder(product);
             });
@@ -558,30 +581,33 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         
         // Detectar si el usuario confirma
         if (lowerMessage.includes('sí') || lowerMessage.includes('si') || 
-            lowerMessage.includes('confirm') || lowerMessage.includes('correcto')) {
+            lowerMessage.includes('confirm') || lowerMessage.includes('correcto') ||
+            lowerMessage.includes('dale') || lowerMessage.includes('ok')) {
             
             if (this.conversationStage === 'confirming' && this.currentOrder.items.length > 0) {
-                // Guardar pedido en Firebase
+                console.log('✅ Confirmación recibida, guardando pedido...');
                 try {
                     const orderId = await this.saveOrderToFirebase();
-                    console.log('✅ Pedido guardado con ID:', orderId);
+                    console.log(`📝 Pedido guardado: ${orderId}`);
                     
-                    // Agregar confirmación al historial
+                    // Actualizar el historial con la confirmación
+                    const confirmationMsg = `¡Perfecto! Tu pedido ha sido registrado con el ID ${orderId}. Tiempo estimado: ${this.settings.tiempo_base_estimado} minutos. ¡Gracias por tu compra!`;
+                    
                     this.conversationHistory.push({
                         role: 'model',
-                        parts: [{ text: `Listo 🙌 Tu pedido quedó registrado con el ID ${orderId}. El tiempo estimado es de ${this.settings.tiempo_base_estimado} minutos. Cualquier cosa escribime.` }]
+                        parts: [{ text: confirmationMsg }]
                     });
                     
-                    return orderId;
+                    return confirmationMsg;
                 } catch (error) {
                     console.error('❌ Error guardando pedido:', error);
-                    return null;
+                    return 'Hubo un error al guardar tu pedido. Por favor, intentá de nuevo.';
                 }
             }
         }
         
         // Detectar información del cliente
-        this.extractCustomerInfo(userMessage, aiResponse);
+        this.extractCustomerInfo(userMessage);
         
         return null;
     }
@@ -597,8 +623,10 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             // Verificar si el mensaje contiene el nombre completo del producto
             if (lowerMessage.includes(productNameLower)) {
                 let quantity = 1;
-                const quantityMatch = message.match(/(\d+)\s*/);
-                if (quantityMatch) {
+                
+                // Buscar cantidad (ej: "2 hamburguesas")
+                const quantityMatch = message.match(/(\d+)\s*[x\*]?\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+)/i);
+                if (quantityMatch && quantityMatch[1]) {
                     quantity = parseInt(quantityMatch[1]);
                 }
                 
@@ -625,7 +653,7 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
     }
     
     // Extraer información del cliente
-    extractCustomerInfo(userMessage, aiResponse) {
+    extractCustomerInfo(userMessage) {
         const lowerMessage = userMessage.toLowerCase();
         
         if (!this.currentOrder.customerInfo) {
@@ -638,40 +666,49 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         
         // Detectar tipo de pedido
         if (lowerMessage.includes('envío') || lowerMessage.includes('domicilio') || 
-            lowerMessage.includes('casa') || lowerMessage.includes('dirección')) {
+            lowerMessage.includes('casa') || lowerMessage.includes('dirección') ||
+            lowerMessage.includes('entrega')) {
             this.currentOrder.deliveryType = 'envío';
+            console.log('🚚 Tipo de pedido: Envío');
         } else if (lowerMessage.includes('retiro') || lowerMessage.includes('local') || 
-                   lowerMessage.includes('pasar') || lowerMessage.includes('buscar')) {
+                   lowerMessage.includes('pasar') || lowerMessage.includes('buscar') ||
+                   lowerMessage.includes('voy')) {
             this.currentOrder.deliveryType = 'retiro';
+            console.log('🏪 Tipo de pedido: Retiro');
         }
         
-        // Detectar teléfono
+        // Detectar teléfono (búsqueda simple de números)
         const phoneMatch = userMessage.match(/(\d{8,15})/);
         if (phoneMatch) {
             this.currentOrder.customerInfo.telefono = phoneMatch[1];
+            console.log('📱 Teléfono detectado:', phoneMatch[1]);
         }
         
         // Detectar nombre
         if (lowerMessage.includes('me llamo') || lowerMessage.includes('soy ') || 
-            lowerMessage.includes('nombre es')) {
-            const nameMatch = userMessage.match(/(?:me llamo|soy|nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ\s]+)/i);
+            lowerMessage.includes('nombre es') || lowerMessage.includes('me llamo')) {
+            const nameMatch = userMessage.match(/(?:me llamo|soy|nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,})/i);
             if (nameMatch && nameMatch[1]) {
                 this.currentOrder.customerInfo.nombre = nameMatch[1].trim();
+                console.log('👤 Nombre detectado:', nameMatch[1].trim());
             }
         }
         
-        // Detectar dirección
+        // Detectar dirección (simplificado)
         if (lowerMessage.includes('calle') || lowerMessage.includes('av.') || 
-            lowerMessage.includes('avenida') || lowerMessage.includes('dirección') ||
-            lowerMessage.includes('casa')) {
-            // Extraer dirección (simplificado)
-            const addressKeywords = ['calle', 'av.', 'avenida', 'número', 'nº', 'nro', 'casa'];
+            lowerMessage.includes('avenida') || lowerMessage.includes('número') ||
+            lowerMessage.includes('nº') || lowerMessage.includes('nro') || 
+            lowerMessage.includes('dirección')) {
+            
+            // Extraer posible dirección (tomar varias palabras después de la palabra clave)
+            const addressKeywords = ['calle', 'av.', 'avenida', 'número', 'nº', 'nro', 'dirección'];
             for (const keyword of addressKeywords) {
-                if (lowerMessage.includes(keyword)) {
-                    const addressIndex = lowerMessage.indexOf(keyword);
-                    const addressPart = userMessage.substring(addressIndex);
-                    if (addressPart.length > 10) { // Asegurar que sea una dirección válida
+                const keywordIndex = lowerMessage.indexOf(keyword);
+                if (keywordIndex !== -1) {
+                    const addressPart = userMessage.substring(keywordIndex);
+                    if (addressPart.length > 10) {
                         this.currentOrder.customerInfo.direccion = addressPart;
+                        console.log('📍 Dirección detectada:', addressPart.substring(0, 50) + '...');
                         break;
                     }
                 }
@@ -679,18 +716,27 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         }
     }
     
-    // Respuesta de fallback cuando Gemini falla
+    // Respuesta de fallback
     getFallbackResponse(userMessage) {
         const lowerMessage = userMessage.toLowerCase();
         
-        // Solo mostrar menú en el primer mensaje
+        console.log(`🔄 Fallback para: "${lowerMessage.substring(0, 50)}..."`);
+        
+        // Primer mensaje - Mostrar menú
         if (this.conversationHistory.length <= 2 && 
-            (lowerMessage.includes('hola') || lowerMessage.includes('buenas'))) {
-            return `¡Hola! 👋 Soy la atención de EL TACHI.\n\n${this.generateSimpleMenu()}\n\nTiempo estimado: ${this.settings.tiempo_base_estimado} minutos\nEnvío: $${this.settings.precio_envio}\nRetiro: ${this.settings.retiro_habilitado ? 'Sí' : 'No'}\n\nSi necesitás cambiar algo del pedido, avisame.`;
+            (lowerMessage.includes('hola') || lowerMessage.includes('buenas') || 
+             lowerMessage.includes('buenos') || lowerMessage.includes('buen día') ||
+             lowerMessage.includes('buenas tardes') || lowerMessage.includes('buenas noches'))) {
+            
+            const menu = this.generateSimpleMenu();
+            return `¡Hola! 👋 Soy la atención de EL TACHI.\n\n${menu}\n\n⏱️ *Tiempo estimado:* ${this.settings.tiempo_base_estimado} minutos\n🚚 *Envío:* $${this.settings.precio_envio}\n🏪 *Retiro:* ${this.settings.retiro_habilitado ? 'Sí' : 'No'}\n\nSi necesitás cambiar algo del pedido, avisame.`;
         }
         
-        if (lowerMessage.includes('menu') || lowerMessage.includes('carta')) {
-            return this.generateSimpleMenu();
+        // Pedir menú o carta
+        if (lowerMessage.includes('menú') || lowerMessage.includes('carta') || 
+            lowerMessage.includes('ver') || lowerMessage.includes('mostrar') ||
+            lowerMessage.includes('qué tienen') || lowerMessage.includes('que tienen')) {
+            return `*NUESTRA CARTA*\n\n${this.generateSimpleMenu()}\n\n¿Qué te gustaría ordenar?`;
         }
         
         // Verificar si pide un producto genérico
@@ -701,12 +747,15 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
                 if (productsInCategory.length > 1) {
                     let clarificationText = `¿Cuál ${category} querés? Tenemos:\n`;
                     productsInCategory.forEach(product => {
-                        clarificationText += `- ${product.nombre}: $${product.precio}\n`;
+                        clarificationText += `• ${product.nombre}: $${product.precio}`;
+                        if (product.descripcion) {
+                            clarificationText += ` (${product.descripcion})`;
+                        }
+                        clarificationText += `\n`;
                     });
                     this.pendingClarification = { category: category };
                     return clarificationText;
                 } else if (productsInCategory.length === 1) {
-                    // Si solo hay un producto en la categoría, agregarlo automáticamente
                     const product = productsInCategory[0];
                     this.addToOrder({
                         productId: product.id,
@@ -720,13 +769,48 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             }
         }
         
-        const productResponse = this.getProductResponse(lowerMessage);
-        if (productResponse) {
-            return productResponse;
+        // Buscar producto específico
+        for (const product of this.products) {
+            const productNameLower = product.nombre.toLowerCase();
+            if (lowerMessage.includes(productNameLower) && product.disponible) {
+                // Buscar cantidad
+                let quantity = 1;
+                const quantityMatch = userMessage.match(/(\d+)\s*[x\*]?\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+)/i);
+                if (quantityMatch && quantityMatch[1]) {
+                    quantity = parseInt(quantityMatch[1]);
+                }
+                
+                // Buscar modificaciones
+                let modifications = null;
+                if (product.aderezos_disponibles && product.aderezos_disponibles.length > 0) {
+                    for (const aderezo of product.aderezos_disponibles) {
+                        if (lowerMessage.includes(aderezo.toLowerCase())) {
+                            modifications = aderezo;
+                            break;
+                        }
+                    }
+                }
+                
+                this.addToOrder({
+                    productId: product.id,
+                    nombre: product.nombre,
+                    precio: product.precio,
+                    cantidad: quantity,
+                    modificaciones: modifications
+                });
+                
+                if (modifications) {
+                    return `Perfecto, ${quantity > 1 ? quantity + ' ' : ''}${product.nombre} ${modifications.toLowerCase()}. ¿Algo más?`;
+                } else {
+                    return `Perfecto, ${quantity > 1 ? quantity + ' ' : ''}${product.nombre}. ¿Algo más?`;
+                }
+            }
         }
         
+        // Finalizar pedido
         if (lowerMessage.includes('nada más') || lowerMessage.includes('eso es todo') || 
-            lowerMessage.includes('listo')) {
+            lowerMessage.includes('listo') || lowerMessage.includes('terminé') ||
+            lowerMessage.includes('nada mas') || lowerMessage.includes('eso es')) {
             
             if (this.currentOrder.items.length === 0) {
                 return 'No tengo ningún producto en tu pedido. ¿Qué te gustaría ordenar?';
@@ -734,53 +818,80 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             
             const summary = this.generateOrderSummaryText();
             this.conversationStage = 'asking_info';
-            return `*RESUMEN DE PEDIDO*\n\n${summary}\n\n¿Es para envío o retiro?`;
+            return `*RESUMEN DE PEDIDO*\n\n${summary}\n\n¿Es para envío o retiro en el local?`;
         }
         
-        if (lowerMessage.includes('envío') || lowerMessage.includes('domicilio')) {
+        // Confirmar tipo de entrega
+        if (lowerMessage.includes('envío') || lowerMessage.includes('domicilio') || 
+            lowerMessage.includes('casa') || lowerMessage.includes('entrega')) {
             this.currentOrder.deliveryType = 'envío';
             this.conversationStage = 'confirming';
-            return 'Perfecto, para envío a domicilio. ¿Me podrías dar tu nombre, teléfono y dirección completa?';
+            return 'Perfecto, para envío a domicilio. ¿Me podrías dar:\n\n1. Tu nombre\n2. Teléfono\n3. Dirección completa\n\n(Podés poner todo en un solo mensaje)';
         }
         
-        if (lowerMessage.includes('retiro') || lowerMessage.includes('local')) {
+        if (lowerMessage.includes('retiro') || lowerMessage.includes('local') || 
+            lowerMessage.includes('pasar') || lowerMessage.includes('buscar') ||
+            lowerMessage.includes('voy a buscar')) {
             this.currentOrder.deliveryType = 'retiro';
             this.conversationStage = 'confirming';
-            return 'Perfecto, para retiro en el local. ¿Me podrías dar tu nombre y teléfono?';
+            return 'Perfecto, para retiro en el local. ¿Me podrías dar:\n\n1. Tu nombre\n2. Teléfono';
         }
         
-        if (lowerMessage.includes('sí') || lowerMessage.includes('si') || 
-            lowerMessage.includes('confirm') || lowerMessage.includes('correcto')) {
+        // Confirmación final del pedido
+        if ((lowerMessage.includes('sí') || lowerMessage.includes('si') || 
+             lowerMessage.includes('confirm') || lowerMessage.includes('correcto') ||
+             lowerMessage.includes('dale') || lowerMessage.includes('ok') ||
+             lowerMessage.includes('confirmo') || lowerMessage.includes('listo')) &&
+            this.conversationStage === 'confirming' && this.currentOrder.items.length > 0) {
             
-            if (this.conversationStage === 'confirming' && this.currentOrder.items.length > 0) {
-                this.saveOrderToFirebase().then(orderId => {
-                    console.log('Pedido guardado:', orderId);
+            // Guardar pedido
+            return this.saveOrderToFirebase().then(orderId => {
+                return `¡Perfecto! Tu pedido ha sido registrado con el ID ${orderId}. Tiempo estimado: ${this.settings.tiempo_base_estimado} minutos. ¡Gracias por tu compra!`;
+            }).catch(error => {
+                console.error('Error guardando pedido:', error);
+                return 'Hubo un error al guardar tu pedido. Por favor, intentá de nuevo.';
+            });
+        }
+        
+        // Si ya tenemos información del cliente y estamos confirmando
+        if (this.conversationStage === 'confirming' && this.currentOrder.customerInfo) {
+            // Verificar si tenemos información suficiente
+            const hasName = this.currentOrder.customerInfo.nombre && this.currentOrder.customerInfo.nombre.length > 0;
+            const hasPhone = this.currentOrder.customerInfo.telefono && this.currentOrder.customerInfo.telefono.length >= 8;
+            const hasAddress = this.currentOrder.deliveryType !== 'envío' || 
+                              (this.currentOrder.customerInfo.direccion && this.currentOrder.customerInfo.direccion.length > 0);
+            
+            if (hasName && hasPhone && hasAddress) {
+                // Guardar pedido automáticamente
+                return this.saveOrderToFirebase().then(orderId => {
+                    return `¡Perfecto! Tu pedido ha sido registrado con el ID ${orderId}. Tiempo estimado: ${this.settings.tiempo_base_estimado} minutos. ¡Gracias por tu compra!`;
                 }).catch(error => {
                     console.error('Error guardando pedido:', error);
+                    return 'Hubo un error al guardar tu pedido. Por favor, intentá de nuevo.';
                 });
-                
-                return `Perfecto, ya registré tu pedido. En un momento te doy el número de seguimiento.`;
             }
         }
         
-        // Respuesta genérica mejorada
+        // Respuesta por defecto
         if (this.currentOrder.items.length > 0) {
-            return '¿Algo más que quieras agregar a tu pedido?';
+            return '¿Algo más que quieras agregar a tu pedido? (Si ya terminaste, decime "listo")';
         } else {
-            return '¿Qué te gustaría ordenar?';
+            return '¿Qué te gustaría ordenar? Si querés ver nuestro menú completo, decime "menú".';
         }
     }
     
     // Generar menú simple
     generateSimpleMenu() {
-        let menu = '*NUESTRA CARTA*\n\n';
-        
+        let menu = '';
         const categories = {};
+        
         this.products.forEach(product => {
-            if (!categories[product.categoria]) {
-                categories[product.categoria] = [];
+            if (product.disponible) {
+                if (!categories[product.categoria]) {
+                    categories[product.categoria] = [];
+                }
+                categories[product.categoria].push(product);
             }
-            categories[product.categoria].push(product);
         });
         
         for (const [category, products] of Object.entries(categories)) {
@@ -798,41 +909,6 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         return menu;
     }
     
-    // Respuesta para productos específicos
-    getProductResponse(message) {
-        for (const product of this.products) {
-            const productNameLower = product.nombre.toLowerCase();
-            if (message.includes(productNameLower)) {
-                
-                let modifications = '';
-                if (product.aderezos_disponibles && product.aderezos_disponibles.length > 0) {
-                    for (const aderezo of product.aderezos_disponibles) {
-                        if (message.includes(aderezo.toLowerCase())) {
-                            modifications = aderezo;
-                            break;
-                        }
-                    }
-                }
-                
-                this.addToOrder({
-                    productId: product.id,
-                    nombre: product.nombre,
-                    precio: product.precio,
-                    cantidad: 1,
-                    modificaciones: modifications || null
-                });
-                
-                if (modifications) {
-                    return `Perfecto, ${product.nombre} ${modifications.toLowerCase()}. ¿Algo más?`;
-                } else {
-                    return `Perfecto, ${product.nombre}. ¿Algo más?`;
-                }
-            }
-        }
-        
-        return null;
-    }
-    
     // Agregar producto al pedido
     addToOrder(productInfo) {
         const existingItem = this.currentOrder.items.find(
@@ -847,6 +923,8 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         }
         
         this.updateOrderTotal();
+        console.log(`📦 Producto agregado: ${productInfo.nombre} x${productInfo.cantidad}`);
+        console.log(`💰 Total actual: $${this.currentOrder.total}`);
     }
     
     // Actualizar total del pedido
@@ -868,12 +946,12 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         this.currentOrder.total = total;
     }
     
-    // Generar ID de pedido con transacción
+    // Generar ID de pedido
     async generateOrderId() {
         try {
             const counterRef = this.db.collection('counters').doc('orders');
             
-            // Usar transacción para incrementar de forma segura
+            // Usar transacción para evitar duplicados
             let newNumber;
             
             await this.db.runTransaction(async (transaction) => {
@@ -892,8 +970,6 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
                 // Actualizar el contador
                 transaction.update(counterRef, { lastNumber: newNumber });
             });
-            
-            console.log(`Nuevo número de pedido: ${newNumber}`);
             
             const paddedNumber = newNumber.toString().padStart(6, '0');
             return `TACHI-${paddedNumber}`;
@@ -936,15 +1012,22 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
                     precio: item.precio,
                     cantidad: item.cantidad,
                     modificaciones: item.modificaciones
-                }))
+                })),
+                precio_envio: tipoPedido === 'envío' ? this.settings.precio_envio : 0,
+                total_con_envio: total
             };
             
-            console.log('💾 Guardando pedido en Firebase:', orderData);
+            console.log('💾 Guardando pedido en Firebase:', {
+                id: orderId,
+                cliente: orderData.nombre_cliente,
+                total: orderData.total,
+                items: orderData.items.length
+            });
             
             // Guardar en Firebase
             await this.db.collection('orders').doc(orderId).set(orderData);
             
-            // Enviar notificación al panel admin (opcional)
+            // Enviar notificación al panel admin
             await this.sendAdminNotification(orderId, orderData.nombre_cliente, total);
             
             // Resetear el pedido actual
@@ -1014,7 +1097,6 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             }
             
             const order = orderDoc.data();
-            console.log('Pedido encontrado:', order);
             
             let response = `*Pedido ${orderId}*\n`;
             response += `Estado: ${order.estado}\n`;
@@ -1025,6 +1107,10 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             
             if (order.estado === 'Listo') {
                 response += '\n¡Tu pedido está listo para retirar! 👌';
+            } else if (order.estado === 'En preparación') {
+                response += '\nTu pedido está en preparación. Te avisaremos cuando esté listo.';
+            } else if (order.estado === 'Recibido') {
+                response += '\nTu pedido ha sido recibido y será preparado pronto.';
             }
             
             return response;
@@ -1039,24 +1125,26 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         const lowerMessage = userMessage.toLowerCase();
         
         if (this.conversationStage === 'greeting' && 
-            (lowerMessage.includes('hola') || lowerMessage.includes('buenas'))) {
+            (lowerMessage.includes('hola') || lowerMessage.includes('buenas') || 
+             lowerMessage.includes('buenos') || lowerMessage.includes('buen día'))) {
             this.conversationStage = 'taking_order';
+            console.log('🔄 Cambio de etapa: greeting → taking_order');
         } else if (this.conversationStage === 'taking_order' && 
-                  (lowerMessage.includes('nada más') || 
-                   lowerMessage.includes('eso es todo') ||
-                   lowerMessage.includes('listo'))) {
+                  (lowerMessage.includes('nada más') || lowerMessage.includes('eso es todo') ||
+                   lowerMessage.includes('listo') || lowerMessage.includes('terminé'))) {
             this.conversationStage = 'asking_info';
+            console.log('🔄 Cambio de etapa: taking_order → asking_info');
         } else if (this.conversationStage === 'asking_info' &&
-                  (lowerMessage.includes('envío') || 
-                   lowerMessage.includes('retiro') ||
-                   lowerMessage.includes('domicilio'))) {
+                  (lowerMessage.includes('envío') || lowerMessage.includes('retiro') ||
+                   lowerMessage.includes('domicilio') || lowerMessage.includes('local'))) {
             this.conversationStage = 'confirming';
+            console.log('🔄 Cambio de etapa: asking_info → confirming');
         }
     }
     
-    // Limitar el tamaño del historial para no exceder tokens
+    // Limitar el tamaño del historial
     trimConversationHistory() {
-        const maxHistory = 10; // Mantener solo los últimos 10 intercambios
+        const maxHistory = 8; // Mantener solo los últimos 8 intercambios
         if (this.conversationHistory.length > maxHistory * 2) {
             this.conversationHistory = this.conversationHistory.slice(-maxHistory * 2);
         }
@@ -1072,13 +1160,24 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         };
         this.conversationStage = 'greeting';
         this.pendingClarification = null;
+        console.log('🔄 Pedido reiniciado');
     }
     
     // Reiniciar conversación completa
     resetConversation() {
         this.conversationHistory = [];
         this.resetOrder();
-        console.log('Conversación reiniciada');
+        console.log('🔄 Conversación reiniciada completamente');
+    }
+    
+    // Obtener estadísticas del pedido actual
+    getOrderStats() {
+        return {
+            items: this.currentOrder.items.length,
+            total: this.currentOrder.total,
+            stage: this.conversationStage,
+            hasCustomerInfo: !!this.currentOrder.customerInfo?.nombre
+        };
     }
 }
 
@@ -1088,9 +1187,11 @@ let conversationEngine = null;
 // Inicializar motor de conversación
 async function initConversationEngine() {
     try {
+        console.log('🔄 Inicializando motor de conversación...');
+        
         const settings = await getSettings();
         if (!settings) {
-            console.error('No se pudo cargar la configuración');
+            console.error('❌ No se pudo cargar la configuración');
             return null;
         }
         
@@ -1100,12 +1201,16 @@ async function initConversationEngine() {
             settings.api_key_gemini,
             settings,
             products,
-            window.db // Pasar la instancia global de Firebase
+            window.db
         );
         
         console.log('✅ Motor de conversación inicializado correctamente');
-        console.log(`📊 Configuración cargada: ${settings.nombre_local}`);
-        console.log(`📦 Productos cargados: ${products.length}`);
+        console.log('📊 Resumen:', {
+            local: settings.nombre_local,
+            productos: products.length,
+            apiKey: settings.api_key_gemini ? 'Configurada' : 'No configurada',
+            abierto: settings.abierto ? 'Sí' : 'No'
+        });
         
         return conversationEngine;
     } catch (error) {
@@ -1122,17 +1227,17 @@ async function processMessageWithGemini(message) {
     }
     
     if (!conversationEngine) {
-        return 'El sistema de conversación no está disponible en este momento.';
+        return 'El sistema de conversación no está disponible en este momento. Por favor, intentá más tarde.';
     }
     
     try {
-        console.log('💬 Procesando mensaje:', message.substring(0, 50) + '...');
+        console.log('💬 Procesando mensaje del usuario...');
         const response = await conversationEngine.processUserMessage(message);
-        console.log('🤖 Respuesta generada:', response.substring(0, 50) + '...');
+        console.log('✅ Respuesta generada');
         return response;
     } catch (error) {
         console.error('❌ Error procesando mensaje:', error);
-        return conversationEngine.getFallbackResponse(message);
+        return 'Hubo un error procesando tu mensaje. Por favor, intentá de nuevo.';
     }
 }
 
@@ -1145,13 +1250,6 @@ function getCurrentOrderSummary() {
     return conversationEngine.generateOrderSummaryText();
 }
 
-// Función para reiniciar conversación
-function resetConversation() {
-    if (conversationEngine) {
-        conversationEngine.resetConversation();
-    }
-}
-
 // Función para obtener el pedido actual (para debugging)
 function getCurrentOrder() {
     if (!conversationEngine) {
@@ -1161,19 +1259,90 @@ function getCurrentOrder() {
     return conversationEngine.currentOrder;
 }
 
+// Función para obtener estadísticas
+function getConversationStats() {
+    if (!conversationEngine) {
+        return null;
+    }
+    
+    return conversationEngine.getOrderStats();
+}
+
+// Función para reiniciar conversación
+function resetConversation() {
+    if (conversationEngine) {
+        conversationEngine.resetConversation();
+        console.log('🔄 Conversación reiniciada');
+        return true;
+    }
+    return false;
+}
+
+// Función para probar Gemini API
+async function testGeminiAPI(apiKey, message = "Hola, ¿cómo estás?") {
+    if (!apiKey || apiKey.trim() === '') {
+        return { success: false, error: 'API Key no configurada' };
+    }
+    
+    const model = 'gemini-2.5-flash';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    
+    const payload = {
+        contents: [
+            {
+                role: "user",
+                parts: [{ text: message }]
+            }
+        ],
+        generationConfig: {
+            maxOutputTokens: 100
+        }
+    };
+    
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            return { 
+                success: false, 
+                error: `Error ${response.status}: ${JSON.stringify(data)}` 
+            };
+        }
+        
+        return { 
+            success: true, 
+            response: data.candidates[0].content.parts[0].text 
+        };
+        
+    } catch (error) {
+        return { 
+            success: false, 
+            error: error.message 
+        };
+    }
+}
+
 // Inicializar cuando Firebase esté listo
 if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-    console.log('🔥 Firebase detectado, inicializando motor de conversación...');
+    console.log('🔥 Firebase detectado, programando inicialización del motor...');
     
-    // Esperar un momento para que Firebase se inicialice completamente
+    // Esperar a que todo esté cargado
     setTimeout(async () => {
         try {
             await initConversationEngine();
-            console.log('✅ Sistema de pedidos listo');
+            console.log('✅ Sistema de pedidos completamente inicializado');
         } catch (error) {
-            console.error('❌ Error inicializando sistema de pedidos:', error);
+            console.error('❌ Error en inicialización:', error);
         }
-    }, 1500);
+    }, 2000);
 }
 
 // Exportar para uso global
@@ -1181,29 +1350,40 @@ window.initConversationEngine = initConversationEngine;
 window.processMessageWithGemini = processMessageWithGemini;
 window.getCurrentOrderSummary = getCurrentOrderSummary;
 window.getCurrentOrder = getCurrentOrder;
+window.getConversationStats = getConversationStats;
 window.resetConversation = resetConversation;
+window.testGeminiAPI = testGeminiAPI;
 window.ConversationEngine = ConversationEngine;
 
-// Agregar listener para debug
-window.addEventListener('load', () => {
-    console.log('🚀 Conversation Engine cargado');
+// Exponer funciones para debugging
+window.debugConversationEngine = () => {
+    console.log('=== DEBUG CONVERSATION ENGINE ===');
+    console.log('Motor inicializado:', conversationEngine !== null);
     
-    // Exponer funciones para debugging desde la consola
-    window.debugConversation = async () => {
-        console.log('=== DEBUG CONVERSATION ENGINE ===');
-        console.log('Motor inicializado:', conversationEngine !== null);
-        if (conversationEngine) {
-            console.log('Pedido actual:', conversationEngine.currentOrder);
-            console.log('Productos en pedido:', conversationEngine.currentOrder.items.length);
-            console.log('Etapa:', conversationEngine.conversationStage);
-            
-            // Test de conexión a Firebase
-            try {
-                const orders = await window.db.collection('orders').get();
-                console.log('Pedidos en Firebase:', orders.size);
-            } catch (error) {
-                console.error('Error accediendo a Firebase:', error);
-            }
+    if (conversationEngine) {
+        console.log('📊 Estado actual:');
+        console.log('- Etapa:', conversationEngine.conversationStage);
+        console.log('- Productos en pedido:', conversationEngine.currentOrder.items.length);
+        console.log('- Total:', conversationEngine.currentOrder.total);
+        console.log('- Tipo entrega:', conversationEngine.currentOrder.deliveryType);
+        console.log('- Cliente:', conversationEngine.currentOrder.customerInfo);
+        console.log('- Historial mensajes:', conversationEngine.conversationHistory.length);
+        
+        // Verificar Firebase
+        if (window.db) {
+            window.db.collection('orders').get().then(snapshot => {
+                console.log('📦 Pedidos en Firebase:', snapshot.size);
+            }).catch(err => {
+                console.error('Error consultando Firebase:', err);
+            });
         }
-    };
+    }
+    
+    return conversationEngine;
+};
+
+// Agregar listener para carga completa
+window.addEventListener('load', () => {
+    console.log('🚀 Página completamente cargada');
+    console.log('💡 Usa debugConversationEngine() en la consola para ver el estado');
 });
