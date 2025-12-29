@@ -1,9 +1,10 @@
 // Motor de conversación con Gemini 2.5 Flash
 class ConversationEngine {
-    constructor(apiKey, settings, products) {
+    constructor(apiKey, settings, products, db) {
         this.apiKey = apiKey;
         this.settings = settings;
         this.products = products;
+        this.db = db; // Guardar referencia a Firebase
         this.conversationHistory = [];
         this.currentOrder = {
             items: [],
@@ -12,7 +13,7 @@ class ConversationEngine {
             deliveryType: null
         };
         this.conversationStage = 'greeting';
-        this.pendingClarification = null; // Para manejar clarificaciones de productos
+        this.pendingClarification = null;
     }
     
     // Generar prompt para Gemini
