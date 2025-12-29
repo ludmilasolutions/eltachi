@@ -110,7 +110,7 @@ class TachiChatManager {
             }
             
             // Si no hay API Key en Firestore, buscar en localStorage
-            if (!apiKey || apiKey === "AIzaSyBPRH8XZ0WfRMN9ZaPlVN_YaYvI9FTnkqU") {
+            if (!apiKey || apiKey === "AIzaSyDQE1IaqehD09qZ7SFFeQqUg5leQBa_nJ8") {
                 const savedKey = localStorage.getItem('el_tachi_gemini_key');
                 if (savedKey && savedKey.length > 30) {
                     apiKey = savedKey;
