@@ -1,5 +1,5 @@
-// Motor de conversación optimizado - Versión Final
-class ConversationEngine {
+// Motor Híbrido Inteligente - Optimizado para reconocimiento de errores y contexto
+class HybridConversationEngine {
     constructor(apiKey, settings, products, db) {
         this.apiKey = apiKey;
         this.settings = settings;
@@ -14,285 +14,383 @@ class ConversationEngine {
         };
         this.conversationStage = 'greeting';
         this.pendingClarification = null;
-        this.useGemini = false; // Por defecto desactivado
         
-        console.log('🚀 ConversationEngine creado');
-        console.log('🏪 Local:', settings.nombre_local);
-        console.log('📦 Productos cargados:', products.length);
-        console.log('🔑 API Key:', apiKey ? 'Configurada (pero desactivada por cuota)' : 'No configurada');
+        // Estadísticas para optimizar uso de Gemini
+        this.geminiUsage = {
+            totalCalls: 0,
+            todayCalls: 0,
+            successfulCorrections: 0,
+            lastReset: new Date()
+        };
         
-        // Solo usar Gemini si hay API Key Y no hemos excedido cuota
-        if (apiKey && apiKey.trim() !== '') {
-            this.useGemini = true;
-            console.log('⚠️ Gemini activado, pero cuidado con la cuota');
-        }
+        // Palabras frecuentemente mal escritas en comida
+        this.commonMisspellings = {
+            // Hamburguesas
+            'amburguesa': 'hamburguesa',
+            'hamburgesa': 'hamburguesa',
+            'hamburguesa': 'hamburguesa',
+            'burguer': 'hamburguesa',
+            'burger': 'hamburguesa',
+            'hmaburguesa': 'hamburguesa',
+            'hmaburgesa': 'hamburguesa',
+            
+            // Papas
+            'papa': 'papas',
+            'papas': 'papas',
+            'pappas': 'papas',
+            'papafritas': 'papas fritas',
+            'papitas': 'papas fritas',
+            'patatas': 'papas fritas',
+            
+            // Bebidas
+            'coca': 'gaseosa',
+            'cocacola': 'gaseosa',
+            'coca cola': 'gaseosa',
+            'cocacola': 'gaseosa',
+            'pepsi': 'gaseosa',
+            'sprite': 'gaseosa',
+            'fanta': 'gaseosa',
+            'gaseoza': 'gaseosa',
+            'refresco': 'gaseosa',
+            
+            // Empanadas
+            'empanada': 'empanadas',
+            'empanadas': 'empanadas',
+            'empaná': 'empanadas',
+            'empanáda': 'empanadas',
+            'empanadass': 'empanadas',
+            
+            // Varios
+            'combo': 'combo',
+            'menú': 'menu',
+            'menu': 'menu',
+            'postre': 'postre',
+            'helado': 'postre',
+            'pizza': 'pizza',
+            'piza': 'pizza'
+        };
+        
+        console.log('🚀 Motor Híbrido creado');
+        console.log('🔧 Corrector ortográfico activado');
+        console.log('🤖 Gemini disponible:', !!apiKey);
     }
     
-    // Generar prompt para Gemini (SIMPLIFICADO para usar menos tokens)
-    generateSystemPrompt() {
-        return `Eres atención al cliente de EL TACHI rotisería. Responde de forma natural como una persona.
-
-REGLAS:
-1. NO digas que eres IA/bot
-2. Ofrece menú solo cuando pregunten
-3. Para productos genéricos (ej: "hamburguesa") pregunta cuál quiere
-4. Solo menciona modificaciones si el cliente las pide
-5. Resumen final obligatorio antes de pedir datos
-6. Pregunta si es envío o retiro
-
-PRODUCTOS DISPONIBLES:
-${this.generateProductsList()}
-
-CONFIGURACIÓN:
-- Tiempo estimado: ${this.settings.tiempo_base_estimado} min
-- Envío: $${this.settings.precio_envio}
-- Retiro: ${this.settings.retiro_habilitado ? 'Sí' : 'No'}
-
-Responde como vendedor humano, breve y claro.`;
+    // ==================== SISTEMA DE CORRECCIÓN ORTOGRÁFICA ====================
+    
+    // Corregir errores comunes en tiempo real
+    correctSpelling(message) {
+        console.log('🔤 Corrigiendo ortografía...');
+        let corrected = message.toLowerCase();
+        
+        // Reemplazar errores comunes
+        Object.keys(this.commonMisspellings).forEach(misspelling => {
+            const regex = new RegExp(`\\b${misspelling}\\b`, 'gi');
+            if (regex.test(corrected)) {
+                corrected = corrected.replace(regex, this.commonMisspellings[misspelling]);
+                console.log(`   ✓ Corregido: ${misspelling} → ${this.commonMisspellings[misspelling]}`);
+            }
+        });
+        
+        // Buscar similitudes con productos (algoritmo de Levenshtein simplificado)
+        const words = corrected.split(/\s+/);
+        const correctedWords = words.map(word => {
+            // Si la palabra ya está en nuestros productos, no cambiar
+            const productMatch = this.products.find(p => 
+                p.nombre.toLowerCase().includes(word) || 
+                word.includes(p.nombre.toLowerCase())
+            );
+            
+            if (productMatch) {
+                return productMatch.nombre.toLowerCase();
+            }
+            
+            // Buscar similitudes aproximadas
+            const similarProduct = this.findSimilarProduct(word);
+            if (similarProduct) {
+                console.log(`   ≈ Similar: ${word} → ${similarProduct.nombre}`);
+                return similarProduct.nombre.toLowerCase();
+            }
+            
+            return word;
+        });
+        
+        return correctedWords.join(' ');
     }
     
-    // Generar lista de productos optimizada
-    generateProductsList() {
-        let list = '';
-        const categories = {};
+    // Algoritmo de similitud simple
+    findSimilarProduct(word) {
+        if (word.length < 3) return null;
+        
+        let bestMatch = null;
+        let bestScore = 0;
         
         this.products.forEach(product => {
-            if (product.disponible) {
-                if (!categories[product.categoria]) {
-                    categories[product.categoria] = [];
-                }
-                categories[product.categoria].push(product);
+            const productName = product.nombre.toLowerCase();
+            
+            // Coincidencia exacta
+            if (productName.includes(word) || word.includes(productName)) {
+                bestMatch = product;
+                bestScore = 0.9;
+                return;
+            }
+            
+            // Calcular similitud de caracteres
+            const similarity = this.calculateSimilarity(word, productName);
+            if (similarity > 0.7 && similarity > bestScore) {
+                bestScore = similarity;
+                bestMatch = product;
             }
         });
         
-        for (const [category, products] of Object.entries(categories)) {
-            list += `${category}:\n`;
-            products.forEach(product => {
-                list += `- ${product.nombre}: $${product.precio}`;
-                if (product.descripcion) {
-                    list += ` (${product.descripcion})`;
-                }
-                list += `\n`;
-            });
-            list += `\n`;
-        }
-        
-        return list;
+        return bestMatch;
     }
     
-    // Procesar mensaje del usuario - VERSIÓN OPTIMIZADA
-    async processUserMessage(userMessage) {
-        console.log(`💬 Mensaje: "${userMessage.substring(0, 50)}${userMessage.length > 50 ? '...' : ''}"`);
+    calculateSimilarity(a, b) {
+        // Distancia de Levenshtein simplificada
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
         
-        // Verificar si el local está abierto
-        if (!this.settings.abierto) {
-            return this.settings.mensaje_cerrado;
+        const matrix = [];
+        
+        for (let i = 0; i <= b.length; i++) {
+            matrix[i] = [i];
         }
         
-        // Si hay clarificación pendiente, procesarla primero
-        if (this.pendingClarification) {
-            return this.handleProductClarification(userMessage);
+        for (let j = 0; j <= a.length; j++) {
+            matrix[0][j] = j;
         }
         
-        // Verificar si es un ID de pedido
-        const orderIdMatch = userMessage.match(/TACHI-\d{6}/i);
-        if (orderIdMatch) {
-            return await this.handleOrderStatusQuery(orderIdMatch[0].toUpperCase());
-        }
-        
-        // Agregar al historial
-        this.conversationHistory.push({
-            role: 'user',
-            parts: [{ text: userMessage }]
-        });
-        
-        // Limitar historial
-        this.trimConversationHistory();
-        
-        // Determinar etapa
-        this.updateConversationStage(userMessage);
-        
-        // INTENTAR USAR GEMINI SOLO SI ESTÁ ACTIVADO Y NO HEMOS TENIDO ERRORES RECIENTES
-        let geminiResponse = null;
-        if (this.useGemini && this.apiKey) {
-            try {
-                console.log('🤖 Intentando Gemini...');
-                geminiResponse = await this.callGeminiAPI(userMessage);
-                console.log('✅ Gemini respondió');
-                
-                // Verificar si necesita clarificación
-                const needsClarification = this.checkIfNeedsClarification(userMessage, geminiResponse);
-                if (needsClarification) {
-                    this.pendingClarification = {
-                        category: needsClarification.category,
-                        originalMessage: userMessage
-                    };
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i-1) === a.charAt(j-1)) {
+                    matrix[i][j] = matrix[i-1][j-1];
                 } else {
-                    this.conversationHistory.push({
-                        role: 'model',
-                        parts: [{ text: geminiResponse }]
-                    });
+                    matrix[i][j] = Math.min(
+                        matrix[i-1][j-1] + 1,
+                        matrix[i][j-1] + 1,
+                        matrix[i-1][j] + 1
+                    );
                 }
-                
-                // Procesar pedido
-                if (!needsClarification) {
-                    await this.processOrderFromMessage(userMessage, geminiResponse);
-                }
-                
-                return geminiResponse;
-                
-            } catch (error) {
-                console.log('❌ Gemini falló, usando fallback:', error.message);
-                // Si Gemini falla por cuota, desactivarlo para futuras llamadas
-                if (error.message.includes('429') || error.message.includes('quota')) {
-                    this.useGemini = false;
-                    console.log('⚠️ Gemini desactivado por cuota excedida');
-                }
-                // Continuar con fallback
             }
         }
         
-        // FALLBACK - Lógica interna (PRINCIPAL)
-        console.log('🔄 Usando lógica interna');
-        const fallbackResponse = this.getFallbackResponse(userMessage);
-        
-        // Agregar al historial
-        this.conversationHistory.push({
-            role: 'model',
-            parts: [{ text: fallbackResponse }]
-        });
-        
-        return fallbackResponse;
+        const distance = matrix[b.length][a.length];
+        const maxLength = Math.max(a.length, b.length);
+        return 1 - (distance / maxLength);
     }
     
-    // Llamar a Gemini API - OPTIMIZADO para usar menos tokens
-    async callGeminiAPI(userMessage) {
-        if (!this.apiKey || this.apiKey.trim() === '') {
-            throw new Error('No API Key');
+    // ==================== GEMINI PARA CASOS DIFÍCILES ====================
+    
+    // Usar Gemini solo cuando nuestro corrector falla
+    async useGeminiForHardCases(originalMessage, correctedMessage) {
+        // Verificar si podemos usar Gemini (límites)
+        if (!this.canUseGemini()) {
+            console.log('⚠️  Límite Gemini alcanzado, usando corrector local');
+            return correctedMessage;
         }
         
-        const model = 'gemini-2.5-flash';
+        // Solo usar Gemini para mensajes que parecen órdenes pero no fueron entendidos
+        const seemsLikeOrder = this.seemsLikeFoodOrder(originalMessage);
+        const understoodByCorrector = this.detectProductsInMessage(correctedMessage).length > 0;
+        
+        if (seemsLikeOrder && !understoodByCorrector) {
+            console.log('🤖 Usando Gemini para caso difícil...');
+            
+            try {
+                const geminiCorrected = await this.callGeminiForCorrection(originalMessage);
+                this.geminiUsage.totalCalls++;
+                this.geminiUsage.todayCalls++;
+                
+                // Verificar si Gemini ayudó
+                const geminiProducts = this.detectProductsInMessage(geminiCorrected);
+                if (geminiProducts.length > 0) {
+                    this.geminiUsage.successfulCorrections++;
+                    console.log('✅ Gemini ayudó a entender el mensaje');
+                    return geminiCorrected;
+                }
+            } catch (error) {
+                console.log('❌ Gemini falló:', error.message);
+            }
+        }
+        
+        return correctedMessage;
+    }
+    
+    // Verificar si parece una orden de comida
+    seemsLikeFoodOrder(message) {
+        const lowerMsg = message.toLowerCase();
+        const foodKeywords = [
+            'quiero', 'dame', 'traeme', 'necesito', 'me das', 'para llevar',
+            'para mí', 'orden', 'pedido', 'comida', 'comprar', 'llevar',
+            'hamburguesa', 'papa', 'bebida', 'gaseosa', 'empanada', 'pizza',
+            'combo', 'menú', 'postre', 'papas', 'fritas', 'con', 'sin'
+        ];
+        
+        // Debe tener al menos 2 palabras y una palabra clave
+        const words = lowerMsg.split(/\s+/).filter(w => w.length > 2);
+        if (words.length < 2) return false;
+        
+        const hasKeyword = foodKeywords.some(keyword => lowerMsg.includes(keyword));
+        const hasNumbers = /\d/.test(message); // Números suelen indicar cantidades
+        
+        return hasKeyword || hasNumbers;
+    }
+    
+    // Llamar a Gemini para corrección específica
+    async callGeminiForCorrection(message) {
+        if (!this.apiKey) throw new Error('No API Key');
+        
+        const prompt = `Eres un corrector de pedidos para una rotisería. 
+        El cliente escribió: "${message}"
+        
+        PRODUCTOS DISPONIBLES:
+        ${this.products.map(p => `- ${p.nombre} (${p.descripcion || 'sin descripción'})`).join('\n')}
+        
+        CORRIGE el mensaje del cliente usando solo los productos disponibles.
+        Si menciona algo que no tenemos, IGNÓRALO.
+        Mantén el mismo tono y estilo.
+        
+        Solo responde con el mensaje corregido, nada más.
+        
+        Mensaje corregido:`;
+        
+        const model = 'gemini-1.5-flash'; // Modelo más barato
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
         
-        // Construir contenido optimizado
-        const contents = [];
-        
-        // Solo incluir el prompt del sistema y los últimos 2 mensajes
-        contents.push({
-            role: "user",
-            parts: [{ text: this.generateSystemPrompt() }]
-        });
-        
-        // Agregar historial reciente (máximo 2 intercambios)
-        if (this.conversationHistory.length > 0) {
-            const recentHistory = this.conversationHistory.slice(-2);
-            recentHistory.forEach(msg => {
-                contents.push({
-                    role: msg.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: msg.parts[0].text }]
-                });
-            });
-        }
-        
-        // Agregar mensaje actual
-        contents.push({
-            role: "user",
-            parts: [{ text: userMessage }]
-        });
-        
         const payload = {
-            contents: contents,
+            contents: [{
+                role: "user",
+                parts: [{ text: prompt }]
+            }],
             generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 500, // Reducido para ahorrar tokens
+                temperature: 0.3,
+                maxOutputTokens: 100
             }
         };
         
-        // Timeout de 10 segundos
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
         
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Error ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            
-            if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-                throw new Error('Respuesta inválida');
-            }
-            
-            return data.candidates[0].content.parts[0].text;
-            
-        } catch (error) {
-            clearTimeout(timeoutId);
-            throw error;
-        }
+        if (!response.ok) throw new Error(`Error ${response.status}`);
+        
+        const data = await response.json();
+        return data.candidates[0].content.parts[0].text.trim();
     }
     
-    // Respuesta de fallback mejorada
-    getFallbackResponse(userMessage) {
-        const lowerMessage = userMessage.toLowerCase();
+    // Verificar si podemos usar Gemini (límites inteligentes)
+    canUseGemini() {
+        if (!this.apiKey) return false;
         
-        // PRIMER MENSAJE - Mostrar menú completo
-        if (this.conversationHistory.length <= 2 && 
-            (lowerMessage.includes('hola') || lowerMessage.includes('buenas') || 
-             lowerMessage.includes('buen día') || lowerMessage.includes('buenos'))) {
+        // Resetear contador diario
+        const today = new Date().toDateString();
+        if (today !== this.geminiUsage.lastReset.toDateString()) {
+            this.geminiUsage.todayCalls = 0;
+            this.geminiUsage.lastReset = new Date();
+        }
+        
+        // Límites:
+        // - Máximo 10 llamadas por día (gratis)
+        // - Máximo 2 llamadas por conversación
+        // - Solo si la tasa de éxito es > 50%
+        
+        const dailyLimit = 10;
+        const perConversationLimit = 2;
+        const successRate = this.geminiUsage.totalCalls > 0 ? 
+            this.geminiUsage.successfulCorrections / this.geminiUsage.totalCalls : 1;
+        
+        const underDailyLimit = this.geminiUsage.todayCalls < dailyLimit;
+        const underPerConversationLimit = this.geminiUsage.todayCalls < perConversationLimit;
+        const goodSuccessRate = successRate > 0.5 || this.geminiUsage.totalCalls < 3;
+        
+        return underDailyLimit && underPerConversationLimit && goodSuccessRate;
+    }
+    
+    // ==================== PROCESAMIENTO PRINCIPAL ====================
+    
+    async processUserMessage(userMessage) {
+        console.log(`💬 Original: "${userMessage}"`);
+        
+        // Paso 1: Corrección local rápida
+        let correctedMessage = this.correctSpelling(userMessage);
+        console.log(`🔤 Corregido local: "${correctedMessage}"`);
+        
+        // Paso 2: Detección de productos después de corrección
+        let detectedProducts = this.detectProductsInMessage(correctedMessage);
+        
+        // Paso 3: Si no detectamos productos y parece una orden, usar Gemini
+        if (detectedProducts.length === 0 && this.seemsLikeFoodOrder(userMessage)) {
+            correctedMessage = await this.useGeminiForHardCases(userMessage, correctedMessage);
             
-            const menu = this.generateEnhancedMenu();
-            return `${menu}\n\n⏱️ *Tiempo estimado:* ${this.settings.tiempo_base_estimado} minutos\n🚚 *Envío:* $${this.settings.precio_envio}\n🏪 *Retiro en local:* Sí\n\n¿Qué te gustaría ordenar?`;
+            // Volver a detectar después de Gemini
+            detectedProducts = this.detectProductsInMessage(correctedMessage);
+            console.log(`🤖 Después de Gemini: "${correctedMessage}"`);
         }
         
-        // PEDIR MENÚ
+        // Paso 4: Continuar con lógica normal usando el mensaje corregido
+        this.conversationHistory.push({
+            role: 'user',
+            parts: [{ text: userMessage }] // Guardar original para contexto
+        });
+        
+        // Actualizar etapa de conversación
+        this.updateConversationStage(correctedMessage);
+        
+        // Obtener respuesta
+        const response = this.getResponse(correctedMessage, detectedProducts);
+        
+        // Guardar respuesta
+        this.conversationHistory.push({
+            role: 'model',
+            parts: [{ text: response }]
+        });
+        
+        return response;
+    }
+    
+    // ==================== LÓGICA DE RESPUESTA ====================
+    
+    getResponse(message, detectedProducts) {
+        const lowerMessage = message.toLowerCase();
+        
+        // SALUDO INICIAL
+        if (this.conversationStage === 'greeting' && 
+            (lowerMessage.includes('hola') || lowerMessage.includes('buenas'))) {
+            
+            this.conversationStage = 'taking_order';
+            return this.generateGreetingResponse();
+        }
+        
+        // MOSTRAR MENÚ
         if (lowerMessage.includes('menú') || lowerMessage.includes('carta') || 
-            lowerMessage.includes('ver') || lowerMessage.includes('mostrar') ||
-            lowerMessage.includes('qué tienen') || lowerMessage.includes('que tienen')) {
-            return this.generateEnhancedMenu();
+            lowerMessage.includes('ver') || lowerMessage.includes('mostrar')) {
+            return this.generateMenuResponse();
         }
         
-        // DETECTAR PRODUCTOS
-        const detectedProducts = this.detectProductsInMessage(userMessage);
+        // PROCESAR PRODUCTOS DETECTADOS
         if (detectedProducts.length > 0) {
-            detectedProducts.forEach(product => {
-                this.addToOrder(product);
-            });
+            detectedProducts.forEach(product => this.addToOrder(product));
             
             const lastProduct = detectedProducts[detectedProducts.length - 1];
             const productText = lastProduct.cantidad > 1 ? 
-                `${lastProduct.cantidad} ${lastProduct.nombre}` : 
-                lastProduct.nombre;
-                
+                `${lastProduct.cantidad} ${lastProduct.nombre}` : lastProduct.nombre;
+            
             const modificationText = lastProduct.modificaciones ? 
                 ` (${lastProduct.modificaciones})` : '';
-                
+            
             return `Perfecto, ${productText}${modificationText}. ¿Algo más?`;
         }
         
-        // VERIFICAR PRODUCTOS GENÉRICOS
+        // PRODUCTOS GENÉRICOS (necesitan clarificación)
         const categories = this.getCategoriesFromMessage(lowerMessage);
         if (categories.length > 0) {
             for (const category of categories) {
                 const productsInCategory = this.getProductsByCategory(category);
                 if (productsInCategory.length > 1) {
-                    let clarificationText = `¿Cuál ${category} querés? Tenemos:\n`;
-                    productsInCategory.forEach(product => {
-                        clarificationText += `• ${product.nombre}: $${product.precio}\n`;
-                    });
                     this.pendingClarification = { category: category };
-                    return clarificationText;
+                    return this.generateClarificationResponse(category, productsInCategory);
                 } else if (productsInCategory.length === 1) {
                     const product = productsInCategory[0];
                     this.addToOrder({
@@ -308,69 +406,55 @@ Responde como vendedor humano, breve y claro.`;
         }
         
         // FINALIZAR PEDIDO
-        if (lowerMessage.includes('nada más') || lowerMessage.includes('eso es todo') || 
-            lowerMessage.includes('listo') || lowerMessage.includes('terminé') ||
-            lowerMessage.includes('eso es')) {
+        if (lowerMessage.includes('nada más') || lowerMessage.includes('listo') || 
+            lowerMessage.includes('terminé') || lowerMessage.includes('eso es todo')) {
             
             if (this.currentOrder.items.length === 0) {
                 return 'No tengo ningún producto en tu pedido. ¿Qué te gustaría ordenar?';
             }
             
-            const summary = this.generateOrderSummary();
             this.conversationStage = 'asking_delivery';
-            return `*RESUMEN DE PEDIDO*\n\n${summary}\n\n¿Es para envío a domicilio o retiro en el local?`;
+            return this.generateOrderSummary();
         }
         
         // TIPO DE ENTREGA
         if (this.conversationStage === 'asking_delivery') {
-            if (lowerMessage.includes('envío') || lowerMessage.includes('domicilio') || 
-                lowerMessage.includes('casa') || lowerMessage.includes('entrega')) {
+            if (lowerMessage.includes('envío') || lowerMessage.includes('domicilio')) {
                 this.currentOrder.deliveryType = 'envío';
                 this.conversationStage = 'collecting_info';
-                return 'Perfecto, para envío. Necesito:\n1. Tu nombre\n2. Teléfono\n3. Dirección completa\n\n(Podés poner todo junto)';
+                return 'Perfecto, para envío a domicilio. Necesito:\n1. Tu nombre\n2. Teléfono\n3. Dirección completa';
             }
             
-            if (lowerMessage.includes('retiro') || lowerMessage.includes('local') || 
-                lowerMessage.includes('voy') || lowerMessage.includes('pasar')) {
+            if (lowerMessage.includes('retiro') || lowerMessage.includes('local')) {
                 this.currentOrder.deliveryType = 'retiro';
                 this.conversationStage = 'collecting_info';
-                return 'Perfecto, para retiro. Necesito:\n1. Tu nombre\n2. Teléfono';
+                return 'Perfecto, para retiro en el local. Necesito:\n1. Tu nombre\n2. Teléfono';
             }
         }
         
-        // RECOLECTAR INFORMACIÓN
+        // RECOLECCIÓN DE DATOS
         if (this.conversationStage === 'collecting_info') {
-            this.extractCustomerInfo(userMessage);
+            this.extractCustomerInfo(message);
             
-            // Verificar si tenemos información suficiente
             const hasName = this.currentOrder.customerInfo?.nombre?.length > 0;
             const hasPhone = this.currentOrder.customerInfo?.telefono?.length >= 8;
             const needsAddress = this.currentOrder.deliveryType === 'envío';
             const hasAddress = !needsAddress || this.currentOrder.customerInfo?.direccion?.length > 0;
             
             if (hasName && hasPhone && hasAddress) {
-                // Confirmar y guardar
-                const orderId = this.saveOrderToFirebase();
-                return `✅ *PEDIDO CONFIRMADO*\n\nID: ${orderId}\nTiempo estimado: ${this.settings.tiempo_base_estimado} minutos\n\n¡Gracias por tu compra!`;
+                try {
+                    const orderId = this.saveOrderToFirebase();
+                    return `✅ *PEDIDO CONFIRMADO*\n\n📦 ID: ${orderId}\n⏱️ Tiempo: ${this.settings.tiempo_base_estimado} min\n💰 Total: $${this.currentOrder.total + (this.currentOrder.deliveryType === 'envío' ? this.settings.precio_envio : 0)}\n\n¡Gracias por tu compra!`;
+                } catch (error) {
+                    return 'Error al guardar el pedido. Por favor, intentá de nuevo.';
+                }
             } else {
-                // Pedir lo que falta
                 let missing = [];
                 if (!hasName) missing.push('nombre');
                 if (!hasPhone) missing.push('teléfono');
                 if (needsAddress && !hasAddress) missing.push('dirección');
                 
                 return `Todavía necesito tu ${missing.join(', ')}.`;
-            }
-        }
-        
-        // CONFIRMACIÓN
-        if (lowerMessage.includes('sí') || lowerMessage.includes('si') || 
-            lowerMessage.includes('confirm') || lowerMessage.includes('correcto') ||
-            lowerMessage.includes('dale') || lowerMessage.includes('ok')) {
-            
-            if (this.conversationStage === 'confirming' && this.currentOrder.items.length > 0) {
-                const orderId = this.saveOrderToFirebase();
-                return `✅ *PEDIDO CONFIRMADO*\n\nID: ${orderId}\nTiempo estimado: ${this.settings.tiempo_base_estimado} minutos\n\n¡Gracias por tu compra!`;
             }
         }
         
@@ -382,8 +466,18 @@ Responde como vendedor humano, breve y claro.`;
         }
     }
     
-    // Generar menú mejorado
-    generateEnhancedMenu() {
+    // ==================== FUNCIONES AUXILIARES ====================
+    
+    generateGreetingResponse() {
+        return `¡Hola! 👋 Soy la atención de *${this.settings.nombre_local}*.\n\n` +
+               `${this.generateMenuResponse()}\n\n` +
+               `⏱️ *Tiempo estimado:* ${this.settings.tiempo_base_estimado} minutos\n` +
+               `🚚 *Envío a domicilio:* $${this.settings.precio_envio}\n` +
+               `🏪 *Retiro en local:* Sí\n\n` +
+               `¿Qué te gustaría ordenar?`;
+    }
+    
+    generateMenuResponse() {
         let menu = '🍔 *NUESTRO MENÚ*\n\n';
         const categories = {};
         
@@ -401,7 +495,7 @@ Responde como vendedor humano, breve y claro.`;
             products.forEach(product => {
                 menu += `• ${product.nombre} - $${product.precio}`;
                 if (product.descripcion) {
-                    menu += `\n  ${product.descripcion}`;
+                    menu += ` (${product.descripcion})`;
                 }
                 menu += `\n`;
             });
@@ -411,11 +505,22 @@ Responde como vendedor humano, breve y claro.`;
         return menu;
     }
     
-    // Generar resumen del pedido
+    generateClarificationResponse(category, products) {
+        let text = `¿Cuál ${category} querés? Tenemos:\n`;
+        products.forEach(product => {
+            text += `• ${product.nombre}: $${product.precio}`;
+            if (product.descripcion) {
+                text += ` (${product.descripcion})`;
+            }
+            text += `\n`;
+        });
+        return text;
+    }
+    
     generateOrderSummary() {
         if (this.currentOrder.items.length === 0) return 'Sin productos';
         
-        let summary = '';
+        let summary = '📋 *RESUMEN DE PEDIDO*\n\n';
         let subtotal = 0;
         
         this.currentOrder.items.forEach(item => {
@@ -438,10 +543,13 @@ Responde como vendedor humano, breve y claro.`;
             summary += `\n*Total: $${subtotal}*`;
         }
         
+        summary += `\n\n¿Es para envío a domicilio o retiro en el local?`;
+        
         return summary;
     }
     
-    // Detectar productos en mensaje
+    // ==================== FUNCIONES DEL MOTOR BASE ====================
+    
     detectProductsInMessage(message) {
         const lowerMessage = message.toLowerCase();
         const detected = [];
@@ -450,8 +558,13 @@ Responde como vendedor humano, breve y claro.`;
             if (product.disponible) {
                 const productNameLower = product.nombre.toLowerCase();
                 
-                // Verificar coincidencia exacta
-                if (lowerMessage.includes(productNameLower)) {
+                // Búsqueda flexible: palabra clave o parte del nombre
+                const words = productNameLower.split(/\s+/);
+                const hasMatch = words.some(word => 
+                    word.length > 3 && lowerMessage.includes(word)
+                ) || lowerMessage.includes(productNameLower);
+                
+                if (hasMatch) {
                     let quantity = 1;
                     const quantityMatch = message.match(/(\d+)\s*[x\*]?\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+)/i);
                     if (quantityMatch && quantityMatch[1]) {
@@ -482,177 +595,23 @@ Responde como vendedor humano, breve y claro.`;
         return detected;
     }
     
-    // Extraer información del cliente optimizada
-    extractCustomerInfo(userMessage) {
-        if (!this.currentOrder.customerInfo) {
-            this.currentOrder.customerInfo = {
-                nombre: '',
-                telefono: '',
-                direccion: ''
-            };
-        }
-        
-        // Extraer teléfono (cualquier secuencia de 8-15 números)
-        const phoneMatch = userMessage.match(/(\d{8,15})/);
-        if (phoneMatch) {
-            this.currentOrder.customerInfo.telefono = phoneMatch[1];
-        }
-        
-        // Extraer nombre (búsqueda simple)
-        const nameKeywords = ['me llamo', 'soy', 'nombre es', 'mi nombre'];
-        for (const keyword of nameKeywords) {
-            if (userMessage.toLowerCase().includes(keyword)) {
-                const startIndex = userMessage.toLowerCase().indexOf(keyword) + keyword.length;
-                const namePart = userMessage.substring(startIndex).trim();
-                if (namePart.length > 2) {
-                    // Tomar primera palabra como nombre
-                    const firstName = namePart.split(/\s+/)[0];
-                    if (firstName.length > 1) {
-                        this.currentOrder.customerInfo.nombre = firstName;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Extraer dirección si es envío
-        if (this.currentOrder.deliveryType === 'envío') {
-            const addressKeywords = ['calle', 'av.', 'avenida', 'dirección', 'casa', 'número'];
-            for (const keyword of addressKeywords) {
-                if (userMessage.toLowerCase().includes(keyword)) {
-                    const startIndex = userMessage.toLowerCase().indexOf(keyword);
-                    const addressPart = userMessage.substring(startIndex);
-                    if (addressPart.length > 10) {
-                        this.currentOrder.customerInfo.direccion = addressPart;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    
-    // Guardar pedido en Firebase
-    async saveOrderToFirebase() {
-        try {
-            console.log('💾 Guardando pedido...');
-            
-            // Generar ID
-            let orderId;
-            try {
-                orderId = await this.generateOrderId();
-            } catch (error) {
-                console.log('⚠️ Error generando ID, usando timestamp');
-                orderId = `TACHI-${Date.now().toString().slice(-6)}`;
-            }
-            
-            // Calcular total
-            let subtotal = this.currentOrder.items.reduce((sum, item) => 
-                sum + (item.precio * item.cantidad), 0);
-            
-            let total = subtotal;
-            if (this.currentOrder.deliveryType === 'envío') {
-                total += this.settings.precio_envio || 0;
-            }
-            
-            // Crear datos del pedido
-            const orderData = {
-                id_pedido: orderId,
-                fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                nombre_cliente: this.currentOrder.customerInfo?.nombre || 'Cliente',
-                telefono: this.currentOrder.customerInfo?.telefono || '',
-                tipo_pedido: this.currentOrder.deliveryType || 'retiro',
-                direccion: this.currentOrder.customerInfo?.direccion || '',
-                items: this.currentOrder.items.map(item => ({
-                    productId: item.productId,
-                    nombre: item.nombre,
-                    precio: item.precio,
-                    cantidad: item.cantidad,
-                    modificaciones: item.modificaciones
-                })),
-                subtotal: subtotal,
-                precio_envio: this.currentOrder.deliveryType === 'envío' ? this.settings.precio_envio : 0,
-                total: total,
-                estado: 'Recibido',
-                tiempo_estimado_actual: this.settings.tiempo_base_estimado || 30
-            };
-            
-            console.log('📝 Datos del pedido:', orderData);
-            
-            // Guardar en Firebase
-            await this.db.collection('orders').doc(orderId).set(orderData);
-            
-            console.log('✅ Pedido guardado:', orderId);
-            
-            // Enviar notificación
-            try {
-                await this.db.collection('notifications').add({
-                    tipo: 'nuevo_pedido',
-                    mensaje: `Nuevo pedido ${orderId} - ${orderData.nombre_cliente} - $${total}`,
-                    pedido_id: orderId,
-                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                    leido: false
-                });
-            } catch (notifError) {
-                console.log('⚠️ Error enviando notificación:', notifError);
-            }
-            
-            // Resetear pedido
-            this.resetOrder();
-            
-            return orderId;
-            
-        } catch (error) {
-            console.error('❌ Error guardando pedido:', error);
-            throw error;
-        }
-    }
-    
-    // Generar ID de pedido
-    async generateOrderId() {
-        try {
-            const counterRef = this.db.collection('counters').doc('orders');
-            
-            // Usar transacción para evitar duplicados
-            const result = await this.db.runTransaction(async (transaction) => {
-                const counterDoc = await transaction.get(counterRef);
-                let currentNumber = 0;
-                
-                if (counterDoc.exists) {
-                    currentNumber = counterDoc.data().lastNumber || 0;
-                } else {
-                    transaction.set(counterRef, { lastNumber: 0 });
-                }
-                
-                const newNumber = currentNumber + 1;
-                transaction.update(counterRef, { lastNumber: newNumber });
-                return newNumber;
-            });
-            
-            return `TACHI-${result.toString().padStart(6, '0')}';
-            
-        } catch (error) {
-            console.error('Error en generateOrderId:', error);
-            // Fallback
-            return `TACHI-${Date.now().toString().slice(-6)}`;
-        }
-    }
-    
-    // Obtener categorías del mensaje
     getCategoriesFromMessage(message) {
         const categories = [];
         const categoryMap = {
             'hamburguesa': 'hamburguesas',
-            'hamburguesas': 'hamburguesas',
+            'burguer': 'hamburguesas',
+            'burger': 'hamburguesas',
             'papas': 'acompañamientos',
             'fritas': 'acompañamientos',
-            'empanada': 'entradas',
-            'empanadas': 'entradas',
+            'papa': 'acompañamientos',
             'bebida': 'bebidas',
             'gaseosa': 'bebidas',
+            'refresco': 'bebidas',
+            'empanada': 'entradas',
+            'empanadas': 'entradas',
             'pizza': 'pizzas',
-            'pizzas': 'pizzas',
             'postre': 'postres',
-            'postres': 'postres'
+            'helado': 'postres'
         };
         
         Object.keys(categoryMap).forEach(keyword => {
@@ -661,10 +620,9 @@ Responde como vendedor humano, breve y claro.`;
             }
         });
         
-        return [...new Set(categories)]; // Eliminar duplicados
+        return [...new Set(categories)];
     }
     
-    // Obtener productos por categoría
     getProductsByCategory(category) {
         return this.products.filter(product => 
             product.categoria.toLowerCase() === category.toLowerCase() && 
@@ -672,69 +630,6 @@ Responde como vendedor humano, breve y claro.`;
         );
     }
     
-    // Manejar clarificación de producto
-    handleProductClarification(userMessage) {
-        const lowerMessage = userMessage.toLowerCase();
-        const category = this.pendingClarification.category;
-        const products = this.getProductsByCategory(category);
-        
-        let selectedProduct = null;
-        for (const product of products) {
-            if (lowerMessage.includes(product.nombre.toLowerCase())) {
-                selectedProduct = product;
-                break;
-            }
-        }
-        
-        if (!selectedProduct) {
-            let text = `¿Cuál ${category} querés?\n`;
-            products.forEach(product => {
-                text += `• ${product.nombre}: $${product.precio}\n`;
-            });
-            return text;
-        }
-        
-        this.addToOrder({
-            productId: selectedProduct.id,
-            nombre: selectedProduct.nombre,
-            precio: selectedProduct.precio,
-            cantidad: 1,
-            modificaciones: null
-        });
-        
-        this.pendingClarification = null;
-        return `Perfecto, ${selectedProduct.nombre}. ¿Algo más?`;
-    }
-    
-    // Verificar si necesita clarificación
-    checkIfNeedsClarification(userMessage, aiResponse) {
-        const lowerMessage = userMessage.toLowerCase();
-        const categories = this.getCategoriesFromMessage(lowerMessage);
-        
-        if (categories.length > 0) {
-            for (const category of categories) {
-                const productsInCategory = this.getProductsByCategory(category);
-                if (productsInCategory.length > 1) {
-                    // Verificar si ya especificó un producto
-                    let specified = false;
-                    for (const product of productsInCategory) {
-                        if (lowerMessage.includes(product.nombre.toLowerCase())) {
-                            specified = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!specified) {
-                        return { category: category };
-                    }
-                }
-            }
-        }
-        
-        return null;
-    }
-    
-    // Agregar producto al pedido
     addToOrder(productInfo) {
         const existingItem = this.currentOrder.items.find(
             item => item.productId === productInfo.productId && 
@@ -752,39 +647,53 @@ Responde como vendedor humano, breve y claro.`;
             sum + (item.precio * item.cantidad), 0);
     }
     
-    // Manejar consulta de estado
-    async handleOrderStatusQuery(orderId) {
-        try {
-            const orderRef = this.db.collection('orders').doc(orderId);
-            const orderDoc = await orderRef.get();
-            
-            if (!orderDoc.exists) {
-                return `No encontré el pedido ${orderId}.`;
+    extractCustomerInfo(message) {
+        if (!this.currentOrder.customerInfo) {
+            this.currentOrder.customerInfo = {
+                nombre: '',
+                telefono: '',
+                direccion: ''
+            };
+        }
+        
+        // Extraer teléfono
+        const phoneMatch = message.match(/(\d{8,15})/);
+        if (phoneMatch) {
+            this.currentOrder.customerInfo.telefono = phoneMatch[1];
+        }
+        
+        // Extraer nombre (simple)
+        const namePatterns = [
+            /(?:me llamo|soy|nombre es|mi nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]{2,})/i,
+            /([A-Za-zÁÉÍÓÚáéíóúÑñ]{2,})(?:\s+dice|soy|acá|hola)/i
+        ];
+        
+        for (const pattern of namePatterns) {
+            const match = message.match(pattern);
+            if (match && match[1]) {
+                this.currentOrder.customerInfo.nombre = match[1].trim();
+                break;
             }
-            
-            const order = orderDoc.data();
-            let response = `📦 *Pedido ${orderId}*\n`;
-            response += `Estado: ${order.estado}\n`;
-            response += `Cliente: ${order.nombre_cliente}\n`;
-            
-            if (order.tiempo_estimado_actual) {
-                response += `Tiempo estimado: ${order.tiempo_estimado_actual} min\n`;
+        }
+        
+        // Extraer dirección si es envío
+        if (this.currentOrder.deliveryType === 'envío') {
+            const addressKeywords = ['calle', 'av.', 'avenida', 'dirección', 'casa', 'número', 'nro'];
+            for (const keyword of addressKeywords) {
+                if (message.toLowerCase().includes(keyword)) {
+                    const startIndex = message.toLowerCase().indexOf(keyword);
+                    const addressPart = message.substring(startIndex);
+                    if (addressPart.length > 10) {
+                        this.currentOrder.customerInfo.direccion = addressPart;
+                        break;
+                    }
+                }
             }
-            
-            if (order.estado === 'Listo') {
-                response += '\n¡Tu pedido está listo!';
-            }
-            
-            return response;
-        } catch (error) {
-            console.error('Error consultando pedido:', error);
-            return 'Error consultando el pedido.';
         }
     }
     
-    // Actualizar etapa de conversación
-    updateConversationStage(userMessage) {
-        const lowerMessage = userMessage.toLowerCase();
+    updateConversationStage(message) {
+        const lowerMessage = message.toLowerCase();
         
         switch (this.conversationStage) {
             case 'greeting':
@@ -794,8 +703,7 @@ Responde como vendedor humano, breve y claro.`;
                 break;
                 
             case 'taking_order':
-                if (lowerMessage.includes('listo') || lowerMessage.includes('terminé') || 
-                    lowerMessage.includes('nada más')) {
+                if (lowerMessage.includes('listo') || lowerMessage.includes('nada más')) {
                     this.conversationStage = 'asking_delivery';
                 }
                 break;
@@ -805,21 +713,52 @@ Responde como vendedor humano, breve y claro.`;
                     this.conversationStage = 'collecting_info';
                 }
                 break;
-                
-            case 'collecting_info':
-                // Ya manejado en extractCustomerInfo
-                break;
         }
     }
     
-    // Limitar historial
-    trimConversationHistory() {
-        if (this.conversationHistory.length > 10) {
-            this.conversationHistory = this.conversationHistory.slice(-10);
+    async saveOrderToFirebase() {
+        try {
+            // Generar ID único
+            const timestamp = Date.now().toString().slice(-6);
+            const orderId = `TACHI-${timestamp}`;
+            
+            // Calcular total
+            let subtotal = this.currentOrder.items.reduce((sum, item) => 
+                sum + (item.precio * item.cantidad), 0);
+            
+            let total = subtotal;
+            if (this.currentOrder.deliveryType === 'envío') {
+                total += this.settings.precio_envio || 0;
+            }
+            
+            const orderData = {
+                id_pedido: orderId,
+                fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                nombre_cliente: this.currentOrder.customerInfo?.nombre || 'Cliente',
+                telefono: this.currentOrder.customerInfo?.telefono || '',
+                tipo_pedido: this.currentOrder.deliveryType || 'retiro',
+                direccion: this.currentOrder.customerInfo?.direccion || '',
+                items: this.currentOrder.items,
+                subtotal: subtotal,
+                precio_envio: this.currentOrder.deliveryType === 'envío' ? this.settings.precio_envio : 0,
+                total: total,
+                estado: 'Recibido',
+                tiempo_estimado_actual: this.settings.tiempo_base_estimado || 30
+            };
+            
+            await this.db.collection('orders').doc(orderId).set(orderData);
+            
+            // Resetear pedido
+            this.resetOrder();
+            
+            return orderId;
+            
+        } catch (error) {
+            console.error('Error guardando pedido:', error);
+            throw error;
         }
     }
     
-    // Reiniciar pedido
     resetOrder() {
         this.currentOrder = {
             items: [],
@@ -829,19 +768,26 @@ Responde como vendedor humano, breve y claro.`;
         };
         this.conversationStage = 'greeting';
         this.pendingClarification = null;
-        console.log('🔄 Pedido reiniciado');
     }
     
-    // Reiniciar conversación
-    resetConversation() {
-        this.conversationHistory = [];
-        this.resetOrder();
-        console.log('🔄 Conversación reiniciada');
+    // ==================== FUNCIONES DE DIAGNÓSTICO ====================
+    
+    getDiagnostics() {
+        return {
+            totalProducts: this.products.length,
+            currentOrder: this.currentOrder,
+            conversationStage: this.conversationStage,
+            geminiUsage: this.geminiUsage,
+            commonMisspellings: Object.keys(this.commonMisspellings).length
+        };
     }
 }
 
-// Función para inicializar el motor
-async function initConversationEngine() {
+// ==================== INICIALIZACIÓN GLOBAL ====================
+
+let hybridEngine = null;
+
+async function initHybridEngine() {
     try {
         const settings = await getSettings();
         if (!settings) {
@@ -851,47 +797,46 @@ async function initConversationEngine() {
         
         const products = await loadAllProducts();
         
-        // Crear motor (Gemini desactivado por defecto debido a cuota)
-        conversationEngine = new ConversationEngine(
-            '', // API Key vacía para desactivar Gemini
+        hybridEngine = new HybridConversationEngine(
+            settings.api_key_gemini || '', // Usar Gemini solo si está configurada
             settings,
             products,
             window.db
         );
         
-        console.log('✅ Motor de conversación inicializado (modo fallback)');
-        return conversationEngine;
+        console.log('✅ Motor Híbrido inicializado');
+        console.log('📊 Diagnóstico:', hybridEngine.getDiagnostics());
+        
+        return hybridEngine;
         
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('❌ Error inicializando motor híbrido:', error);
         return null;
     }
 }
 
-// Función para procesar mensajes
-async function processMessageWithGemini(message) {
-    if (!conversationEngine) {
-        await initConversationEngine();
+async function processMessageHybrid(message) {
+    if (!hybridEngine) {
+        await initHybridEngine();
     }
     
-    if (!conversationEngine) {
+    if (!hybridEngine) {
         return 'Sistema no disponible. Intenta más tarde.';
     }
     
     try {
-        return await conversationEngine.processUserMessage(message);
+        return await hybridEngine.processUserMessage(message);
     } catch (error) {
-        console.error('Error:', error);
-        return 'Error procesando mensaje.';
+        console.error('Error procesando mensaje:', error);
+        return 'Error procesando mensaje. Por favor, intenta de nuevo.';
     }
 }
 
-// Exportar funciones
-window.initConversationEngine = initConversationEngine;
-window.processMessageWithGemini = processMessageWithGemini;
-window.resetConversation = () => {
-    if (conversationEngine) conversationEngine.resetConversation();
-};
-window.getCurrentOrder = () => {
-    return conversationEngine ? conversationEngine.currentOrder : null;
+// Exportar para uso global
+window.initHybridEngine = initHybridEngine;
+window.processMessageHybrid = processMessageHybrid;
+window.HybridConversationEngine = HybridConversationEngine;
+window.getHybridDiagnostics = () => hybridEngine ? hybridEngine.getDiagnostics() : null;
+window.resetHybridConversation = () => {
+    if (hybridEngine) hybridEngine.resetOrder();
 };
