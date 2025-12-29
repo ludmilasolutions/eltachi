@@ -32,6 +32,48 @@ async function testFirebaseConnection() {
     }
 }
 
+// Función para inicializar contadores
+async function initializeCounters() {
+    try {
+        const counterRef = db.collection('counters').doc('orders');
+        const counterDoc = await counterRef.get();
+        
+        if (!counterDoc.exists) {
+            await counterRef.set({ lastNumber: 0 });
+            console.log("Contador de pedidos inicializado en 0");
+        } else {
+            console.log("Contador de pedidos ya existe:", counterDoc.data().lastNumber);
+        }
+        
+        // Verificar si existe la colección orders
+        const ordersRef = db.collection('orders');
+        const ordersSnapshot = await ordersRef.limit(1).get();
+        
+        // Si hay pedidos pero el contador está en 0, actualizar
+        if (!ordersSnapshot.empty) {
+            const orders = await ordersRef.orderBy('fecha', 'desc').limit(1).get();
+            if (!orders.empty) {
+                const lastOrder = orders.docs[0].data();
+                const lastId = lastOrder.id_pedido;
+                const lastNumber = parseInt(lastId.split('-')[1]) || 0;
+                
+                const currentCounter = await counterRef.get();
+                const currentNumber = currentCounter.data().lastNumber || 0;
+                
+                if (lastNumber > currentNumber) {
+                    await counterRef.update({ lastNumber: lastNumber });
+                    console.log(`Contador actualizado a ${lastNumber} (basado en último pedido)`);
+                }
+            }
+        }
+        
+        return true;
+    } catch (error) {
+        console.error("Error inicializando contadores:", error);
+        return false;
+    }
+}
+
 // Configuración inicial si no existe
 async function initializeFirebaseData() {
     try {
@@ -65,6 +107,9 @@ async function initializeFirebaseData() {
             });
             console.log("Configuración inicial creada");
         }
+        
+        // Inicializar contadores
+        await initializeCounters();
         
         // Verificar si hay productos
         const productsSnapshot = await db.collection('products').get();
@@ -143,6 +188,7 @@ async function initializeFirebaseData() {
             console.log("Categorías iniciales creadas");
         }
         
+        console.log("✅ Firebase inicializado completamente");
         return true;
     } catch (error) {
         console.error("Error inicializando datos:", error);
@@ -162,9 +208,115 @@ async function getSettings() {
     }
 }
 
+// Función para cargar todos los productos
+async function loadAllProducts() {
+    try {
+        const snapshot = await db.collection('products').get();
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+        return [];
+    }
+}
+
+// Función de prueba para verificar Firebase
+async function testFirebaseSave() {
+    try {
+        const testRef = db.collection('test').doc('connection');
+        await testRef.set({
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            message: 'Conexión exitosa'
+        });
+        
+        console.log('✅ Test de escritura en Firebase exitoso');
+        
+        // Limpiar el test después de 5 segundos
+        setTimeout(async () => {
+            try {
+                await testRef.delete();
+                console.log('Test limpiado');
+            } catch (err) {
+                console.error('Error limpiando test:', err);
+            }
+        }, 5000);
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Error en test de Firebase:', error);
+        return false;
+    }
+}
+
+// Función para debug del sistema
+async function debugOrderSystem() {
+    console.log('=== DEBUG DEL SISTEMA DE PEDIDOS ===');
+    
+    // 1. Verificar Firebase
+    console.log('1. Firebase conectado:', firebase.apps.length > 0);
+    
+    // 2. Verificar colecciones
+    try {
+        const counters = await db.collection('counters').doc('orders').get();
+        console.log('2. Contador existe:', counters.exists);
+        if (counters.exists) {
+            console.log('   Último número:', counters.data().lastNumber);
+        }
+        
+        const orders = await db.collection('orders').get();
+        console.log('3. Total de pedidos:', orders.size);
+        if (orders.size > 0) {
+            orders.forEach(doc => {
+                console.log(`   - ${doc.id}: ${doc.data().nombre_cliente} - $${doc.data().total}`);
+            });
+        }
+        
+        const settings = await db.collection('settings').doc('config').get();
+        console.log('4. Configuración existe:', settings.exists);
+        
+        const products = await db.collection('products').get();
+        console.log('5. Productos cargados:', products.size);
+        
+    } catch (error) {
+        console.error('Error en debug:', error);
+    }
+}
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Inicializando Firebase...');
+    
+    // Esperar un momento para asegurar que Firebase esté listo
+    setTimeout(async () => {
+        await initializeFirebaseData();
+        
+        // Ejecutar test de conexión
+        await testFirebaseSave();
+        
+        // Ejecutar debug
+        await debugOrderSystem();
+        
+        // Escuchar cambios en pedidos (para debugging)
+        db.collection('orders').onSnapshot((snapshot) => {
+            console.log(`📦 Pedidos actualizados: ${snapshot.size} pedidos`);
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'added') {
+                    console.log('Nuevo pedido añadido:', change.doc.id, change.doc.data().nombre_cliente);
+                }
+            });
+        });
+    }, 1000);
+});
+
 // Exportar para uso global
 window.db = db;
 window.auth = auth;
 window.getSettings = getSettings;
 window.testFirebaseConnection = testFirebaseConnection;
 window.initializeFirebaseData = initializeFirebaseData;
+window.initializeCounters = initializeCounters;
+window.loadAllProducts = loadAllProducts;
+window.testFirebaseSave = testFirebaseSave;
+window.debugOrderSystem = debugOrderSystem;
