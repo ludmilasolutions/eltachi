@@ -863,27 +863,38 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
     }
     
     // Generar ID de pedido
-    async generateOrderId() {
-        try {
-            const counterRef = db.collection('counters').doc('orders');
-            const counterDoc = await counterRef.get();
-            
+async generateOrderId() {
+    try {
+        const counterRef = this.db.collection('counters').doc('orders');
+        
+        // Usar transacción para incrementar el contador de forma segura
+        const result = await this.db.runTransaction(async (transaction) => {
+            const counterDoc = await transaction.get(counterRef);
             let lastNumber = 0;
+            
             if (counterDoc.exists) {
                 lastNumber = counterDoc.data().lastNumber || 0;
+            } else {
+                // Si no existe, crear con 0
+                transaction.set(counterRef, { lastNumber: 0 });
             }
             
+            // Incrementar
             lastNumber++;
+            transaction.update(counterRef, { lastNumber: lastNumber });
             
-            await counterRef.set({ lastNumber: lastNumber }, { merge: true });
-            
-            const paddedNumber = lastNumber.toString().padStart(6, '0');
-            return `TACHI-${paddedNumber}`;
-        } catch (error) {
-            console.error('Error generando ID:', error);
-            return `TACHI-${Date.now().toString().slice(-6)}`;
-        }
+            return lastNumber;
+        });
+        
+        const paddedNumber = result.toString().padStart(6, '0');
+        return `TACHI-${paddedNumber}`;
+    } catch (error) {
+        console.error('Error generando ID de pedido:', error);
+        // Fallback: usar timestamp
+        const timestamp = Date.now().toString().slice(-6);
+        return `TACHI-${timestamp}`;
     }
+}
     
     // Generar texto de resumen del pedido
     generateOrderSummaryText() {
