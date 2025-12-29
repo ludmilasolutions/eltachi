@@ -1,11 +1,11 @@
 // CONFIGURACIÓN FIREBASE - REEMPLAZA CON TUS DATOS
 const firebaseConfig = {
-    apiKey: "AIzaSyTUAhDmUqX9Q-3MZ8o8f7qWlPkLmNOPQRST",
-    authDomain: "el-tachi-rotiseria.firebaseapp.com",
-    projectId: "el-tachi-rotiseria",
-    storageBucket: "el-tachi-rotiseria.appspot.com",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:abcdef1234567890abcdef"
+  apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
+  authDomain: "eltachi.firebaseapp.com",
+  projectId: "eltachi",
+  storageBucket: "eltachi.firebasestorage.app",
+  messagingSenderId: "231676602106",
+  appId: "1:231676602106:web:fde347e9caa00760b34b43"
 };
 
 // Inicializar Firebase
