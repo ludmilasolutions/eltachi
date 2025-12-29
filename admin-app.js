@@ -829,6 +829,115 @@ function updateRecentOrdersList() {
     container.innerHTML = html || '<p>No hay pedidos recientes</p>';
 }
 
+// Funciones para categorías - AGREGAR ESTO
+function editCategory(categoryId) {
+    const category = adminState.categories.find(c => c.id === categoryId);
+    if (!category) return;
+    
+    // Rellenar formulario con datos de la categoría
+    document.getElementById('categoryName').value = category.nombre;
+    document.getElementById('categoryOrder').value = category.orden;
+    
+    // Cambiar texto del botón
+    document.getElementById('addCategoryButton').textContent = 'Actualizar Categoría';
+    
+    // Guardar el ID para actualizar
+    document.getElementById('addCategoryButton').dataset.editingId = categoryId;
+    
+    // Hacer scroll al formulario
+    document.getElementById('categoryName').focus();
+    
+    alert(`Editando categoría: ${category.nombre}`);
+}
+
+async function deleteCategory(categoryId) {
+    if (!confirm('¿Estás seguro de eliminar esta categoría?\n\nLos productos que usen esta categoría quedarán sin categoría.')) {
+        return;
+    }
+    
+    try {
+        await db.collection('categories').doc(categoryId).delete();
+        
+        // Recargar categorías
+        await loadCategories();
+        updateCategoriesGrid();
+        
+        alert('Categoría eliminada correctamente');
+    } catch (error) {
+        console.error('Error eliminando categoría:', error);
+        alert('Error al eliminar la categoría');
+    }
+}
+
+// Modificar la función addCategory para que también edite
+async function addCategory() {
+    const name = document.getElementById('categoryName').value.trim();
+    const order = parseInt(document.getElementById('categoryOrder').value);
+    const isEditing = document.getElementById('addCategoryButton').dataset.editingId;
+    
+    if (!name) {
+        alert('El nombre es requerido');
+        return;
+    }
+    
+    if (isNaN(order) || order < 1) {
+        alert('Orden inválido');
+        return;
+    }
+    
+    try {
+        if (isEditing) {
+            // Actualizar categoría existente
+            await db.collection('categories').doc(isEditing).update({
+                nombre: name,
+                orden: order
+            });
+            
+            // Eliminar flag de edición
+            delete document.getElementById('addCategoryButton').dataset.editingId;
+            document.getElementById('addCategoryButton').textContent = 'Agregar Categoría';
+            
+            alert('Categoría actualizada correctamente');
+        } else {
+            // Crear nueva categoría
+            const id = name.toLowerCase()
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            
+            await db.collection('categories').doc(id).set({
+                id,
+                nombre: name,
+                orden: order
+            });
+            
+            alert('Categoría agregada correctamente');
+        }
+        
+        // Recargar categorías
+        await loadCategories();
+        updateCategoriesGrid();
+        
+        // Limpiar formulario
+        document.getElementById('categoryName').value = '';
+        document.getElementById('categoryOrder').value = adminState.categories.length + 1;
+        
+    } catch (error) {
+        console.error('Error guardando categoría:', error);
+        alert('Error al guardar la categoría');
+    }
+}
+
+// Agregar función para cancelar edición
+function cancelEditCategory() {
+    document.getElementById('addCategoryButton').textContent = 'Agregar Categoría';
+    delete document.getElementById('addCategoryButton').dataset.editingId;
+    document.getElementById('categoryName').value = '';
+    document.getElementById('categoryOrder').value = adminState.categories.length + 1;
+}
+
+
+
 function updateTopProductsList() {
     const container = document.getElementById('topProductsList');
     if (!container) return;
