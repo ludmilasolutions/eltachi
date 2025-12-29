@@ -46,8 +46,8 @@ async function initializeApp() {
         // Cargar productos y categorías
         await loadProductsAndCategories();
         
-        // Inicializar motor de conversación con Gemini
-        await window.initConversationEngine();
+        // Inicializar motor de conversación híbrido
+        await window.initHybridEngine();
         appState.conversationEngineReady = true;
         
         // Ocultar loading inicial
@@ -105,29 +105,16 @@ async function loadProductsAndCategories() {
 async function showInitialIAMessage() {
     if (!appState.settings) return;
     
-    // Si no hay API Key de Gemini, mostrar mensaje estático
-    if (!appState.settings.api_key_gemini || appState.settings.api_key_gemini.trim() === '') {
-        const staticMessage = `¡Hola! 👋 Soy la atención de *EL TACHI*.\n\nPara usar el asistente de IA, configura tu API Key de Gemini en el panel admin.\n\nMientras tanto, puedes ver nuestro menú:\n\n${showFullMenuText()}\n\nPuedes escribir tu pedido directamente y lo procesaré manualmente.`;
-        addMessageToChat('ai', staticMessage);
-        viewMenuButton.classList.add('show');
-        return;
-    }
-    
-    // Usar Gemini para generar mensaje inicial
+    // Usar el motor híbrido para generar el mensaje inicial
     try {
-        if (window.conversationEngine) {
-            const response = await window.conversationEngine.processUserMessage("hola");
-            addMessageToChat('ai', response);
-        } else {
-            // Fallback a mensaje estático
-            const fallbackMessage = `¡Hola! 👋 Soy la atención de *EL TACHI*.\n\n${showFullMenuText()}\n\n*Información importante:*\n⏰ Tiempo estimado: ${appState.settings.tiempo_base_estimado} minutos\n🚚 Envío a domicilio: $${appState.settings.precio_envio}\n${appState.settings.retiro_habilitado ? '🏪 Retiro en local: SIN CARGO\n' : ''}\n_Si necesitás cambiar algo del pedido, avisame_`;
-            addMessageToChat('ai', fallbackMessage);
-        }
+        const response = await window.processMessageHybrid("hola");
+        addMessageToChat('ai', response);
         viewMenuButton.classList.add('show');
     } catch (error) {
-        console.error("Error con Gemini:", error);
-        const errorMessage = `¡Hola! 👋 Soy la atención de *EL TACHI*.\n\n${showFullMenuText()}\n\n*Información importante:*\n⏰ Tiempo estimado: ${appState.settings.tiempo_base_estimado} minutos\n🚚 Envío a domicilio: $${appState.settings.precio_envio}\n${appState.settings.retiro_habilitado ? '🏪 Retiro en local: SIN CARGO\n' : ''}\n_Si necesitás cambiar algo del pedido, avisame_`;
-        addMessageToChat('ai', errorMessage);
+        console.error("Error con el motor híbrido:", error);
+        // Fallback a mensaje estático
+        const fallbackMessage = `¡Hola! 👋 Soy la atención de *EL TACHI*.\n\n${showFullMenuText()}\n\n*Información importante:*\n⏰ Tiempo estimado: ${appState.settings.tiempo_base_estimado} minutos\n🚚 Envío a domicilio: $${appState.settings.precio_envio}\n${appState.settings.retiro_habilitado ? '🏪 Retiro en local: SIN CARGO\n' : ''}\n_Si necesitás cambiar algo del pedido, avisame_`;
+        addMessageToChat('ai', fallbackMessage);
         viewMenuButton.classList.add('show');
     }
 }
@@ -185,8 +172,8 @@ async function sendMessage() {
         if (message.match(/TACHI-\d{6}/i)) {
             await handleOrderStatusCheck(message.toUpperCase());
         } else {
-            // Procesar con Gemini
-            await processWithGemini(message);
+            // Procesar con el motor híbrido
+            await processWithHybrid(message);
         }
     } catch (error) {
         console.error("Error procesando mensaje:", error);
@@ -199,23 +186,17 @@ async function sendMessage() {
     }
 }
 
-// Procesar mensaje con Gemini
-async function processWithGemini(message) {
+// Procesar mensaje con el motor híbrido
+async function processWithHybrid(message) {
     // Verificar si el motor de conversación está listo
     if (!appState.conversationEngineReady) {
         addMessageToChat('ai', "El sistema de IA aún no está listo. Por favor, espera un momento.");
         return;
     }
     
-    // Verificar API Key
-    if (!appState.geminiAPIKey || appState.geminiAPIKey.trim() === '') {
-        addMessageToChat('ai', "⚠️ Para usar el asistente de IA, configura tu API Key de Gemini en el panel admin.\n\nPuedes escribir tu pedido y lo procesaré manualmente.");
-        return;
-    }
-    
     try {
-        // Usar la función global para procesar con Gemini
-        const response = await window.processMessageWithGemini(message);
+        // Usar la función global para procesar con el motor híbrido
+        const response = await window.processMessageHybrid(message);
         addMessageToChat('ai', response);
         
         // Si la respuesta incluye un resumen, mostrar botón de ver menú
@@ -223,7 +204,7 @@ async function processWithGemini(message) {
             viewMenuButton.classList.add('show');
         }
     } catch (error) {
-        console.error("Error procesando con Gemini:", error);
+        console.error("Error procesando con el motor híbrido:", error);
         
         // Fallback a respuestas básicas
         const fallbackResponse = await simulateFallbackResponse(message);
@@ -231,7 +212,7 @@ async function processWithGemini(message) {
     }
 }
 
-// Respuesta de fallback cuando Gemini no funciona
+// Respuesta de fallback cuando el motor híbrido no funciona
 async function simulateFallbackResponse(message) {
     const lowerMessage = message.toLowerCase();
     
