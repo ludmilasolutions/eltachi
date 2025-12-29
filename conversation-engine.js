@@ -13,7 +13,7 @@ class ConversationEngine {
             deliveryType: null
         };
         this.conversationStage = 'greeting';
-        this.pendingClarification = null;
+        this.pendingClarification = null; // Para manejar clarificaciones de productos
     }
     
     // Generar prompt para Gemini
@@ -562,8 +562,21 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             
             if (this.conversationStage === 'confirming' && this.currentOrder.items.length > 0) {
                 // Guardar pedido en Firebase
-                const orderId = await this.saveOrderToFirebase();
-                return orderId;
+                try {
+                    const orderId = await this.saveOrderToFirebase();
+                    console.log('✅ Pedido guardado con ID:', orderId);
+                    
+                    // Agregar confirmación al historial
+                    this.conversationHistory.push({
+                        role: 'model',
+                        parts: [{ text: `Listo 🙌 Tu pedido quedó registrado con el ID ${orderId}. El tiempo estimado es de ${this.settings.tiempo_base_estimado} minutos. Cualquier cosa escribime.` }]
+                    });
+                    
+                    return orderId;
+                } catch (error) {
+                    console.error('❌ Error guardando pedido:', error);
+                    return null;
+                }
             }
         }
         
@@ -646,6 +659,24 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
                 this.currentOrder.customerInfo.nombre = nameMatch[1].trim();
             }
         }
+        
+        // Detectar dirección
+        if (lowerMessage.includes('calle') || lowerMessage.includes('av.') || 
+            lowerMessage.includes('avenida') || lowerMessage.includes('dirección') ||
+            lowerMessage.includes('casa')) {
+            // Extraer dirección (simplificado)
+            const addressKeywords = ['calle', 'av.', 'avenida', 'número', 'nº', 'nro', 'casa'];
+            for (const keyword of addressKeywords) {
+                if (lowerMessage.includes(keyword)) {
+                    const addressIndex = lowerMessage.indexOf(keyword);
+                    const addressPart = userMessage.substring(addressIndex);
+                    if (addressPart.length > 10) { // Asegurar que sea una dirección válida
+                        this.currentOrder.customerInfo.direccion = addressPart;
+                        break;
+                    }
+                }
+            }
+        }
     }
     
     // Respuesta de fallback cuando Gemini falla
@@ -702,23 +733,26 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
             }
             
             const summary = this.generateOrderSummaryText();
+            this.conversationStage = 'asking_info';
             return `*RESUMEN DE PEDIDO*\n\n${summary}\n\n¿Es para envío o retiro?`;
         }
         
         if (lowerMessage.includes('envío') || lowerMessage.includes('domicilio')) {
             this.currentOrder.deliveryType = 'envío';
+            this.conversationStage = 'confirming';
             return 'Perfecto, para envío a domicilio. ¿Me podrías dar tu nombre, teléfono y dirección completa?';
         }
         
         if (lowerMessage.includes('retiro') || lowerMessage.includes('local')) {
             this.currentOrder.deliveryType = 'retiro';
+            this.conversationStage = 'confirming';
             return 'Perfecto, para retiro en el local. ¿Me podrías dar tu nombre y teléfono?';
         }
         
         if (lowerMessage.includes('sí') || lowerMessage.includes('si') || 
             lowerMessage.includes('confirm') || lowerMessage.includes('correcto')) {
             
-            if (this.conversationStage === 'confirming') {
+            if (this.conversationStage === 'confirming' && this.currentOrder.items.length > 0) {
                 this.saveOrderToFirebase().then(orderId => {
                     console.log('Pedido guardado:', orderId);
                 }).catch(error => {
@@ -834,103 +868,112 @@ Tu respuesta como vendedor de EL TACHI (responde naturalmente, continúa la conv
         this.currentOrder.total = total;
     }
     
-    // Guardar pedido en Firebase
-async saveOrderToFirebase() {
-    try {
-        const orderId = await this.generateOrderId();
-        
-        // Calcular total con envío si corresponde
-        let total = this.currentOrder.total;
-        let tipoPedido = this.currentOrder.deliveryType || 'retiro';
-        
-        if (tipoPedido === 'envío') {
-            total += this.settings.precio_envio || 0;
-        }
-        
-        const orderData = {
-            id_pedido: orderId,
-            fecha: firebase.firestore.FieldValue.serverTimestamp(),
-            nombre_cliente: this.currentOrder.customerInfo?.nombre || 'Cliente',
-            telefono: this.currentOrder.customerInfo?.telefono || '',
-            tipo_pedido: tipoPedido,
-            direccion: this.currentOrder.customerInfo?.direccion || '',
-            pedido_detallado: this.generateOrderSummaryText(),
-            total: total,
-            estado: 'Recibido',
-            tiempo_estimado_actual: this.settings.tiempo_base_estimado || 30,
-            items: this.currentOrder.items.map(item => ({
-                productId: item.productId,
-                nombre: item.nombre,
-                precio: item.precio,
-                cantidad: item.cantidad,
-                modificaciones: item.modificaciones
-            }))
-        };
-        
-        console.log('Guardando pedido en Firebase:', orderData);
-        
-        await this.db.collection('orders').doc(orderId).set(orderData);
-        
-        // Enviar notificación al panel admin (opcional)
-        await this.sendAdminNotification(orderId, orderData.nombre_cliente, total);
-        
-        this.resetOrder();
-        
-        return orderId;
-    } catch (error) {
-        console.error('Error guardando pedido:', error);
-        throw error;
-    }
-}
-
-// Agrega esta función para notificaciones (opcional)
-async sendAdminNotification(orderId, cliente, total) {
-    try {
-        await this.db.collection('notifications').add({
-            tipo: 'nuevo_pedido',
-            mensaje: `Nuevo pedido ${orderId} de ${cliente} por $${total}`,
-            pedido_id: orderId,
-            fecha: firebase.firestore.FieldValue.serverTimestamp(),
-            leido: false
-        });
-    } catch (error) {
-        console.error('Error enviando notificación:', error);
-    }
-}
-    
-    // Generar ID de pedido
-async generateOrderId() {
-    try {
-        const counterRef = this.db.collection('counters').doc('orders');
-        
-        // Usar transacción para incrementar el contador de forma segura
-        const result = await this.db.runTransaction(async (transaction) => {
-            const counterDoc = await transaction.get(counterRef);
-            let lastNumber = 0;
+    // Generar ID de pedido con transacción
+    async generateOrderId() {
+        try {
+            const counterRef = this.db.collection('counters').doc('orders');
             
-            if (counterDoc.exists) {
-                lastNumber = counterDoc.data().lastNumber || 0;
-            } else {
-                // Si no existe, crear con 0
-                transaction.set(counterRef, { lastNumber: 0 });
+            // Usar transacción para incrementar de forma segura
+            let newNumber;
+            
+            await this.db.runTransaction(async (transaction) => {
+                const counterDoc = await transaction.get(counterRef);
+                
+                if (!counterDoc.exists) {
+                    // Crear el contador si no existe
+                    transaction.set(counterRef, { lastNumber: 0 });
+                    newNumber = 1;
+                } else {
+                    // Obtener el último número y aumentar
+                    const lastNumber = counterDoc.data().lastNumber || 0;
+                    newNumber = lastNumber + 1;
+                }
+                
+                // Actualizar el contador
+                transaction.update(counterRef, { lastNumber: newNumber });
+            });
+            
+            console.log(`Nuevo número de pedido: ${newNumber}`);
+            
+            const paddedNumber = newNumber.toString().padStart(6, '0');
+            return `TACHI-${paddedNumber}`;
+            
+        } catch (error) {
+            console.error('Error generando ID de pedido:', error);
+            // Fallback: usar timestamp
+            const timestamp = Date.now().toString().slice(-6);
+            return `TACHI-${timestamp}`;
+        }
+    }
+    
+    // Guardar pedido en Firebase
+    async saveOrderToFirebase() {
+        try {
+            const orderId = await this.generateOrderId();
+            
+            // Calcular total con envío si corresponde
+            let total = this.currentOrder.total;
+            let tipoPedido = this.currentOrder.deliveryType || 'retiro';
+            
+            if (tipoPedido === 'envío') {
+                total += this.settings.precio_envio || 0;
             }
             
-            // Incrementar
-            lastNumber++;
-            transaction.update(counterRef, { lastNumber: lastNumber });
+            const orderData = {
+                id_pedido: orderId,
+                fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                nombre_cliente: this.currentOrder.customerInfo?.nombre || 'Cliente',
+                telefono: this.currentOrder.customerInfo?.telefono || '',
+                tipo_pedido: tipoPedido,
+                direccion: this.currentOrder.customerInfo?.direccion || '',
+                pedido_detallado: this.generateOrderSummaryText(),
+                total: total,
+                estado: 'Recibido',
+                tiempo_estimado_actual: this.settings.tiempo_base_estimado || 30,
+                items: this.currentOrder.items.map(item => ({
+                    productId: item.productId,
+                    nombre: item.nombre,
+                    precio: item.precio,
+                    cantidad: item.cantidad,
+                    modificaciones: item.modificaciones
+                }))
+            };
             
-            return lastNumber;
-        });
-        
-        const paddedNumber = result.toString().padStart(6, '0');
-        return `TACHI-${paddedNumber}`;
-    } catch (error) {
-        console.error('Error generando ID de pedido:', error);
-        // Fallback: usar timestamp
-        const timestamp = Date.now().toString().slice(-6);
-        return `TACHI-${timestamp}`;
+            console.log('💾 Guardando pedido en Firebase:', orderData);
+            
+            // Guardar en Firebase
+            await this.db.collection('orders').doc(orderId).set(orderData);
+            
+            // Enviar notificación al panel admin (opcional)
+            await this.sendAdminNotification(orderId, orderData.nombre_cliente, total);
+            
+            // Resetear el pedido actual
+            this.resetOrder();
+            
+            console.log('✅ Pedido guardado exitosamente:', orderId);
+            return orderId;
+            
+        } catch (error) {
+            console.error('❌ Error guardando pedido:', error);
+            throw error;
+        }
     }
-}
+    
+    // Enviar notificación al panel admin
+    async sendAdminNotification(orderId, cliente, total) {
+        try {
+            await this.db.collection('notifications').add({
+                tipo: 'nuevo_pedido',
+                mensaje: `Nuevo pedido ${orderId} de ${cliente} por $${total}`,
+                pedido_id: orderId,
+                fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                leido: false
+            });
+            console.log('📢 Notificación enviada al panel admin');
+        } catch (error) {
+            console.error('Error enviando notificación:', error);
+        }
+    }
     
     // Generar texto de resumen del pedido
     generateOrderSummaryText() {
@@ -944,11 +987,15 @@ async generateOrderId() {
             summary += ` - $${item.precio * item.cantidad}\n`;
         });
         
-        summary += `\nTotal: $${this.currentOrder.total}`;
+        let total = this.currentOrder.total;
+        let deliveryText = '';
         
         if (this.currentOrder.deliveryType === 'envío') {
-            summary += ` + $${this.settings.precio_envio} de envío`;
+            total += this.settings.precio_envio || 0;
+            deliveryText = ` + $${this.settings.precio_envio || 0} de envío`;
         }
+        
+        summary += `\nTotal: $${total}${deliveryText}`;
         
         return summary;
     }
@@ -956,14 +1003,19 @@ async generateOrderId() {
     // Manejar consulta de estado
     async handleOrderStatusQuery(orderId) {
         try {
-            const orderRef = db.collection('orders').doc(orderId);
+            console.log('🔍 Consultando estado del pedido:', orderId);
+            
+            const orderRef = this.db.collection('orders').doc(orderId);
             const orderDoc = await orderRef.get();
             
             if (!orderDoc.exists) {
+                console.log('Pedido no encontrado:', orderId);
                 return `No encontré el pedido ${orderId}. Verificá el número e intentá de nuevo.`;
             }
             
             const order = orderDoc.data();
+            console.log('Pedido encontrado:', order);
+            
             let response = `*Pedido ${orderId}*\n`;
             response += `Estado: ${order.estado}\n`;
             
@@ -1026,6 +1078,7 @@ async generateOrderId() {
     resetConversation() {
         this.conversationHistory = [];
         this.resetOrder();
+        console.log('Conversación reiniciada');
     }
 }
 
@@ -1046,34 +1099,25 @@ async function initConversationEngine() {
         conversationEngine = new ConversationEngine(
             settings.api_key_gemini,
             settings,
-            products
+            products,
+            window.db // Pasar la instancia global de Firebase
         );
         
-        console.log('Motor de conversación inicializado correctamente');
+        console.log('✅ Motor de conversación inicializado correctamente');
+        console.log(`📊 Configuración cargada: ${settings.nombre_local}`);
+        console.log(`📦 Productos cargados: ${products.length}`);
+        
         return conversationEngine;
     } catch (error) {
-        console.error('Error inicializando motor de conversación:', error);
+        console.error('❌ Error inicializando motor de conversación:', error);
         return null;
-    }
-}
-
-// Cargar todos los productos
-async function loadAllProducts() {
-    try {
-        const snapshot = await db.collection('products').get();
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-    } catch (error) {
-        console.error('Error cargando productos:', error);
-        return [];
     }
 }
 
 // Función para procesar mensaje
 async function processMessageWithGemini(message) {
     if (!conversationEngine) {
+        console.log('🔄 Inicializando motor de conversación...');
         await initConversationEngine();
     }
     
@@ -1082,9 +1126,12 @@ async function processMessageWithGemini(message) {
     }
     
     try {
-        return await conversationEngine.processUserMessage(message);
+        console.log('💬 Procesando mensaje:', message.substring(0, 50) + '...');
+        const response = await conversationEngine.processUserMessage(message);
+        console.log('🤖 Respuesta generada:', response.substring(0, 50) + '...');
+        return response;
     } catch (error) {
-        console.error('Error procesando mensaje:', error);
+        console.error('❌ Error procesando mensaje:', error);
         return conversationEngine.getFallbackResponse(message);
     }
 }
@@ -1105,16 +1152,58 @@ function resetConversation() {
     }
 }
 
+// Función para obtener el pedido actual (para debugging)
+function getCurrentOrder() {
+    if (!conversationEngine) {
+        return null;
+    }
+    
+    return conversationEngine.currentOrder;
+}
+
+// Inicializar cuando Firebase esté listo
+if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+    console.log('🔥 Firebase detectado, inicializando motor de conversación...');
+    
+    // Esperar un momento para que Firebase se inicialice completamente
+    setTimeout(async () => {
+        try {
+            await initConversationEngine();
+            console.log('✅ Sistema de pedidos listo');
+        } catch (error) {
+            console.error('❌ Error inicializando sistema de pedidos:', error);
+        }
+    }, 1500);
+}
+
 // Exportar para uso global
 window.initConversationEngine = initConversationEngine;
 window.processMessageWithGemini = processMessageWithGemini;
 window.getCurrentOrderSummary = getCurrentOrderSummary;
+window.getCurrentOrder = getCurrentOrder;
 window.resetConversation = resetConversation;
 window.ConversationEngine = ConversationEngine;
 
-// Inicializar cuando Firebase esté listo
-if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-    setTimeout(async () => {
-        await initConversationEngine();
-    }, 1000);
-}
+// Agregar listener para debug
+window.addEventListener('load', () => {
+    console.log('🚀 Conversation Engine cargado');
+    
+    // Exponer funciones para debugging desde la consola
+    window.debugConversation = async () => {
+        console.log('=== DEBUG CONVERSATION ENGINE ===');
+        console.log('Motor inicializado:', conversationEngine !== null);
+        if (conversationEngine) {
+            console.log('Pedido actual:', conversationEngine.currentOrder);
+            console.log('Productos en pedido:', conversationEngine.currentOrder.items.length);
+            console.log('Etapa:', conversationEngine.conversationStage);
+            
+            // Test de conexión a Firebase
+            try {
+                const orders = await window.db.collection('orders').get();
+                console.log('Pedidos en Firebase:', orders.size);
+            } catch (error) {
+                console.error('Error accediendo a Firebase:', error);
+            }
+        }
+    };
+});
