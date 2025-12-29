@@ -504,12 +504,11 @@ function updateCategoriesGrid() {
     grid.innerHTML = '';
     
     adminState.categories.forEach(category => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        
         // Contar productos en esta categoría
         const productCount = adminState.products.filter(p => p.categoria === category.id).length;
         
+        const card = document.createElement('div');
+        card.className = 'card';
         card.innerHTML = `
             <h3 class="card-title">${category.nombre}</h3>
             <p class="card-subtitle">${productCount} productos</p>
@@ -524,10 +523,54 @@ function updateCategoriesGrid() {
     });
 }
 
-// Agregar categoría
+// Función para editar categoría
+function editCategory(categoryId) {
+    const category = adminState.categories.find(c => c.id === categoryId);
+    if (!category) return;
+    
+    // Rellenar formulario
+    document.getElementById('categoryName').value = category.nombre;
+    document.getElementById('categoryOrder').value = category.orden;
+    
+    // Cambiar título y botón
+    document.getElementById('categoryFormTitle').textContent = 'Editar Categoría';
+    document.getElementById('addCategoryButton').textContent = 'Actualizar Categoría';
+    document.getElementById('cancelEditButton').style.display = 'inline-block';
+    
+    // Guardar el ID de la categoría que se está editando en el botón
+    const addButton = document.getElementById('addCategoryButton');
+    addButton.dataset.editingId = categoryId;
+    
+    // Hacer scroll al formulario
+    document.getElementById('categoryName').focus();
+}
+
+// Función para eliminar categoría
+async function deleteCategory(categoryId) {
+    if (!confirm('¿Estás seguro de eliminar esta categoría?\n\nLos productos que pertenezcan a esta categoría quedarán sin categoría.')) {
+        return;
+    }
+    
+    try {
+        await db.collection('categories').doc(categoryId).delete();
+        
+        // Recargar categorías
+        await loadCategories();
+        updateCategoriesGrid();
+        
+        alert('Categoría eliminada correctamente');
+    } catch (error) {
+        console.error('Error eliminando categoría:', error);
+        alert('Error al eliminar la categoría');
+    }
+}
+
+// Función para agregar o actualizar categoría
 async function addCategory() {
     const name = document.getElementById('categoryName').value.trim();
     const order = parseInt(document.getElementById('categoryOrder').value);
+    const addButton = document.getElementById('addCategoryButton');
+    const isEditing = addButton.dataset.editingId;
     
     if (!name) {
         alert('El nombre es requerido');
@@ -539,32 +582,63 @@ async function addCategory() {
         return;
     }
     
-    // Generar ID
-    const id = name.toLowerCase()
-        .replace(/[^a-z0-9]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
-    
     try {
-        await db.collection('categories').doc(id).set({
-            id,
-            nombre: name,
-            orden: order
-        });
+        if (isEditing) {
+            // Actualizar categoría existente
+            await db.collection('categories').doc(isEditing).update({
+                nombre: name,
+                orden: order
+            });
+            
+            // Restaurar formulario
+            cancelEditCategory();
+            
+            alert('Categoría actualizada correctamente');
+        } else {
+            // Crear nueva categoría
+            const id = name.toLowerCase()
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            
+            await db.collection('categories').doc(id).set({
+                id,
+                nombre: name,
+                orden: order
+            });
+            
+            // Limpiar formulario
+            document.getElementById('categoryName').value = '';
+            document.getElementById('categoryOrder').value = adminState.categories.length + 1;
+            
+            alert('Categoría agregada correctamente');
+        }
         
         // Recargar categorías
         await loadCategories();
         updateCategoriesGrid();
         
-        // Limpiar formulario
-        document.getElementById('categoryName').value = '';
-        document.getElementById('categoryOrder').value = adminState.categories.length + 1;
-        
-        alert('Categoría agregada correctamente');
-        
     } catch (error) {
-        console.error('Error agregando categoría:', error);
-        alert('Error al agregar la categoría');
+        console.error('Error guardando categoría:', error);
+        alert('Error al guardar la categoría');
+    }
+}
+
+// Función para cancelar la edición de categoría
+function cancelEditCategory() {
+    // Restaurar formulario
+    document.getElementById('categoryFormTitle').textContent = 'Agregar Nueva Categoría';
+    document.getElementById('addCategoryButton').textContent = 'Agregar Categoría';
+    document.getElementById('cancelEditButton').style.display = 'none';
+    
+    // Limpiar campos
+    document.getElementById('categoryName').value = '';
+    document.getElementById('categoryOrder').value = adminState.categories.length + 1;
+    
+    // Eliminar el dataset de edición
+    const addButton = document.getElementById('addCategoryButton');
+    if (addButton.dataset.editingId) {
+        delete addButton.dataset.editingId;
     }
 }
 
@@ -769,6 +843,7 @@ function setupAdminEventListeners() {
     
     // Categorías
     document.getElementById('addCategoryButton').addEventListener('click', addCategory);
+    document.getElementById('cancelEditButton').addEventListener('click', cancelEditCategory);
     
     // Configuración
     document.getElementById('storeToggle').addEventListener('change', function() {
@@ -828,115 +903,6 @@ function updateRecentOrdersList() {
     
     container.innerHTML = html || '<p>No hay pedidos recientes</p>';
 }
-
-// Funciones para categorías - AGREGAR ESTO
-function editCategory(categoryId) {
-    const category = adminState.categories.find(c => c.id === categoryId);
-    if (!category) return;
-    
-    // Rellenar formulario con datos de la categoría
-    document.getElementById('categoryName').value = category.nombre;
-    document.getElementById('categoryOrder').value = category.orden;
-    
-    // Cambiar texto del botón
-    document.getElementById('addCategoryButton').textContent = 'Actualizar Categoría';
-    
-    // Guardar el ID para actualizar
-    document.getElementById('addCategoryButton').dataset.editingId = categoryId;
-    
-    // Hacer scroll al formulario
-    document.getElementById('categoryName').focus();
-    
-    alert(`Editando categoría: ${category.nombre}`);
-}
-
-async function deleteCategory(categoryId) {
-    if (!confirm('¿Estás seguro de eliminar esta categoría?\n\nLos productos que usen esta categoría quedarán sin categoría.')) {
-        return;
-    }
-    
-    try {
-        await db.collection('categories').doc(categoryId).delete();
-        
-        // Recargar categorías
-        await loadCategories();
-        updateCategoriesGrid();
-        
-        alert('Categoría eliminada correctamente');
-    } catch (error) {
-        console.error('Error eliminando categoría:', error);
-        alert('Error al eliminar la categoría');
-    }
-}
-
-// Modificar la función addCategory para que también edite
-async function addCategory() {
-    const name = document.getElementById('categoryName').value.trim();
-    const order = parseInt(document.getElementById('categoryOrder').value);
-    const isEditing = document.getElementById('addCategoryButton').dataset.editingId;
-    
-    if (!name) {
-        alert('El nombre es requerido');
-        return;
-    }
-    
-    if (isNaN(order) || order < 1) {
-        alert('Orden inválido');
-        return;
-    }
-    
-    try {
-        if (isEditing) {
-            // Actualizar categoría existente
-            await db.collection('categories').doc(isEditing).update({
-                nombre: name,
-                orden: order
-            });
-            
-            // Eliminar flag de edición
-            delete document.getElementById('addCategoryButton').dataset.editingId;
-            document.getElementById('addCategoryButton').textContent = 'Agregar Categoría';
-            
-            alert('Categoría actualizada correctamente');
-        } else {
-            // Crear nueva categoría
-            const id = name.toLowerCase()
-                .replace(/[^a-z0-9]/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '');
-            
-            await db.collection('categories').doc(id).set({
-                id,
-                nombre: name,
-                orden: order
-            });
-            
-            alert('Categoría agregada correctamente');
-        }
-        
-        // Recargar categorías
-        await loadCategories();
-        updateCategoriesGrid();
-        
-        // Limpiar formulario
-        document.getElementById('categoryName').value = '';
-        document.getElementById('categoryOrder').value = adminState.categories.length + 1;
-        
-    } catch (error) {
-        console.error('Error guardando categoría:', error);
-        alert('Error al guardar la categoría');
-    }
-}
-
-// Agregar función para cancelar edición
-function cancelEditCategory() {
-    document.getElementById('addCategoryButton').textContent = 'Agregar Categoría';
-    delete document.getElementById('addCategoryButton').dataset.editingId;
-    document.getElementById('categoryName').value = '';
-    document.getElementById('categoryOrder').value = adminState.categories.length + 1;
-}
-
-
 
 function updateTopProductsList() {
     const container = document.getElementById('topProductsList');
