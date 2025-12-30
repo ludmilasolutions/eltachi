@@ -1,130 +1,50 @@
-// Estado del panel admin
-const adminState = {
-    currentUser: null,
-    orders: [],
-    products: [],
-    categories: [],
-    settings: null,
-    currentTab: 'dashboard'
+// Configuración Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
+    authDomain: "eltachi.firebaseapp.com",
+    projectId: "eltachi",
+    storageBucket: "eltachi.firebasestorage.app",
+    messagingSenderId: "231676602106",
+    appId: "1:231676602106:web:fde347e9caa00760b34b43"
 };
 
-// Inicializar aplicación admin
-async function initAdminApp() {
+// Inicializar Firebase
+try {
+    firebase.initializeApp(firebaseConfig);
+    console.log("✅ Firebase inicializado");
+} catch (error) {
+    console.error("❌ Error inicializando Firebase:", error);
+}
+
+// Referencias globales
+const db = firebase.firestore();
+let appState = {
+    settings: null,
+    categories: [],
+    products: [],
+    cart: [],
+    currentCategory: null,
+    geminiEngine: null
+};
+
+// Cargar configuración del local
+async function loadSettings() {
     try {
-        // Verificar autenticación
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                adminState.currentUser = user;
-                showAdminPanel();
-                await loadAllData();
-                setupAdminEventListeners();
-            } else {
-                showLoginScreen();
-            }
-        });
+        const settingsRef = db.collection('settings').doc('config');
+        const doc = await settingsRef.get();
         
-        // Configurar login
-        document.getElementById('loginButton').addEventListener('click', handleLogin);
-        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleLogin();
-        });
-        
+        if (doc.exists) {
+            appState.settings = doc.data();
+            updateStoreStatus();
+            updateDeliveryInfo();
+            return appState.settings;
+        } else {
+            console.error('Configuración no encontrada');
+            return null;
+        }
     } catch (error) {
-        console.error('Error inicializando admin:', error);
-    }
-}
-
-// Manejar login
-async function handleLogin() {
-    const email = document.getElementById('emailInput').value;
-    const password = document.getElementById('passwordInput').value;
-    const errorElement = document.getElementById('loginError');
-    
-    if (!email || !password) {
-        errorElement.textContent = 'Por favor completa todos los campos';
-        errorElement.style.display = 'block';
-        return;
-    }
-    
-    try {
-        await auth.signInWithEmailAndPassword(email, password);
-        errorElement.style.display = 'none';
-    } catch (error) {
-        console.error('Login error:', error);
-        errorElement.textContent = 'Error al iniciar sesión. Verifica tus credenciales.';
-        errorElement.style.display = 'block';
-    }
-}
-
-// Mostrar panel admin
-function showAdminPanel() {
-    document.getElementById('loginContainer').style.display = 'none';
-    document.getElementById('adminContainer').style.display = 'block';
-}
-
-// Mostrar pantalla de login
-function showLoginScreen() {
-    document.getElementById('loginContainer').style.display = 'block';
-    document.getElementById('adminContainer').style.display = 'none';
-}
-
-// Cargar todos los datos
-async function loadAllData() {
-    try {
-        // Cargar configuración
-        adminState.settings = await getSettings();
-        
-        // Cargar pedidos
-        await loadOrders();
-        
-        // Cargar productos
-        await loadProducts();
-        
-        // Cargar categorías
-        await loadCategories();
-        
-        // Actualizar UI
-        updateDashboard();
-        updateOrdersTable();
-        updateProductsGrid();
-        updateCategoriesGrid();
-        updateSettingsForm();
-        
-        // Actualizar estado del local
-        updateStoreStatus();
-        
-    } catch (error) {
-        console.error('Error cargando datos:', error);
-    }
-}
-
-// Cargar pedidos
-async function loadOrders() {
-    try {
-        const snapshot = await db.collection('orders')
-            .orderBy('fecha', 'desc')
-            .limit(100)
-            .get();
-        
-        adminState.orders = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-    } catch (error) {
-        console.error('Error cargando pedidos:', error);
-    }
-}
-
-// Cargar productos
-async function loadProducts() {
-    try {
-        const snapshot = await db.collection('products').get();
-        adminState.products = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-    } catch (error) {
-        console.error('Error cargando productos:', error);
+        console.error('Error cargando configuración:', error);
+        return null;
     }
 }
 
@@ -135,849 +55,811 @@ async function loadCategories() {
             .orderBy('orden')
             .get();
         
-        adminState.categories = snapshot.docs.map(doc => ({
+        appState.categories = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
+        
+        renderCategories();
+        return appState.categories;
     } catch (error) {
         console.error('Error cargando categorías:', error);
+        return [];
     }
 }
 
-// Actualizar dashboard
-function updateDashboard() {
-    // Pedidos de hoy
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+// Cargar productos
+async function loadProducts() {
+    try {
+        const snapshot = await db.collection('products')
+            .where('disponible', '==', true)
+            .get();
+        
+        appState.products = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        if (appState.currentCategory) {
+            renderProducts(appState.currentCategory);
+        } else if (appState.categories.length > 0) {
+            selectCategory(appState.categories[0].id);
+        }
+        
+        return appState.products;
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+        return [];
+    }
+}
+
+// Renderizar categorías
+function renderCategories() {
+    const container = document.getElementById('categoryTabs');
+    if (!container) return;
     
-    const todayOrders = adminState.orders.filter(order => {
-        const orderDate = order.fecha?.toDate();
-        return orderDate >= today;
+    container.innerHTML = '';
+    
+    appState.categories.forEach(category => {
+        const button = document.createElement('button');
+        button.className = `category-tab ${appState.currentCategory === category.id ? 'active' : ''}`;
+        button.textContent = category.nombre;
+        button.dataset.categoryId = category.id;
+        
+        button.addEventListener('click', () => {
+            selectCategory(category.id);
+        });
+        
+        container.appendChild(button);
     });
+}
+
+// Seleccionar categoría
+function selectCategory(categoryId) {
+    appState.currentCategory = categoryId;
+    renderCategories();
+    renderProducts(categoryId);
+}
+
+// Renderizar productos
+function renderProducts(categoryId) {
+    const container = document.getElementById('productsGrid');
+    if (!container) return;
     
-    document.getElementById('ordersToday').textContent = todayOrders.length;
-    
-    // Ventas de hoy
-    const todaySales = todayOrders.reduce((sum, order) => sum + (order.total || 0), 0);
-    document.getElementById('salesToday').textContent = `$${todaySales}`;
-    
-    // Pedidos activos
-    const activeOrders = adminState.orders.filter(order => 
-        order.estado === 'Recibido' || order.estado === 'En preparación'
+    const filteredProducts = appState.products.filter(
+        product => product.categoria === categoryId
     );
-    document.getElementById('activeOrders').textContent = activeOrders.length;
     
-    // Pedidos recientes
-    updateRecentOrdersList();
+    if (filteredProducts.length === 0) {
+        container.innerHTML = `
+            <div class="text-center" style="padding: 3rem;">
+                <p>No hay productos disponibles en esta categoría</p>
+            </div>
+        `;
+        return;
+    }
     
-    // Productos más vendidos
-    updateTopProductsList();
+    container.innerHTML = '';
     
-    // Gráfico de pedidos por hora
-    updateOrdersChart();
-}
-
-// Actualizar tabla de pedidos
-function updateOrdersTable() {
-    const tbody = document.getElementById('ordersTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    adminState.orders.forEach(order => {
-        const row = document.createElement('tr');
+    filteredProducts.forEach(product => {
+        const cartItem = appState.cart.find(item => item.id === product.id);
+        const quantity = cartItem ? cartItem.quantity : 0;
         
-        // Formatear fecha
-        const fecha = order.fecha?.toDate();
-        const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }) : '--';
-        
-        // Estado con badge
-        const statusBadge = `<span class="status-badge status-${order.estado?.toLowerCase().replace(' ', '')}">${order.estado}</span>`;
-        
-        // Tiempo estimado editable
-        const timeInput = `<input type="number" 
-            class="form-input" 
-            style="width: 80px; padding: 4px;" 
-            value="${order.tiempo_estimado_actual || adminState.settings?.tiempo_base_estimado || 30}"
-            data-order-id="${order.id}"
-            onchange="updateOrderTime(this)">`;
-        
-        // Botón WhatsApp
-        const whatsappBtn = adminState.settings?.telefono_whatsapp ? 
-            `<button class="action-button button-whatsapp" onclick="openWhatsApp('${order.telefono}', '${order.id}')">💬 WhatsApp</button>` : '';
-        
-        row.innerHTML = `
-            <td>${order.id}</td>
-            <td>${fechaStr}</td>
-            <td>${order.nombre_cliente || '--'}</td>
-            <td>$${order.total || 0}</td>
-            <td>
-                <select class="form-input" style="width: 140px; padding: 4px;" 
-                        data-order-id="${order.id}"
-                        onchange="updateOrderStatus(this)">
-                    <option value="Recibido" ${order.estado === 'Recibido' ? 'selected' : ''}>Recibido</option>
-                    <option value="En preparación" ${order.estado === 'En preparación' ? 'selected' : ''}>En preparación</option>
-                    <option value="Listo" ${order.estado === 'Listo' ? 'selected' : ''}>Listo</option>
-                    <option value="Entregado" ${order.estado === 'Entregado' ? 'selected' : ''}>Entregado</option>
-                </select>
-            </td>
-            <td>${timeInput} min</td>
-            <td>
-                ${whatsappBtn}
-                <button class="action-button button-edit" onclick="showOrderDetails('${order.id}')">👁️ Ver</button>
-            </td>
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.innerHTML = `
+            <div class="product-image">
+                ${getProductEmoji(product.categoria)}
+            </div>
+            <div class="product-content">
+                <div class="product-header">
+                    <h3 class="product-title">${product.nombre}</h3>
+                    <div class="product-price">$${product.precio}</div>
+                </div>
+                
+                ${product.descripcion ? `
+                    <p class="product-description">${product.descripcion}</p>
+                ` : ''}
+                
+                ${product.aderezos_disponibles && product.aderezos_disponibles.length > 0 ? `
+                    <div class="product-includes">
+                        <div class="includes-label">Incluye:</div>
+                        <div class="includes-items">${product.aderezos_disponibles.join(', ')}</div>
+                    </div>
+                ` : ''}
+                
+                <div class="product-actions">
+                    ${quantity > 0 ? `
+                        <div class="quantity-controls">
+                            <button class="quantity-btn decrease" data-product-id="${product.id}">-</button>
+                            <span class="quantity-display">${quantity}</span>
+                            <button class="quantity-btn increase" data-product-id="${product.id}">+</button>
+                        </div>
+                    ` : ''}
+                    
+                    <button class="add-to-cart-btn ${quantity > 0 ? 'hidden' : ''}" 
+                            data-product-id="${product.id}"
+                            data-product-name="${product.nombre}"
+                            data-product-price="${product.precio}"
+                            data-product-category="${product.categoria}">
+                        ${quantity > 0 ? 'Agregado' : 'Agregar al pedido'}
+                    </button>
+                </div>
+            </div>
         `;
         
-        tbody.appendChild(row);
+        container.appendChild(card);
     });
-}
-
-// Actualizar estado del pedido
-async function updateOrderStatus(select) {
-    const orderId = select.dataset.orderId;
-    const newStatus = select.value;
     
-    try {
-        await db.collection('orders').doc(orderId).update({
-            estado: newStatus,
-            fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // Actualizar en memoria
-        const orderIndex = adminState.orders.findIndex(o => o.id === orderId);
-        if (orderIndex !== -1) {
-            adminState.orders[orderIndex].estado = newStatus;
-        }
-        
-        // Si cambia a "En preparación", activar campo de tiempo
-        if (newStatus === 'En preparación') {
-            const timeInput = select.parentElement.parentElement.querySelector('input[type="number"]');
-            if (timeInput) {
-                timeInput.focus();
+    // Agregar event listeners
+    document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const productId = e.target.dataset.productId;
+            const product = appState.products.find(p => p.id === productId);
+            if (product) {
+                addToCart(product);
             }
-        }
-        
-        updateDashboard();
-    } catch (error) {
-        console.error('Error actualizando estado:', error);
-        alert('Error al actualizar el estado');
-    }
-}
-
-// Actualizar tiempo estimado del pedido
-async function updateOrderTime(input) {
-    const orderId = input.dataset.orderId;
-    const newTime = parseInt(input.value);
-    
-    if (isNaN(newTime) || newTime < 1) {
-        alert('Tiempo inválido');
-        return;
-    }
-    
-    try {
-        await db.collection('orders').doc(orderId).update({
-            tiempo_estimado_actual: newTime
         });
-        
-        // Actualizar en memoria
-        const orderIndex = adminState.orders.findIndex(o => o.id === orderId);
-        if (orderIndex !== -1) {
-            adminState.orders[orderIndex].tiempo_estimado_actual = newTime;
+    });
+    
+    document.querySelectorAll('.quantity-btn.increase').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const productId = e.target.dataset.productId;
+            const product = appState.products.find(p => p.id === productId);
+            if (product) {
+                addToCart(product);
+            }
+        });
+    });
+    
+    document.querySelectorAll('.quantity-btn.decrease').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const productId = e.target.dataset.productId;
+            const product = appState.products.find(p => p.id === productId);
+            if (product) {
+                removeFromCart(product.id);
+            }
+        });
+    });
+}
+
+// Obtener emoji por categoría
+function getProductEmoji(category) {
+    const emojis = {
+        'hamburguesas': '🍔',
+        'pizzas': '🍕',
+        'entradas': '🥟',
+        'acompañamientos': '🍟',
+        'bebidas': '🥤',
+        'postres': '🍰',
+        'asado': '🥩',
+        'empanadas': '🥟'
+    };
+    
+    return emojis[category] || '🍽️';
+}
+
+// CARRITO
+function loadCart() {
+    try {
+        const savedCart = localStorage.getItem('eltachi_cart');
+        if (savedCart) {
+            appState.cart = JSON.parse(savedCart);
+            updateCartUI();
         }
     } catch (error) {
-        console.error('Error actualizando tiempo:', error);
-        alert('Error al actualizar el tiempo');
+        console.error('Error cargando carrito:', error);
+        appState.cart = [];
     }
 }
 
-// Mostrar detalles del pedido
-async function showOrderDetails(orderId) {
-    const order = adminState.orders.find(o => o.id === orderId);
-    if (!order) return;
-    
-    document.getElementById('modalOrderId').textContent = `Pedido: ${orderId}`;
-    
-    const fecha = order.fecha?.toDate();
-    const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    }) : '--';
-    
-    let details = `
-        <p><strong>Fecha:</strong> ${fechaStr}</p>
-        <p><strong>Cliente:</strong> ${order.nombre_cliente || '--'}</p>
-        <p><strong>Teléfono:</strong> ${order.telefono || '--'}</p>
-        <p><strong>Tipo:</strong> ${order.tipo_pedido || '--'}</p>
-        
-        ${order.direccion ? `<p><strong>Dirección:</strong> ${order.direccion}</p>` : ''}
-        
-        <p><strong>Estado:</strong> ${order.estado}</p>
-        <p><strong>Tiempo estimado:</strong> ${order.tiempo_estimado_actual || '--'} minutos</p>
-        
-        <hr style="margin: 20px 0;">
-        
-        <h4>Detalle del Pedido:</h4>
-        <pre style="white-space: pre-wrap; background: #f3f4f6; padding: 15px; border-radius: 8px;">${order.pedido_detallado || '--'}</pre>
-        
-        <hr style="margin: 20px 0;">
-        
-        <p><strong>Total:</strong> $${order.total || 0}</p>
-    `;
-    
-    document.getElementById('modalOrderDetails').innerHTML = details;
-    document.getElementById('orderModal').style.display = 'flex';
-}
-
-// Abrir WhatsApp
-function openWhatsApp(phone, orderId) {
-    if (!phone) {
-        alert('No hay número de teléfono para este pedido');
-        return;
-    }
-    
-    const message = `Hola! Soy de EL TACHI. Tu pedido ${orderId} está en camino. ¿Todo bien?`;
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
-    
-    window.open(whatsappUrl, '_blank');
-}
-
-// Actualizar grid de productos
-function updateProductsGrid() {
-    const grid = document.getElementById('productsGrid');
-    if (!grid) return;
-    
-    grid.innerHTML = '';
-    
-    adminState.products.forEach(product => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        
-        card.innerHTML = `
-            <h3 class="card-title">${product.nombre}</h3>
-            <p style="color: var(--gris); margin-bottom: 12px;">${product.descripcion || ''}</p>
-            <p class="card-value">$${product.precio}</p>
-            <p style="margin-bottom: 16px;">
-                <span class="status-badge ${product.disponible ? 'status-listo' : 'status-entregado'}">
-                    ${product.disponible ? 'Disponible' : 'No disponible'}
-                </span>
-            </p>
-            <div style="display: flex; gap: 8px;">
-                <button class="action-button button-edit" onclick="editProduct('${product.id}')">✏️ Editar</button>
-                <button class="action-button button-delete" onclick="deleteProduct('${product.id}')">🗑️ Eliminar</button>
-            </div>
-        `;
-        
-        grid.appendChild(card);
-    });
-}
-
-// Editar producto
-async function editProduct(productId) {
-    const product = adminState.products.find(p => p.id === productId);
-    if (!product) return;
-    
-    // Mostrar formulario
-    document.getElementById('productForm').style.display = 'block';
-    document.getElementById('productFormTitle').textContent = 'Editar Producto';
-    
-    // Llenar formulario
-    document.getElementById('productName').value = product.nombre;
-    document.getElementById('productDescription').value = product.descripcion || '';
-    document.getElementById('productPrice').value = product.precio;
-    document.getElementById('productAvailable').checked = product.disponible;
-    document.getElementById('productAderezos').value = product.aderezos_disponibles?.join(', ') || '';
-    document.getElementById('productAderezosPrices').value = JSON.stringify(product.precios_extra_aderezos || {}, null, 2);
-    
-    // Llenar categorías
-    const categorySelect = document.getElementById('productCategory');
-    categorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
-    
-    adminState.categories.forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat.id;
-        option.textContent = cat.nombre;
-        option.selected = cat.id === product.categoria;
-        categorySelect.appendChild(option);
-    });
-    
-    // Configurar botón guardar
-    const saveButton = document.getElementById('saveProductButton');
-    saveButton.onclick = async () => {
-        await saveProduct(productId);
-    };
-    
-    // Scroll al formulario
-    document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-}
-
-// Guardar producto
-async function saveProduct(productId = null) {
-    const isNew = !productId;
-    
-    const productData = {
-        nombre: document.getElementById('productName').value.trim(),
-        descripcion: document.getElementById('productDescription').value.trim(),
-        precio: parseFloat(document.getElementById('productPrice').value),
-        categoria: document.getElementById('productCategory').value,
-        disponible: document.getElementById('productAvailable').checked,
-        aderezos_disponibles: document.getElementById('productAderezos').value
-            .split(',')
-            .map(a => a.trim())
-            .filter(a => a),
-        precios_extra_aderezos: JSON.parse(document.getElementById('productAderezosPrices').value || '{}')
-    };
-    
-    // Validaciones
-    if (!productData.nombre) {
-        alert('El nombre es requerido');
-        return;
-    }
-    
-    if (isNaN(productData.precio) || productData.precio < 0) {
-        alert('Precio inválido');
-        return;
-    }
-    
+function saveCart() {
     try {
-        if (isNew) {
-            // Generar ID
-            const newId = productData.nombre.toLowerCase()
-                .replace(/[^a-z0-9]/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '');
-            
-            productData.id = newId;
-            await db.collection('products').doc(newId).set(productData);
+        localStorage.setItem('eltachi_cart', JSON.stringify(appState.cart));
+    } catch (error) {
+        console.error('Error guardando carrito:', error);
+    }
+}
+
+function addToCart(product) {
+    const existingItem = appState.cart.find(item => item.id === product.id);
+    
+    if (existingItem) {
+        existingItem.quantity += 1;
+        existingItem.total = existingItem.quantity * existingItem.price;
+    } else {
+        appState.cart.push({
+            id: product.id,
+            name: product.nombre,
+            price: product.precio,
+            quantity: 1,
+            total: product.precio,
+            category: product.categoria,
+            includes: product.aderezos_disponibles || []
+        });
+    }
+    
+    saveCart();
+    updateCartUI();
+    renderProducts(appState.currentCategory);
+}
+
+function removeFromCart(productId) {
+    const itemIndex = appState.cart.findIndex(item => item.id === productId);
+    
+    if (itemIndex !== -1) {
+        if (appState.cart[itemIndex].quantity > 1) {
+            appState.cart[itemIndex].quantity -= 1;
+            appState.cart[itemIndex].total = appState.cart[itemIndex].quantity * appState.cart[itemIndex].price;
         } else {
-            await db.collection('products').doc(productId).update(productData);
+            appState.cart.splice(itemIndex, 1);
         }
         
-        // Recargar productos
-        await loadProducts();
-        updateProductsGrid();
-        
-        // Ocultar formulario
-        document.getElementById('productForm').style.display = 'none';
-        document.getElementById('productForm').reset();
-        
-        alert(`Producto ${isNew ? 'agregado' : 'actualizado'} correctamente`);
-        
-    } catch (error) {
-        console.error('Error guardando producto:', error);
-        alert('Error al guardar el producto');
+        saveCart();
+        updateCartUI();
+        renderProducts(appState.currentCategory);
     }
 }
 
-// Eliminar producto
-async function deleteProduct(productId) {
-    if (!confirm('¿Estás seguro de eliminar este producto?')) return;
-    
-    try {
-        await db.collection('products').doc(productId).delete();
-        
-        // Recargar productos
-        await loadProducts();
-        updateProductsGrid();
-        
-        alert('Producto eliminado correctamente');
-    } catch (error) {
-        console.error('Error eliminando producto:', error);
-        alert('Error al eliminar el producto');
-    }
+function clearCart() {
+    appState.cart = [];
+    saveCart();
+    updateCartUI();
+    renderProducts(appState.currentCategory);
 }
 
-// Actualizar grid de categorías
-function updateCategoriesGrid() {
-    const grid = document.getElementById('categoriesGrid');
-    if (!grid) return;
+function getCartTotal() {
+    return appState.cart.reduce((total, item) => total + item.total, 0);
+}
+
+function updateCartUI() {
+    const cartCount = document.getElementById('cartCount');
+    const cartTotal = document.getElementById('cartTotal');
     
-    grid.innerHTML = '';
+    if (cartCount) {
+        const totalItems = appState.cart.reduce((sum, item) => sum + item.quantity, 0);
+        cartCount.textContent = totalItems;
+        cartCount.style.display = totalItems > 0 ? 'flex' : 'none';
+    }
     
-    adminState.categories.forEach(category => {
-        // Contar productos en esta categoría
-        const productCount = adminState.products.filter(p => p.categoria === category.id).length;
-        
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <h3 class="card-title">${category.nombre}</h3>
-            <p class="card-subtitle">${productCount} productos</p>
-            <p class="card-subtitle">Orden: ${category.orden}</p>
-            <div style="margin-top: 16px; display: flex; gap: 8px;">
-                <button class="action-button button-edit" onclick="editCategory('${category.id}')">✏️ Editar</button>
-                <button class="action-button button-delete" onclick="deleteCategory('${category.id}')">🗑️ Eliminar</button>
+    if (cartTotal) {
+        cartTotal.textContent = `$${getCartTotal()}`;
+    }
+    
+    renderCartItems();
+}
+
+function renderCartItems() {
+    const container = document.getElementById('cartItems');
+    if (!container) return;
+    
+    if (appState.cart.length === 0) {
+        container.innerHTML = `
+            <div class="text-center mt-3">
+                <p>El carrito está vacío</p>
+                <p class="text-muted mt-1">Agrega productos de las categorías</p>
             </div>
         `;
-        
-        grid.appendChild(card);
-    });
-}
-
-// Función para editar categoría
-function editCategory(categoryId) {
-    const category = adminState.categories.find(c => c.id === categoryId);
-    if (!category) return;
-    
-    // Rellenar formulario
-    document.getElementById('categoryName').value = category.nombre;
-    document.getElementById('categoryOrder').value = category.orden;
-    
-    // Cambiar título y botón
-    document.getElementById('categoryFormTitle').textContent = 'Editar Categoría';
-    document.getElementById('addCategoryButton').textContent = 'Actualizar Categoría';
-    document.getElementById('cancelEditButton').style.display = 'inline-block';
-    
-    // Guardar el ID de la categoría que se está editando en el botón
-    const addButton = document.getElementById('addCategoryButton');
-    addButton.dataset.editingId = categoryId;
-    
-    // Hacer scroll al formulario
-    document.getElementById('categoryName').focus();
-}
-
-// Función para eliminar categoría
-async function deleteCategory(categoryId) {
-    if (!confirm('¿Estás seguro de eliminar esta categoría?\n\nLos productos que pertenezcan a esta categoría quedarán sin categoría.')) {
         return;
     }
     
-    try {
-        await db.collection('categories').doc(categoryId).delete();
+    container.innerHTML = '';
+    
+    appState.cart.forEach(item => {
+        const cartItem = document.createElement('div');
+        cartItem.className = 'cart-item';
+        cartItem.innerHTML = `
+            <div class="cart-item-content">
+                <div class="cart-item-header">
+                    <div class="cart-item-name">${item.name}</div>
+                    <div class="cart-item-price">$${item.total}</div>
+                </div>
+                
+                ${item.includes.length > 0 ? `
+                    <div class="text-small text-muted">
+                        Incluye: ${item.includes.join(', ')}
+                    </div>
+                ` : ''}
+                
+                <div class="cart-item-actions">
+                    <div class="cart-item-quantity">
+                        <button class="cart-quantity-btn decrease" data-product-id="${item.id}">-</button>
+                        <span class="cart-item-quantity-display">${item.quantity}</span>
+                        <button class="cart-quantity-btn increase" data-product-id="${item.id}">+</button>
+                    </div>
+                    <button class="remove-item" data-product-id="${item.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
         
-        // Recargar categorías
-        await loadCategories();
-        updateCategoriesGrid();
-        
-        alert('Categoría eliminada correctamente');
-    } catch (error) {
-        console.error('Error eliminando categoría:', error);
-        alert('Error al eliminar la categoría');
+        container.appendChild(cartItem);
+    });
+    
+    // Agregar event listeners
+    document.querySelectorAll('.cart-quantity-btn.increase').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const productId = e.target.closest('button').dataset.productId;
+            const product = appState.products.find(p => p.id === productId);
+            if (product) {
+                addToCart(product);
+            }
+        });
+    });
+    
+    document.querySelectorAll('.cart-quantity-btn.decrease').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const productId = e.target.closest('button').dataset.productId;
+            removeFromCart(productId);
+        });
+    });
+    
+    document.querySelectorAll('.remove-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const productId = e.target.closest('button').dataset.productId;
+            const itemIndex = appState.cart.findIndex(item => item.id === productId);
+            if (itemIndex !== -1) {
+                appState.cart.splice(itemIndex, 1);
+                saveCart();
+                updateCartUI();
+                renderProducts(appState.currentCategory);
+            }
+        });
+    });
+}
+
+// CHECKOUT
+function setupCheckout() {
+    const cartButton = document.getElementById('cartButton');
+    const closeCart = document.getElementById('closeCart');
+    const cartOverlay = document.getElementById('cartOverlay');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const cancelCheckout = document.getElementById('cancelCheckout');
+    const checkoutModal = document.getElementById('checkoutModal');
+    
+    if (cartButton) {
+        cartButton.addEventListener('click', () => {
+            cartOverlay.style.display = 'flex';
+        });
+    }
+    
+    if (closeCart) {
+        closeCart.addEventListener('click', () => {
+            cartOverlay.style.display = 'none';
+        });
+    }
+    
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', () => {
+            if (appState.cart.length === 0) {
+                alert('Agrega productos al carrito primero');
+                return;
+            }
+            
+            cartOverlay.style.display = 'none';
+            openCheckout();
+        });
+    }
+    
+    if (cancelCheckout) {
+        cancelCheckout.addEventListener('click', () => {
+            checkoutModal.style.display = 'none';
+        });
+    }
+    
+    // Tipo de pedido (retiro/envío)
+    const deliveryInputs = document.querySelectorAll('input[name="deliveryType"]');
+    deliveryInputs.forEach(input => {
+        input.addEventListener('change', () => {
+            const addressField = document.getElementById('addressField');
+            if (input.value === 'envío') {
+                addressField.style.display = 'block';
+            } else {
+                addressField.style.display = 'none';
+            }
+        });
+    });
+    
+    // Navegación checkout
+    document.getElementById('nextToConfirm')?.addEventListener('click', goToConfirm);
+    document.getElementById('backToCustomer')?.addEventListener('click', goToCustomer);
+    document.getElementById('confirmOrder')?.addEventListener('click', confirmOrder);
+    document.getElementById('whatsappButton')?.addEventListener('click', openWhatsApp);
+    document.getElementById('newOrderBtn')?.addEventListener('click', startNewOrder);
+}
+
+function openCheckout() {
+    const modal = document.getElementById('checkoutModal');
+    const sectionCustomer = document.getElementById('sectionCustomer');
+    
+    // Resetear formulario
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerPhone').value = '';
+    document.getElementById('customerAddress').value = '';
+    document.getElementById('orderComments').value = '';
+    document.getElementById('deliveryPickup').checked = true;
+    document.getElementById('addressField').style.display = 'none';
+    
+    // Ir a primera sección
+    setCheckoutStep(1);
+    
+    modal.style.display = 'flex';
+}
+
+function setCheckoutStep(step) {
+    // Actualizar pasos
+    document.querySelectorAll('.step').forEach(stepEl => {
+        stepEl.classList.remove('active');
+        if (parseInt(stepEl.dataset.step) === step) {
+            stepEl.classList.add('active');
+        }
+    });
+    
+    // Mostrar sección correspondiente
+    document.querySelectorAll('.checkout-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    switch(step) {
+        case 1:
+            document.getElementById('sectionCustomer').classList.add('active');
+            break;
+        case 2:
+            document.getElementById('sectionConfirm').classList.add('active');
+            updateOrderSummary();
+            break;
+        case 3:
+            document.getElementById('sectionComplete').classList.add('active');
+            break;
     }
 }
 
-// Función para agregar o actualizar categoría
-async function addCategory() {
-    const name = document.getElementById('categoryName').value.trim();
-    const order = parseInt(document.getElementById('categoryOrder').value);
-    const addButton = document.getElementById('addCategoryButton');
-    const isEditing = addButton.dataset.editingId;
+function goToConfirm() {
+    // Validar datos básicos
+    const name = document.getElementById('customerName').value.trim();
+    const phone = document.getElementById('customerPhone').value.trim();
+    const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
+    const address = document.getElementById('customerAddress').value.trim();
     
     if (!name) {
-        alert('El nombre es requerido');
+        alert('Por favor ingresa tu nombre');
         return;
     }
     
-    if (isNaN(order) || order < 1) {
-        alert('Orden inválido');
+    if (!phone || phone.length < 8) {
+        alert('Por favor ingresa un teléfono válido');
         return;
     }
     
-    try {
-        if (isEditing) {
-            // Actualizar categoría existente
-            await db.collection('categories').doc(isEditing).update({
-                nombre: name,
-                orden: order
-            });
-            
-            // Restaurar formulario
-            cancelEditCategory();
-            
-            alert('Categoría actualizada correctamente');
-        } else {
-            // Crear nueva categoría
-            const id = name.toLowerCase()
-                .replace(/[^a-z0-9]/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '');
-            
-            await db.collection('categories').doc(id).set({
-                id,
-                nombre: name,
-                orden: order
-            });
-            
-            // Limpiar formulario
-            document.getElementById('categoryName').value = '';
-            document.getElementById('categoryOrder').value = adminState.categories.length + 1;
-            
-            alert('Categoría agregada correctamente');
-        }
-        
-        // Recargar categorías
-        await loadCategories();
-        updateCategoriesGrid();
-        
-    } catch (error) {
-        console.error('Error guardando categoría:', error);
-        alert('Error al guardar la categoría');
+    if (deliveryType === 'envío' && !address) {
+        alert('Por favor ingresa tu dirección para el envío');
+        return;
     }
-}
-
-// Función para cancelar la edición de categoría
-function cancelEditCategory() {
-    // Restaurar formulario
-    document.getElementById('categoryFormTitle').textContent = 'Agregar Nueva Categoría';
-    document.getElementById('addCategoryButton').textContent = 'Agregar Categoría';
-    document.getElementById('cancelEditButton').style.display = 'none';
     
-    // Limpiar campos
-    document.getElementById('categoryName').value = '';
-    document.getElementById('categoryOrder').value = adminState.categories.length + 1;
+    // Actualizar resumen
+    document.getElementById('confirmCustomerName').textContent = name;
+    document.getElementById('confirmCustomerPhone').textContent = phone;
+    document.getElementById('confirmDeliveryType').textContent = 
+        deliveryType === 'envío' ? 'Envío a domicilio' : 'Retiro en local';
     
-    // Eliminar el dataset de edición
-    const addButton = document.getElementById('addCategoryButton');
-    if (addButton.dataset.editingId) {
-        delete addButton.dataset.editingId;
-    }
-}
-
-// Actualizar formulario de configuración
-function updateSettingsForm() {
-    if (!adminState.settings) return;
-    
-    const settings = adminState.settings;
-    
-    // Información básica
-    document.getElementById('storeName').value = settings.nombre_local || '';
-    document.getElementById('whatsappPhone').value = settings.telefono_whatsapp || '';
-    document.getElementById('geminiApiKey').value = settings.api_key_gemini || '';
-    
-    // Horarios
-    const hoursContainer = document.getElementById('hoursContainer');
-    hoursContainer.innerHTML = '';
-    
-    const days = [
-        { key: 'lunes', label: 'Lunes' },
-        { key: 'martes', label: 'Martes' },
-        { key: 'miércoles', label: 'Miércoles' },
-        { key: 'jueves', label: 'Jueves' },
-        { key: 'viernes', label: 'Viernes' },
-        { key: 'sábado', label: 'Sábado' },
-        { key: 'domingo', label: 'Domingo' }
-    ];
-    
-    days.forEach(day => {
-        const div = document.createElement('div');
-        div.className = 'form-group';
-        div.innerHTML = `
-            <label class="form-label">${day.label}</label>
-            <input type="text" class="form-input" 
-                   id="hours_${day.key}" 
-                   value="${settings.horarios_por_dia?.[day.key] || '11:00 - 23:00'}"
-                   placeholder="Ej: 11:00 - 23:00 o Cerrado">
-        `;
-        hoursContainer.appendChild(div);
-    });
-    
-    // Mensaje cerrado
-    document.getElementById('closedMessage').value = settings.mensaje_cerrado || '';
-    
-    // Envíos y retiro
-    document.getElementById('deliveryPrice').value = settings.precio_envio || 0;
-    document.getElementById('baseDeliveryTime').value = settings.tiempo_base_estimado || 30;
-    document.getElementById('retiroEnabled').checked = settings.retiro_habilitado || false;
-    
-    // Colores
-    document.getElementById('colorPrimary').value = settings.colores_marca?.azul || '#1e40af';
-    document.getElementById('colorSecondary').value = settings.colores_marca?.amarillo || '#f59e0b';
-}
-
-// Guardar configuración
-async function saveSettings() {
-    const settingsData = {
-        nombre_local: document.getElementById('storeName').value.trim(),
-        telefono_whatsapp: document.getElementById('whatsappPhone').value.trim(),
-        api_key_gemini: document.getElementById('geminiApiKey').value.trim(),
-        horarios_por_dia: {},
-        mensaje_cerrado: document.getElementById('closedMessage').value.trim(),
-        precio_envio: parseInt(document.getElementById('deliveryPrice').value) || 0,
-        tiempo_base_estimado: parseInt(document.getElementById('baseDeliveryTime').value) || 30,
-        retiro_habilitado: document.getElementById('retiroEnabled').checked,
-        colores_marca: {
-            azul: document.getElementById('colorPrimary').value,
-            amarillo: document.getElementById('colorSecondary').value
-        }
-    };
-    
-    // Recoger horarios
-    const days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
-    days.forEach(day => {
-        const input = document.getElementById(`hours_${day}`);
-        if (input) {
-            settingsData.horarios_por_dia[day] = input.value.trim();
-        }
-    });
-    
-    try {
-        await db.collection('settings').doc('config').update(settingsData);
-        
-        // Actualizar en memoria
-        adminState.settings = { ...adminState.settings, ...settingsData };
-        
-        // Actualizar estado del local
-        updateStoreStatus();
-        
-        alert('Configuración guardada correctamente');
-        
-    } catch (error) {
-        console.error('Error guardando configuración:', error);
-        alert('Error al guardar la configuración');
-    }
-}
-
-// Actualizar estado del local
-function updateStoreStatus() {
-    if (!adminState.settings) return;
-    
-    const statusElement = document.getElementById('storeStatus');
-    const statusValueElement = document.getElementById('storeStatusValue');
-    const toggle = document.getElementById('storeToggle');
-    const toggleLabel = document.getElementById('storeToggleLabel');
-    
-    if (adminState.settings.abierto) {
-        statusElement.textContent = '📍 Local ABIERTO';
-        statusElement.style.color = '#10b981';
-        statusValueElement.textContent = 'ABIERTO';
-        statusValueElement.style.color = '#10b981';
-        toggle.checked = true;
-        toggleLabel.textContent = 'Abierto';
+    if (deliveryType === 'envío') {
+        document.getElementById('confirmAddressSection').style.display = 'block';
+        document.getElementById('confirmCustomerAddress').textContent = address;
     } else {
-        statusElement.textContent = '📍 Local CERRADO';
-        statusElement.style.color = '#ef4444';
-        statusValueElement.textContent = 'CERRADO';
-        statusValueElement.style.color = '#ef4444';
-        toggle.checked = false;
-        toggleLabel.textContent = 'Cerrado';
+        document.getElementById('confirmAddressSection').style.display = 'none';
+    }
+    
+    const comments = document.getElementById('orderComments').value.trim();
+    if (comments) {
+        document.getElementById('confirmCommentsSection').style.display = 'block';
+        document.getElementById('confirmOrderComments').textContent = comments;
+    } else {
+        document.getElementById('confirmCommentsSection').style.display = 'none';
+    }
+    
+    setCheckoutStep(2);
+}
+
+function goToCustomer() {
+    setCheckoutStep(1);
+}
+
+function updateOrderSummary() {
+    const container = document.getElementById('orderSummaryItems');
+    const totalElement = document.getElementById('orderSummaryTotal');
+    
+    if (!container) return;
+    
+    let html = '';
+    let subtotal = 0;
+    
+    appState.cart.forEach(item => {
+        html += `
+            <div class="summary-item">
+                <span>${item.name} x${item.quantity}</span>
+                <span>$${item.total}</span>
+            </div>
+        `;
+        subtotal += item.total;
+    });
+    
+    // Calcular envío si corresponde
+    const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
+    let deliveryCost = 0;
+    
+    if (deliveryType === 'envío' && appState.settings) {
+        deliveryCost = appState.settings.precio_envio || 0;
+        html += `
+            <div class="summary-item">
+                <span>Costo de envío</span>
+                <span>$${deliveryCost}</span>
+            </div>
+        `;
+    }
+    
+    const total = subtotal + deliveryCost;
+    
+    container.innerHTML = html;
+    if (totalElement) {
+        totalElement.textContent = `$${total}`;
     }
 }
 
-// Cambiar estado del local
-async function toggleStoreStatus(checkbox) {
-    const isOpen = checkbox.checked;
-    
+async function confirmOrder() {
     try {
-        await db.collection('settings').doc('config').update({
-            abierto: isOpen
-        });
+        // Validar que el local esté abierto
+        if (!appState.settings?.abierto) {
+            alert('El local está cerrado en este momento. No se pueden tomar pedidos.');
+            return;
+        }
         
-        // Actualizar en memoria
-        adminState.settings.abierto = isOpen;
+        // Obtener datos del formulario
+        const customerName = document.getElementById('customerName').value.trim();
+        const customerPhone = document.getElementById('customerPhone').value.trim();
+        const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
+        const customerAddress = document.getElementById('customerAddress').value.trim();
+        const orderComments = document.getElementById('orderComments').value.trim();
         
-        // Actualizar UI
-        updateStoreStatus();
+        // Calcular total
+        let subtotal = getCartTotal();
+        let deliveryCost = 0;
         
-        alert(`Local ${isOpen ? 'abierto' : 'cerrado'} correctamente`);
+        if (deliveryType === 'envío') {
+            deliveryCost = appState.settings?.precio_envio || 0;
+        }
+        
+        const total = subtotal + deliveryCost;
+        
+        // Generar ID de pedido
+        const orderId = await generateOrderId();
+        
+        // Crear pedido detallado
+        const orderDetails = appState.cart.map(item => 
+            `- ${item.name} x${item.quantity}: $${item.total}`
+        ).join('\n');
+        
+        const fullOrderText = `Pedido:\n${orderDetails}\n\nSubtotal: $${subtotal}\n${deliveryType === 'envío' ? `Envío: $${deliveryCost}\n` : ''}Total: $${total}\n${orderComments ? `\nComentarios: ${orderComments}` : ''}`;
+        
+        // Datos del pedido para Firestore
+        const orderData = {
+            id_pedido: orderId,
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            nombre_cliente: customerName,
+            telefono: customerPhone,
+            tipo_pedido: deliveryType,
+            direccion: deliveryType === 'envío' ? customerAddress : '',
+            pedido_detallado: fullOrderText,
+            items: appState.cart.map(item => ({
+                id: item.id,
+                nombre: item.name,
+                precio: item.price,
+                cantidad: item.quantity,
+                total: item.total
+            })),
+            comentarios: orderComments || '',
+            subtotal: subtotal,
+            precio_envio: deliveryCost,
+            total: total,
+            estado: 'Recibido',
+            tiempo_estimado_actual: appState.settings?.tiempo_base_estimado || 30,
+            fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // Guardar en Firestore
+        await db.collection('orders').doc(orderId).set(orderData);
+        
+        // Enviar notificación al panel admin
+        await sendAdminNotification(orderId, customerName, total);
+        
+        // Mostrar confirmación
+        document.getElementById('orderIdDisplay').textContent = orderId;
+        document.getElementById('orderTimeDisplay').textContent = 
+            `${appState.settings?.tiempo_base_estimado || 30} minutos`;
+        document.getElementById('orderTotalDisplay').textContent = `$${total}`;
+        
+        // Guardar datos para WhatsApp
+        window.lastOrderData = {
+            id: orderId,
+            phone: customerPhone,
+            name: customerName,
+            total: total,
+            details: fullOrderText,
+            deliveryType: deliveryType,
+            address: customerAddress
+        };
+        
+        setCheckoutStep(3);
         
     } catch (error) {
-        console.error('Error cambiando estado:', error);
-        alert('Error al cambiar el estado');
-        checkbox.checked = !isOpen; // Revertir visualmente
+        console.error('Error confirmando pedido:', error);
+        alert('Hubo un error al procesar tu pedido. Por favor, intentá de nuevo.');
     }
 }
 
-// Configurar event listeners del admin
-function setupAdminEventListeners() {
-    // Logout
-    document.getElementById('logoutButton').addEventListener('click', () => {
-        auth.signOut();
-    });
-    
-    // Navegación por tabs
-    document.querySelectorAll('.nav-button').forEach(button => {
-        button.addEventListener('click', () => {
-            const tab = button.dataset.tab;
-            
-            // Actualizar botones activos
-            document.querySelectorAll('.nav-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            button.classList.add('active');
-            
-            // Mostrar contenido del tab
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`${tab}Tab`).classList.add('active');
-            
-            adminState.currentTab = tab;
-        });
-    });
-    
-    // Productos
-    document.getElementById('addProductButton').addEventListener('click', () => {
-        document.getElementById('productForm').style.display = 'block';
-        document.getElementById('productFormTitle').textContent = 'Nuevo Producto';
-        document.getElementById('productForm').reset();
+async function generateOrderId() {
+    try {
+        const counterRef = db.collection('counters').doc('orders');
         
-        // Llenar categorías
-        const categorySelect = document.getElementById('productCategory');
-        categorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
-        adminState.categories.forEach(cat => {
-            const option = document.createElement('option');
-            option.value = cat.id;
-            option.textContent = cat.nombre;
-            categorySelect.appendChild(option);
-        });
-        
-        // Configurar botón guardar
-        const saveButton = document.getElementById('saveProductButton');
-        saveButton.onclick = async () => {
-            await saveProduct();
-        };
-    });
-    
-    document.getElementById('cancelProductButton').addEventListener('click', () => {
-        document.getElementById('productForm').style.display = 'none';
-    });
-    
-    // Categorías
-    document.getElementById('addCategoryButton').addEventListener('click', addCategory);
-    document.getElementById('cancelEditButton').addEventListener('click', cancelEditCategory);
-    
-    // Configuración
-    document.getElementById('storeToggle').addEventListener('change', function() {
-        toggleStoreStatus(this);
-    });
-    
-    document.getElementById('saveSettingsButton').addEventListener('click', saveSettings);
-    
-    // Reportes
-    document.getElementById('reportPeriod').addEventListener('change', function() {
-        const customRange = document.getElementById('customDateRange');
-        customRange.style.display = this.value === 'custom' ? 'block' : 'none';
-    });
-    
-    // Modal
-    document.getElementById('closeModalButton').addEventListener('click', () => {
-        document.getElementById('orderModal').style.display = 'none';
-    });
-    
-    // Cerrar modal al hacer clic fuera
-    document.getElementById('orderModal').addEventListener('click', (e) => {
-        if (e.target === document.getElementById('orderModal')) {
-            document.getElementById('orderModal').style.display = 'none';
-        }
-    });
-}
-
-// Funciones auxiliares para el dashboard
-function updateRecentOrdersList() {
-    const container = document.getElementById('recentOrdersList');
-    if (!container) return;
-    
-    const recentOrders = adminState.orders.slice(0, 5);
-    
-    let html = '';
-    recentOrders.forEach(order => {
-        const fecha = order.fecha?.toDate();
-        const timeStr = fecha ? fecha.toLocaleTimeString('es-ES', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        }) : '--';
-        
-        html += `
-            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                <div style="display: flex; justify-content: space-between;">
-                    <strong>${order.id}</strong>
-                    <span class="status-badge status-${order.estado?.toLowerCase().replace(' ', '')}">
-                        ${order.estado}
-                    </span>
-                </div>
-                <div style="color: var(--gris); font-size: 14px;">
-                    ${order.nombre_cliente || '--'} • ${timeStr} • $${order.total || 0}
-                </div>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html || '<p>No hay pedidos recientes</p>';
-}
-
-function updateTopProductsList() {
-    const container = document.getElementById('topProductsList');
-    if (!container) return;
-    
-    // Simular productos más vendidos (en un sistema real, contarías de los pedidos)
-    const topProducts = adminState.products.slice(0, 5);
-    
-    let html = '';
-    topProducts.forEach(product => {
-        html += `
-            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                <div style="display: flex; justify-content: space-between;">
-                    <strong>${product.nombre}</strong>
-                    <span>$${product.precio}</span>
-                </div>
-                <div style="color: var(--gris); font-size: 14px;">
-                    ${product.disponible ? '✅ Disponible' : '❌ No disponible'}
-                </div>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html || '<p>No hay productos</p>';
-}
-
-function updateOrdersChart() {
-    const ctx = document.getElementById('ordersChart');
-    if (!ctx) return;
-    
-    // Datos de ejemplo por hora
-    const data = {
-        labels: ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'],
-        datasets: [{
-            label: 'Pedidos por hora',
-            data: [2, 5, 8, 12, 15, 18, 20, 22, 25, 20, 15, 10],
-            backgroundColor: 'rgba(59, 130, 246, 0.5)',
-            borderColor: '#3b82f6',
-            borderWidth: 2,
-            tension: 0.4
-        }]
-    };
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: data,
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 5
-                    }
-                }
+        return await db.runTransaction(async (transaction) => {
+            const counterDoc = await transaction.get(counterRef);
+            
+            let newNumber;
+            if (!counterDoc.exists) {
+                newNumber = 1;
+                transaction.set(counterRef, { lastNumber: newNumber });
+            } else {
+                newNumber = (counterDoc.data().lastNumber || 0) + 1;
+                transaction.update(counterRef, { lastNumber: newNumber });
             }
+            
+            const paddedNumber = newNumber.toString().padStart(6, '0');
+            return `TACHI-${paddedNumber}`;
+        });
+        
+    } catch (error) {
+        console.error('Error generando ID:', error);
+        const timestamp = Date.now().toString().slice(-6);
+        return `TACHI-${timestamp}`;
+    }
+}
+
+async function sendAdminNotification(orderId, customerName, total) {
+    try {
+        await db.collection('notifications').add({
+            tipo: 'nuevo_pedido',
+            mensaje: `Nuevo pedido ${orderId} de ${customerName} por $${total}`,
+            pedido_id: orderId,
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            leido: false
+        });
+        console.log('📢 Notificación enviada al panel admin');
+    } catch (error) {
+        console.error('Error enviando notificación:', error);
+    }
+}
+
+function openWhatsApp() {
+    if (!window.lastOrderData) return;
+    
+    const { id, phone, name, total, details, deliveryType, address } = window.lastOrderData;
+    
+    let message = `Hola ${name}! 👋\n\n`;
+    message += `Confirmamos tu pedido en EL TACHI:\n\n`;
+    message += `*Pedido:* ${id}\n`;
+    message += `*Cliente:* ${name}\n`;
+    message += `*Tipo:* ${deliveryType === 'envío' ? 'Envío a domicilio' : 'Retiro en local'}\n`;
+    
+    if (deliveryType === 'envío' && address) {
+        message += `*Dirección:* ${address}\n`;
+    }
+    
+    message += `\n*Detalle del pedido:*\n${details}\n\n`;
+    message += `*Tiempo estimado:* ${appState.settings?.tiempo_base_estimado || 30} minutos\n\n`;
+    message += `¡Gracias por tu compra! 🍔`;
+    
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${appState.settings?.telefono_whatsapp || '5491122334455'}?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, '_blank');
+    
+    // Limpiar carrito
+    clearCart();
+}
+
+function startNewOrder() {
+    const modal = document.getElementById('checkoutModal');
+    modal.style.display = 'none';
+    
+    // Limpiar carrito
+    clearCart();
+    
+    // Ir a primera categoría
+    if (appState.categories.length > 0) {
+        selectCategory(appState.categories[0].id);
+    }
+}
+
+// UI HELPER FUNCTIONS
+function updateStoreStatus() {
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    
+    if (!appState.settings) return;
+    
+    if (appState.settings.abierto) {
+        if (statusDot) {
+            statusDot.style.background = '#10b981';
         }
-    });
+        if (statusText) {
+            statusText.textContent = 'Abierto ahora';
+        }
+    } else {
+        if (statusDot) {
+            statusDot.style.background = '#ef4444';
+        }
+        if (statusText) {
+            statusText.textContent = 'Cerrado';
+        }
+    }
+}
+
+function updateDeliveryInfo() {
+    const element = document.getElementById('deliveryInfo');
+    if (!element || !appState.settings) return;
+    
+    element.innerHTML = `
+        <span>${appState.settings.tiempo_base_estimado || 30} min</span>
+        <span style="margin: 0 0.5rem;">•</span>
+        <span>Envío $${appState.settings.precio_envio || 0}</span>
+    `;
+}
+
+// INICIALIZAR APP
+async function initApp() {
+    console.log('🚀 Inicializando aplicación...');
+    
+    try {
+        // Cargar configuración
+        await loadSettings();
+        
+        // Cargar carrito
+        loadCart();
+        
+        // Cargar categorías y productos
+        await Promise.all([loadCategories(), loadProducts()]);
+        
+        // Configurar event listeners
+        setupCheckout();
+        
+        // Inicializar Gemini si hay API Key
+        if (appState.settings?.api_key_gemini) {
+            const { initGeminiEngine } = await import('./gemini-engine.js');
+            appState.geminiEngine = await initGeminiEngine(
+                appState.settings.api_key_gemini,
+                appState.settings,
+                appState.products
+            );
+        }
+        
+        console.log('✅ Aplicación lista');
+        
+    } catch (error) {
+        console.error('❌ Error inicializando aplicación:', error);
+        alert('Error cargando la aplicación. Por favor, recarga la página.');
+    }
 }
 
 // Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', initAdminApp);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
 
-// Exportar funciones globales
-window.updateOrderStatus = updateOrderStatus;
-window.updateOrderTime = updateOrderTime;
-window.showOrderDetails = showOrderDetails;
-window.openWhatsApp = openWhatsApp;
-window.editProduct = editProduct;
-window.deleteProduct = deleteProduct;
-window.editCategory = editCategory;
-window.deleteCategory = deleteCategory;
-window.toggleStoreStatus = toggleStoreStatus;
+// Exportar para uso global
+window.appState = appState;
+window.clearCart = clearCart;
+window.addToCart = addToCart;
+window.removeFromCart = removeFromCart;
+window.getCartTotal = getCartTotal;
