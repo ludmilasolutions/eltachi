@@ -884,6 +884,32 @@
             to { transform: rotate(360deg); }
         }
         
+        /* HELP BUTTON (IA Opcional) */
+        .help-button {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--azul-primario);
+            color: white;
+            border: none;
+            font-size: 1.25rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .help-button:hover {
+            transform: scale(1.1);
+            background: var(--azul-secundario);
+        }
+        
         /* RESPONSIVE */
         @media (max-width: 480px) {
             .app-container {
@@ -897,6 +923,10 @@
             
             .checkout-content {
                 max-height: 95vh;
+            }
+            
+            .radio-group {
+                flex-direction: column;
             }
         }
         
@@ -959,6 +989,11 @@
             </div>
         </div>
     </div>
+    
+    <!-- BOTÓN DE AYUDA (IA Opcional) -->
+    <button class="help-button" id="helpButton" title="Ayuda">
+        <i class="fas fa-question"></i>
+    </button>
     
     <!-- CARRITO -->
     <div class="cart-overlay" id="cartOverlay">
@@ -1137,6 +1172,30 @@
         </div>
     </div>
 
+    <!-- MODAL DE AYUDA -->
+    <div class="checkout-modal" id="helpModal" style="display: none;">
+        <div class="checkout-content" style="max-width: 400px;">
+            <div class="checkout-header">
+                <h2 class="checkout-title">
+                    <i class="fas fa-question-circle"></i> Ayuda
+                </h2>
+            </div>
+            <div class="checkout-body">
+                <div id="helpContent">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Cargando ayuda...</p>
+                    </div>
+                </div>
+                <div class="form-actions mt-3">
+                    <button class="btn-secondary" id="closeHelp">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- FIREBASE SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -1144,6 +1203,140 @@
     <!-- ARCHIVOS JS -->
     <script src="firebase-config.js"></script>
     <script src="app.js"></script>
+    
+    <!-- GEMINI ENGINE (Opcional) -->
+    <script type="module">
+        // Cargar Gemini solo si el usuario hace clic en ayuda
+        let geminiLoaded = false;
+        
+        document.getElementById('helpButton').addEventListener('click', async function() {
+            const helpModal = document.getElementById('helpModal');
+            const helpContent = document.getElementById('helpContent');
+            
+            // Mostrar modal
+            helpModal.style.display = 'flex';
+            
+            if (!geminiLoaded) {
+                try {
+                    // Cargar dinámicamente el motor Gemini
+                    const module = await import('./gemini-engine.js');
+                    console.log('✅ Gemini Engine cargado dinámicamente');
+                    geminiLoaded = true;
+                    
+                    // Configurar ayuda inicial
+                    helpContent.innerHTML = `
+                        <div class="confirmation">
+                            <div class="confirmation-icon">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <h3 class="confirmation-title">Ayuda Inteligente</h3>
+                            <p>Puedo ayudarte con:</p>
+                            <ul style="text-align: left; margin: 1rem 0; padding-left: 1.5rem;">
+                                <li>Información sobre productos</li>
+                                <li>Horarios del local</li>
+                                <li>Formas de pago</li>
+                                <li>Consultas generales</li>
+                            </ul>
+                            <div class="form-group">
+                                <label class="form-label">¿En qué puedo ayudarte?</label>
+                                <textarea class="form-input form-textarea" id="helpQuery" placeholder="Escribe tu pregunta..."></textarea>
+                            </div>
+                            <button class="btn-primary mt-2" id="askHelpButton">
+                                <i class="fas fa-paper-plane"></i> Enviar pregunta
+                            </button>
+                        </div>
+                    `;
+                    
+                    // Configurar botón de pregunta
+                    document.getElementById('askHelpButton').addEventListener('click', async function() {
+                        const query = document.getElementById('helpQuery').value.trim();
+                        if (!query) return;
+                        
+                        // Mostrar loading
+                        const originalContent = helpContent.innerHTML;
+                        helpContent.innerHTML = `
+                            <div class="loading">
+                                <div class="loading-spinner"></div>
+                                <p>Procesando tu pregunta...</p>
+                            </div>
+                        `;
+                        
+                        try {
+                            const response = await module.getHelp(query);
+                            
+                            helpContent.innerHTML = `
+                                <div class="confirmation">
+                                    <div class="confirmation-icon">
+                                        <i class="fas fa-robot"></i>
+                                    </div>
+                                    <h3 class="confirmation-title">Respuesta</h3>
+                                    <div style="text-align: left; margin: 1rem 0; padding: 1rem; background: var(--gris-claro); border-radius: 8px;">
+                                        ${response.available ? response.message : '<p class="text-muted">No pude procesar tu pregunta en este momento.</p>'}
+                                    </div>
+                                    <button class="btn-secondary mt-2" id="newQuestionButton">
+                                        <i class="fas fa-redo"></i> Nueva pregunta
+                                    </button>
+                                </div>
+                            `;
+                            
+                            // Configurar botón para nueva pregunta
+                            document.getElementById('newQuestionButton').addEventListener('click', function() {
+                                helpContent.innerHTML = originalContent;
+                                document.getElementById('askHelpButton').addEventListener('click', arguments.callee);
+                            });
+                            
+                        } catch (error) {
+                            console.error('Error obteniendo ayuda:', error);
+                            helpContent.innerHTML = `
+                                <div class="confirmation">
+                                    <div class="confirmation-icon" style="color: var(--rojo);">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <h3 class="confirmation-title">Error</h3>
+                                    <p>No se pudo obtener ayuda en este momento.</p>
+                                    <button class="btn-secondary mt-2" onclick="location.reload()">
+                                        <i class="fas fa-redo"></i> Reintentar
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('Error cargando Gemini:', error);
+                    helpContent.innerHTML = `
+                        <div class="confirmation">
+                            <div class="confirmation-icon" style="color: var(--gris-medio);">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <h3 class="confirmation-title">Ayuda Básica</h3>
+                            <p>Para hacer tu pedido:</p>
+                            <ol style="text-align: left; margin: 1rem 0; padding-left: 1.5rem;">
+                                <li>Selecciona una categoría</li>
+                                <li>Elige los productos</li>
+                                <li>Revisa tu carrito</li>
+                                <li>Completa tus datos</li>
+                                <li>Confirma el pedido</li>
+                            </ol>
+                            <p class="text-muted">La ayuda inteligente no está disponible temporalmente.</p>
+                        </div>
+                    `;
+                }
+            }
+        });
+        
+        // Cerrar modal de ayuda
+        document.getElementById('closeHelp').addEventListener('click', function() {
+            document.getElementById('helpModal').style.display = 'none';
+        });
+        
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('helpModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+    </script>
     
     <!-- SERVICE WORKER -->
     <script>
@@ -1166,6 +1359,19 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
+            
+            // Mostrar notificación después de 10 segundos
+            setTimeout(() => {
+                if (deferredPrompt && confirm('¿Quieres instalar EL TACHI en tu dispositivo para un acceso más rápido?')) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('✅ App instalada');
+                        }
+                        deferredPrompt = null;
+                    });
+                }
+            }, 10000);
         });
         
         // Botón para instalar manualmente si es necesario
@@ -1183,6 +1389,41 @@
         
         // Exponer función global
         window.installPWA = installPWA;
+        
+        // Configurar event listeners adicionales
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cerrar modales con Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const helpModal = document.getElementById('helpModal');
+                    const checkoutModal = document.getElementById('checkoutModal');
+                    const cartOverlay = document.getElementById('cartOverlay');
+                    
+                    if (helpModal.style.display === 'flex') {
+                        helpModal.style.display = 'none';
+                    }
+                    if (checkoutModal.style.display === 'flex') {
+                        checkoutModal.style.display = 'none';
+                    }
+                    if (cartOverlay.style.display === 'flex') {
+                        cartOverlay.style.display = 'none';
+                    }
+                }
+            });
+            
+            // Prevenir zoom en inputs en mobile
+            document.addEventListener('touchstart', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    e.target.style.fontSize = '16px';
+                }
+            });
+            
+            // Actualizar año en footer si existe
+            const yearSpan = document.getElementById('currentYear');
+            if (yearSpan) {
+                yearSpan.textContent = new Date().getFullYear();
+            }
+        });
     </script>
 </body>
 </html>
