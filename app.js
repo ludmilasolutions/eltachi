@@ -1,34 +1,7 @@
-// Configuración Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
-    authDomain: "eltachi.firebasestorage.app",
-    projectId: "eltachi",
-    storageBucket: "eltachi.firebasestorage.app",
-    messagingSenderId: "231676602106",
-    appId: "1:231676602106:web:fde347e9caa00760b34b43"
-};
+// app.js - Lógica de la aplicación de clientes
+console.log("🚀 Iniciando aplicación EL TACHI...");
 
-// Inicializar Firebase
-try {
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-        console.log("✅ Firebase inicializado correctamente");
-    } else {
-        console.log("✅ Firebase ya estaba inicializado");
-    }
-} catch (error) {
-    console.error("❌ Error inicializando Firebase:", error);
-}
-
-// Referencias globales
-let db = null;
-try {
-    db = firebase.firestore();
-    console.log("✅ Firestore inicializado");
-} catch (error) {
-    console.error("❌ Error inicializando Firestore:", error);
-}
-
+// Estado global de la aplicación
 let appState = {
     settings: null,
     categories: [],
@@ -41,11 +14,13 @@ let appState = {
 // Cargar configuración del local
 async function loadSettings() {
     try {
+        console.log("📋 Cargando configuración...");
         const settingsRef = db.collection('settings').doc('config');
         const doc = await settingsRef.get();
         
         if (doc.exists) {
             appState.settings = doc.data();
+            console.log("✅ Configuración cargada:", appState.settings.nombre_local);
             updateStoreStatus();
             updateDeliveryInfo();
             return appState.settings;
@@ -85,7 +60,7 @@ async function loadSettings() {
             return appState.settings;
         }
     } catch (error) {
-        console.error('Error cargando configuración:', error);
+        console.error('❌ Error cargando configuración:', error);
         return null;
     }
 }
@@ -93,6 +68,7 @@ async function loadSettings() {
 // Cargar categorías
 async function loadCategories() {
     try {
+        console.log("🗂️ Cargando categorías...");
         const snapshot = await db.collection('categories')
             .orderBy('orden')
             .get();
@@ -102,10 +78,11 @@ async function loadCategories() {
             ...doc.data()
         }));
         
+        console.log(`✅ ${appState.categories.length} categorías cargadas`);
         renderCategories();
         return appState.categories;
     } catch (error) {
-        console.error('Error cargando categorías:', error);
+        console.error('❌ Error cargando categorías:', error);
         return [];
     }
 }
@@ -113,6 +90,7 @@ async function loadCategories() {
 // Cargar productos
 async function loadProducts() {
     try {
+        console.log("🍔 Cargando productos...");
         const snapshot = await db.collection('products')
             .get();
         
@@ -121,7 +99,7 @@ async function loadProducts() {
             ...doc.data()
         })).filter(product => product.disponible !== false);
         
-        console.log(`✅ Cargados ${appState.products.length} productos y ${appState.categories.length} categorías`);
+        console.log(`✅ ${appState.products.length} productos cargados`);
         
         if (appState.currentCategory) {
             renderProducts(appState.currentCategory);
@@ -131,7 +109,7 @@ async function loadProducts() {
         
         return appState.products;
     } catch (error) {
-        console.error('Error cargando productos:', error);
+        console.error('❌ Error cargando productos:', error);
         return [];
     }
 }
@@ -235,35 +213,37 @@ function renderProducts(categoryId) {
     });
     
     // Agregar event listeners
-    document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const productId = e.target.dataset.productId;
-            const product = appState.products.find(p => p.id === productId);
-            if (product) {
-                addToCart(product);
-            }
+    setTimeout(() => {
+        document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.target.dataset.productId;
+                const product = appState.products.find(p => p.id === productId);
+                if (product) {
+                    addToCart(product);
+                }
+            });
         });
-    });
-    
-    document.querySelectorAll('.quantity-btn.increase').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const productId = e.target.dataset.productId;
-            const product = appState.products.find(p => p.id === productId);
-            if (product) {
-                addToCart(product);
-            }
+        
+        document.querySelectorAll('.quantity-btn.increase').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.target.dataset.productId;
+                const product = appState.products.find(p => p.id === productId);
+                if (product) {
+                    addToCart(product);
+                }
+            });
         });
-    });
-    
-    document.querySelectorAll('.quantity-btn.decrease').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const productId = e.target.dataset.productId;
-            const product = appState.products.find(p => p.id === productId);
-            if (product) {
-                removeFromCart(product.id);
-            }
+        
+        document.querySelectorAll('.quantity-btn.decrease').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.target.dataset.productId;
+                const product = appState.products.find(p => p.id === productId);
+                if (product) {
+                    removeFromCart(product.id);
+                }
+            });
         });
-    });
+    }, 100);
 }
 
 // Obtener emoji por categoría
@@ -326,6 +306,15 @@ function addToCart(product) {
     updateCartUI();
     if (appState.currentCategory) {
         renderProducts(appState.currentCategory);
+    }
+    
+    // Feedback visual
+    const cartButton = document.getElementById('cartButton');
+    if (cartButton) {
+        cartButton.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            cartButton.style.transform = 'scale(1)';
+        }, 200);
     }
 }
 
@@ -427,37 +416,39 @@ function renderCartItems() {
     });
     
     // Agregar event listeners
-    document.querySelectorAll('.cart-quantity-btn.increase').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const productId = e.target.closest('button').dataset.productId;
-            const product = appState.products.find(p => p.id === productId);
-            if (product) {
-                addToCart(product);
-            }
-        });
-    });
-    
-    document.querySelectorAll('.cart-quantity-btn.decrease').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const productId = e.target.closest('button').dataset.productId;
-            removeFromCart(productId);
-        });
-    });
-    
-    document.querySelectorAll('.remove-item').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const productId = e.target.closest('button').dataset.productId;
-            const itemIndex = appState.cart.findIndex(item => item.id === productId);
-            if (itemIndex !== -1) {
-                appState.cart.splice(itemIndex, 1);
-                saveCart();
-                updateCartUI();
-                if (appState.currentCategory) {
-                    renderProducts(appState.currentCategory);
+    setTimeout(() => {
+        document.querySelectorAll('.cart-quantity-btn.increase').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.target.closest('button').dataset.productId;
+                const product = appState.products.find(p => p.id === productId);
+                if (product) {
+                    addToCart(product);
                 }
-            }
+            });
         });
-    });
+        
+        document.querySelectorAll('.cart-quantity-btn.decrease').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.target.closest('button').dataset.productId;
+                removeFromCart(productId);
+            });
+        });
+        
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.target.closest('button').dataset.productId;
+                const itemIndex = appState.cart.findIndex(item => item.id === productId);
+                if (itemIndex !== -1) {
+                    appState.cart.splice(itemIndex, 1);
+                    saveCart();
+                    updateCartUI();
+                    if (appState.currentCategory) {
+                        renderProducts(appState.currentCategory);
+                    }
+                }
+            });
+        });
+    }, 100);
 }
 
 // CHECKOUT
@@ -524,6 +515,31 @@ function setupCheckout() {
     if (confirmOrder) confirmOrder.addEventListener('click', confirmOrderHandler);
     if (whatsappButton) whatsappButton.addEventListener('click', openWhatsApp);
     if (newOrderBtn) newOrderBtn.addEventListener('click', startNewOrder);
+    
+    // Configurar ayuda
+    const helpButton = document.getElementById('helpButton');
+    const closeHelp = document.getElementById('closeHelp');
+    const helpModal = document.getElementById('helpModal');
+    
+    if (helpButton) {
+        helpButton.addEventListener('click', () => {
+            helpModal.style.display = 'flex';
+        });
+    }
+    
+    if (closeHelp) {
+        closeHelp.addEventListener('click', () => {
+            helpModal.style.display = 'none';
+        });
+    }
+    
+    if (helpModal) {
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.style.display = 'none';
+            }
+        });
+    }
 }
 
 function openCheckout() {
@@ -924,7 +940,7 @@ function updateDeliveryInfo() {
 
 // INICIALIZAR APP
 async function initApp() {
-    console.log('🚀 Inicializando aplicación...');
+    console.log('🚀 Inicializando aplicación EL TACHI...');
     
     try {
         // Cargar configuración
@@ -939,11 +955,23 @@ async function initApp() {
         // Configurar event listeners
         setupCheckout();
         
-        console.log('✅ Aplicación lista');
+        console.log('✅ Aplicación lista para usar');
         
     } catch (error) {
         console.error('❌ Error inicializando app:', error);
-        // No mostrar alerta para no interrumpir la experiencia
+        // Mostrar mensaje de error al usuario
+        const productsGrid = document.getElementById('productsGrid');
+        if (productsGrid) {
+            productsGrid.innerHTML = `
+                <div class="text-center" style="padding: 3rem;">
+                    <h3>⚠️ Error de conexión</h3>
+                    <p>No se pudieron cargar los productos. Por favor, recarga la página.</p>
+                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--azul-primario); color: white; border: none; border-radius: 8px; cursor: pointer;">
+                        Recargar página
+                    </button>
+                </div>
+            `;
+        }
     }
 }
 
@@ -954,9 +982,10 @@ if (document.readyState === 'loading') {
     initApp();
 }
 
-// Exportar para uso global
+// Exportar funciones para uso global
 window.appState = appState;
 window.clearCart = clearCart;
 window.addToCart = addToCart;
 window.removeFromCart = removeFromCart;
 window.getCartTotal = getCartTotal;
+window.installPWA = window.installPWA; // Ya definido en HTML
