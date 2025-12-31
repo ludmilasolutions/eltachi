@@ -1,5 +1,5 @@
 // Panel Admin - EL TACHI
-// Sistema de administración para pedidos gastronómicos
+// Sistema de administración para pedidos gastronómicos con actualización en tiempo real
 
 // Estado global del panel admin
 const adminState = {
@@ -15,47 +15,75 @@ const adminState = {
         todayOrders: 0,
         todaySales: 0,
         activeOrders: 0
-    }
+    },
+    lastOrderId: null,
+    realtimeEnabled: true
 };
 
 // FUNCIONES DE UTILIDAD (definidas primero)
 function showNotification(message, type = 'info') {
+    // Eliminar notificaciones anteriores
+    document.querySelectorAll('[data-notification]').forEach(el => {
+        el.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => el.remove(), 300);
+    });
+    
     // Crear elemento de notificación
     const notification = document.createElement('div');
+    notification.setAttribute('data-notification', 'true');
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
         color: white;
         padding: 15px 20px;
         border-radius: 10px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         z-index: 9999;
         animation: slideIn 0.3s ease;
-        max-width: 300px;
+        max-width: 350px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.1);
+        cursor: pointer;
     `;
     
+    const icon = type === 'success' ? 'fa-check-circle' : 
+                type === 'error' ? 'fa-exclamation-circle' : 
+                type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+    
     notification.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}" 
-           style="font-size: 1.2rem;"></i>
-        <div>${message}</div>
+        <i class="fas ${icon}" style="font-size: 1.3rem;"></i>
+        <div style="flex: 1;">${message}</div>
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; opacity: 0.7; padding: 4px;">
+            <i class="fas fa-times"></i>
+        </button>
     `;
+    
+    // Cerrar al hacer clic
+    notification.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+            notification.remove();
+        }
+    });
     
     document.body.appendChild(notification);
     
-    // Remover después de 5 segundos
+    // Remover después de 6 segundos
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 5000);
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 6000);
 }
 
 function showError(message, element = null) {
@@ -85,16 +113,17 @@ function showLoading(show) {
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(255,255,255,0.8);
+                background: rgba(255,255,255,0.9);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 9999;
+                z-index: 9998;
+                backdrop-filter: blur(3px);
             `;
             overlay.innerHTML = `
-                <div style="text-align: center;">
+                <div style="text-align: center; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
                     <div style="width: 50px; height: 50px; border: 3px solid #e5e7eb; border-top-color: #1e40af; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 10px; color: #6b7280;">Cargando...</p>
+                    <p style="margin-top: 15px; color: #6b7280; font-weight: 600;">Cargando...</p>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -141,6 +170,49 @@ function getFilterName(filter) {
         'completados': 'Completados'
     };
     return filterNames[filter] || filter;
+}
+
+// FUNCIONES DE SONIDO
+function playNotificationSound() {
+    try {
+        const audio = document.getElementById('notificationSound');
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => {
+                console.log('Error reproduciendo sonido:', e);
+                // Si falla el primer sonido, intentar con el segundo
+                const newOrderSound = document.getElementById('newOrderSound');
+                if (newOrderSound) {
+                    newOrderSound.currentTime = 0;
+                    newOrderSound.play().catch(e2 => console.log('Error con segundo sonido:', e2));
+                }
+            });
+        } else {
+            // Crear audio dinámico si no existe
+            const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log('Error con audio dinámico:', e));
+        }
+    } catch (error) {
+        console.log('Error con sonido de notificación:', error);
+    }
+}
+
+function playNewOrderSound() {
+    try {
+        const audio = document.getElementById('newOrderSound');
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log('Error reproduciendo sonido de nuevo pedido:', e));
+        } else {
+            // Crear audio dinámico si no existe
+            const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log('Error con audio dinámico:', e));
+        }
+    } catch (error) {
+        console.log('Error con sonido de nuevo pedido:', error);
+    }
 }
 
 // FUNCIONES DE FIREBASE
@@ -194,22 +266,50 @@ async function initializeDefaultSettings() {
 
 async function loadOrders() {
     try {
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        
         const snapshot = await db.collection('orders')
+            .where('fecha', '>=', oneDayAgo)
             .orderBy('fecha', 'desc')
-            .limit(500)
             .get();
         
-        adminState.orders = snapshot.docs.map(doc => ({
+        const orders = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
         
-        console.log(`📦 ${adminState.orders.length} pedidos cargados`);
+        // Actualizar solo si hay cambios
+        if (orders.length !== adminState.orders.length || 
+            orders[0]?.id !== adminState.orders[0]?.id) {
+            adminState.orders = orders;
+            console.log(`📦 ${adminState.orders.length} pedidos cargados (últimas 24hs)`);
+        }
+        
         return adminState.orders;
         
     } catch (error) {
         console.error('Error cargando pedidos:', error);
-        return [];
+        
+        // Fallback: cargar últimos 100 pedidos
+        try {
+            const snapshot = await db.collection('orders')
+                .orderBy('fecha', 'desc')
+                .limit(100)
+                .get();
+            
+            adminState.orders = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            
+            console.log(`📦 ${adminState.orders.length} pedidos cargados (fallback)`);
+            return adminState.orders;
+            
+        } catch (fallbackError) {
+            console.error('Error en fallback de carga:', fallbackError);
+            return [];
+        }
     }
 }
 
@@ -250,10 +350,229 @@ async function loadCategories() {
     }
 }
 
+// FUNCIONES DE TIEMPO REAL MEJORADAS
+let ordersUnsubscribe = null;
+let productsUnsubscribe = null;
+let categoriesUnsubscribe = null;
+let settingsUnsubscribe = null;
+
+function startRealtimeUpdates() {
+    console.log('🎯 Iniciando actualizaciones en tiempo real...');
+    
+    // Detener suscripciones anteriores si existen
+    stopRealtimeUpdates();
+    
+    // Suscripción a nuevos pedidos (últimas 24 horas)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    ordersUnsubscribe = db.collection('orders')
+        .where('fecha', '>=', oneDayAgo)
+        .orderBy('fecha', 'desc')
+        .onSnapshot((snapshot) => {
+            console.log('📡 Cambios detectados en pedidos');
+            
+            let hasNewOrder = false;
+            let hasStatusChange = false;
+            let changedOrder = null;
+            
+            snapshot.docChanges().forEach((change) => {
+                const orderData = {
+                    id: change.doc.id,
+                    ...change.doc.data()
+                };
+                
+                if (change.type === 'added') {
+                    console.log('➕ Nuevo pedido detectado:', change.doc.id);
+                    
+                    // Verificar si es realmente nuevo (no existe en el estado actual)
+                    const existingIndex = adminState.orders.findIndex(o => o.id === change.doc.id);
+                    if (existingIndex === -1) {
+                        // Insertar al inicio del array
+                        adminState.orders.unshift(orderData);
+                        hasNewOrder = true;
+                        changedOrder = orderData;
+                        
+                        // Verificar si es muy reciente (menos de 2 minutos)
+                        const orderDate = orderData.fecha?.toDate ? orderData.fecha.toDate() : new Date(orderData.fecha);
+                        const now = new Date();
+                        const diffMinutes = (now - orderDate) / (1000 * 60);
+                        
+                        if (diffMinutes < 5) { // Aumentado a 5 minutos para debugging
+                            console.log('🔔 Pedido reciente:', diffMinutes.toFixed(1), 'minutos');
+                            showNotification(`📦 NUEVO PEDIDO #${orderData.id_pedido || orderData.id.substring(0, 8)} por $${orderData.total || 0}`, 'success');
+                            playNewOrderSound();
+                        }
+                    }
+                }
+                
+                if (change.type === 'modified') {
+                    console.log('✏️ Pedido actualizado:', change.doc.id);
+                    
+                    const existingIndex = adminState.orders.findIndex(o => o.id === change.doc.id);
+                    if (existingIndex !== -1) {
+                        const oldStatus = adminState.orders[existingIndex].estado;
+                        adminState.orders[existingIndex] = orderData;
+                        changedOrder = orderData;
+                        
+                        // Notificar cambio de estado
+                        if (orderData.estado !== oldStatus) {
+                            hasStatusChange = true;
+                            
+                            switch(orderData.estado) {
+                                case 'Listo':
+                                    showNotification(`✅ PEDIDO LISTO: #${orderData.id_pedido || orderData.id.substring(0, 8)}`, 'success');
+                                    playNotificationSound();
+                                    break;
+                                case 'En preparación':
+                                    showNotification(`👨‍🍳 EN PREPARACIÓN: #${orderData.id_pedido || orderData.id.substring(0, 8)}`, 'info');
+                                    break;
+                                case 'Entregado':
+                                    showNotification(`📦 ENTREGADO: #${orderData.id_pedido || orderData.id.substring(0, 8)}`, 'info');
+                                    break;
+                                case 'Cancelado':
+                                    showNotification(`❌ CANCELADO: #${orderData.id_pedido || orderData.id.substring(0, 8)}`, 'error');
+                                    break;
+                            }
+                        }
+                    }
+                }
+                
+                if (change.type === 'removed') {
+                    console.log('🗑️ Pedido eliminado:', change.doc.id);
+                    const index = adminState.orders.findIndex(o => o.id === change.doc.id);
+                    if (index !== -1) {
+                        adminState.orders.splice(index, 1);
+                    }
+                }
+            });
+            
+            // Actualizar UI solo si hay cambios
+            if (hasNewOrder || hasStatusChange || snapshot.docChanges().length > 0) {
+                updateDashboard();
+                applyOrderFilter(adminState.currentFilter);
+                
+                // Si estamos en la pestaña de pedidos, actualizar la tabla
+                if (adminState.currentTab === 'orders') {
+                    updateOrdersTable();
+                }
+            }
+            
+            // Actualizar último pedido ID
+            if (changedOrder && hasNewOrder) {
+                adminState.lastOrderId = changedOrder.id;
+            }
+            
+        }, (error) => {
+            console.error('Error en suscripción a pedidos:', error);
+            showNotification('Error en conexión en tiempo real', 'error');
+            
+            // Reintentar después de 5 segundos
+            setTimeout(() => {
+                if (adminState.realtimeEnabled) {
+                    startRealtimeUpdates();
+                }
+            }, 5000);
+        });
+    
+    // Suscripción a productos
+    productsUnsubscribe = db.collection('products').onSnapshot((snapshot) => {
+        console.log('📡 Cambios en productos detectados');
+        loadProducts().then(() => {
+            if (adminState.currentTab === 'products') {
+                updateProductsGrid();
+            }
+            updateDashboard();
+        });
+    });
+    
+    // Suscripción a categorías
+    categoriesUnsubscribe = db.collection('categories').onSnapshot((snapshot) => {
+        console.log('📡 Cambios en categorías detectados');
+        loadCategories().then(() => {
+            if (adminState.currentTab === 'categories') {
+                updateCategoriesGrid();
+            }
+        });
+    });
+    
+    // Suscripción a configuraciones
+    settingsUnsubscribe = db.collection('settings').doc('config').onSnapshot((doc) => {
+        console.log('📡 Cambios en configuración detectados');
+        if (doc.exists) {
+            adminState.settings = doc.data();
+            updateStoreStatus();
+            if (adminState.currentTab === 'settings') {
+                updateSettingsForm();
+            }
+        }
+    });
+    
+    // Configurar intervalo de actualización periódica
+    const updateInterval = setInterval(() => {
+        if (adminState.currentTab === 'orders' || adminState.currentTab === 'dashboard') {
+            applyOrderFilter(adminState.currentFilter);
+            if (adminState.currentTab === 'dashboard') {
+                updateDashboard();
+            }
+        }
+    }, 15000); // Actualizar cada 15 segundos
+    
+    // Guardar referencia al intervalo
+    adminState.updateInterval = updateInterval;
+    
+    showNotification('✅ Actualizaciones en tiempo real activadas', 'success');
+}
+
+function stopRealtimeUpdates() {
+    console.log('🛑 Deteniendo actualizaciones en tiempo real...');
+    
+    if (ordersUnsubscribe) {
+        ordersUnsubscribe();
+        ordersUnsubscribe = null;
+    }
+    
+    if (productsUnsubscribe) {
+        productsUnsubscribe();
+        productsUnsubscribe = null;
+    }
+    
+    if (categoriesUnsubscribe) {
+        categoriesUnsubscribe();
+        categoriesUnsubscribe = null;
+    }
+    
+    if (settingsUnsubscribe) {
+        settingsUnsubscribe();
+        settingsUnsubscribe = null;
+    }
+    
+    if (adminState.updateInterval) {
+        clearInterval(adminState.updateInterval);
+        adminState.updateInterval = null;
+    }
+}
+
+function toggleRealtimeUpdates() {
+    adminState.realtimeEnabled = !adminState.realtimeEnabled;
+    
+    if (adminState.realtimeEnabled) {
+        startRealtimeUpdates();
+    } else {
+        stopRealtimeUpdates();
+        showNotification('⏸️ Actualizaciones en tiempo real desactivadas', 'warning');
+    }
+}
+
 // FILTROS Y ORDENACIÓN
 function applyOrderFilter(filterType) {
     const now = new Date();
     adminState.currentFilter = filterType;
+    
+    // Actualizar selector si existe
+    const filterSelect = document.getElementById('orderFilter');
+    if (filterSelect) {
+        filterSelect.value = filterType;
+    }
     
     switch(filterType) {
         case 'hoy':
@@ -309,7 +628,7 @@ function applyOrderFilter(filterType) {
             
         case 'completados':
             adminState.filteredOrders = adminState.orders.filter(order => 
-                order.estado === 'Entregado'
+                order.estado === 'Entregado' || order.estado === 'Listo'
             );
             break;
             
@@ -506,7 +825,7 @@ function updateRecentOrdersList() {
     const recentOrders = adminState.orders.slice(0, 5);
     
     if (recentOrders.length === 0) {
-        container.innerHTML = '<p>No hay pedidos recientes</p>';
+        container.innerHTML = '<p style="padding: 20px; text-align: center; color: #6b7280;">No hay pedidos recientes</p>';
         return;
     }
     
@@ -518,11 +837,16 @@ function updateRecentOrdersList() {
             minute: '2-digit' 
         }) : '--';
         
+        const isUrgent = order.estado === 'Recibido' && order.tipo_pedido === 'envío';
+        
         html += `
-            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+            <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; ${isUrgent ? 'background: #fef3c7; margin: 0 -10px; padding: 12px 10px; border-radius: 8px;' : ''}">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <strong style="font-size: 0.9rem;">${order.id_pedido || order.id}</strong>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong style="font-size: 0.9rem;">${order.id_pedido || order.id.substring(0, 8)}</strong>
+                            ${isUrgent ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">URGENTE</span>' : ''}
+                        </div>
                         <div style="font-size: 0.8rem; color: #6b7280; margin-top: 2px;">
                             ${order.nombre_cliente || 'Sin nombre'} • ${timeStr}
                         </div>
@@ -549,7 +873,17 @@ function updateTopProductsList() {
     if (!container) return;
     
     const productCount = {};
-    adminState.orders.forEach(order => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Contar solo pedidos de hoy
+    const todayOrders = adminState.orders.filter(order => {
+        if (!order.fecha) return false;
+        const orderDate = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
+        return orderDate >= today;
+    });
+    
+    todayOrders.forEach(order => {
         if (order.items) {
             order.items.forEach(item => {
                 const productId = item.id;
@@ -574,19 +908,23 @@ function updateTopProductsList() {
         });
     
     if (topProducts.length === 0) {
-        container.innerHTML = '<p>No hay datos de ventas</p>';
+        container.innerHTML = '<p style="padding: 20px; text-align: center; color: #6b7280;">No hay datos de ventas hoy</p>';
         return;
     }
     
     let html = '';
-    topProducts.forEach(product => {
+    topProducts.forEach((product, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📊';
         html += `
             <div style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
-                <div style="display: flex; justify-content: space-between;">
-                    <strong style="font-size: 0.9rem;">${product.name}</strong>
-                    <span style="font-weight: 600;">${product.count} vendidos</span>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">${medal}</span>
+                        <strong style="font-size: 0.9rem;">${product.name}</strong>
+                    </div>
+                    <span style="font-weight: 600; color: #1e40af;">${product.count} vendidos</span>
                 </div>
-                <div style="font-size: 0.8rem; color: #6b7280;">
+                <div style="font-size: 0.8rem; color: #6b7280; margin-top: 2px;">
                     $${product.price} cada uno
                 </div>
             </div>
@@ -605,12 +943,13 @@ function updateOrdersChart() {
     }
     
     const today = new Date();
-    const labels = Array.from({length: 12}, (_, i) => {
-        const hour = 10 + i;
-        return `${hour}:00`;
+    const labels = Array.from({length: 14}, (_, i) => {
+        const hour = 10 + Math.floor(i/2);
+        const minute = i % 2 === 0 ? '00' : '30';
+        return `${hour}:${minute}`;
     });
     
-    const ordersByHour = Array(12).fill(0);
+    const ordersByHour = Array(14).fill(0);
     
     adminState.orders.forEach(order => {
         if (!order.fecha) return;
@@ -621,8 +960,11 @@ function updateOrdersChart() {
             orderDate.getFullYear() === today.getFullYear()) {
             
             const hour = orderDate.getHours();
-            if (hour >= 10 && hour <= 21) {
-                ordersByHour[hour - 10]++;
+            const minute = orderDate.getMinutes();
+            const slot = (hour - 10) * 2 + (minute >= 30 ? 1 : 0);
+            
+            if (slot >= 0 && slot < 14) {
+                ordersByHour[slot]++;
             }
         }
     });
@@ -638,14 +980,28 @@ function updateOrdersChart() {
                 borderColor: '#3b82f6',
                 borderWidth: 2,
                 tension: 0.4,
-                fill: true
+                fill: true,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    titleFont: {
+                        size: 12
+                    },
+                    bodyFont: {
+                        size: 14
+                    }
                 }
             },
             scales: {
@@ -653,6 +1009,9 @@ function updateOrdersChart() {
                     beginAtZero: true,
                     ticks: {
                         stepSize: 1
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
                     }
                 },
                 x: {
@@ -680,6 +1039,9 @@ function updateOrdersTable() {
                         <p style="font-size: 0.9rem; margin-top: 5px;">
                             Filtro: ${getFilterName(adminState.currentFilter)}
                         </p>
+                        <button class="button-secondary" onclick="forceRefreshOrders()" style="margin-top: 15px;">
+                            <i class="fas fa-sync-alt"></i> Actualizar
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -721,7 +1083,8 @@ function updateOrdersTable() {
                            border-radius: 20px; 
                            font-weight: 600;
                            cursor: pointer;
-                           min-width: 140px;">
+                           min-width: 140px;
+                           transition: all 0.2s;">
                 <option value="Recibido" ${order.estado === 'Recibido' ? 'selected' : ''}>Recibido</option>
                 <option value="En preparación" ${order.estado === 'En preparación' ? 'selected' : ''}>En preparación</option>
                 <option value="Listo" ${order.estado === 'Listo' ? 'selected' : ''}>Listo</option>
@@ -740,21 +1103,22 @@ function updateOrdersTable() {
                     onchange="updateOrderTime(this)"
                     min="1"
                     max="180">
-                <span style="font-size: 0.8rem;">min</span>
+                <span style="font-size: 0.8rem; color: #6b7280;">min</span>
             </div>
         `;
         
         const customerInfo = `
             <div style="max-width: 150px;">
-                <div style="font-weight: 600; font-size: 0.9rem;">${order.nombre_cliente || '--'}</div>
+                <div style="font-weight: 600; font-size: 0.9rem; color: #1e40af;">${order.nombre_cliente || '--'}</div>
                 <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">
-                    <i class="fas fa-phone"></i> ${order.telefono || '--'}
+                    <i class="fas fa-phone" style="color: #10b981;"></i> ${order.telefono || '--'}
                 </div>
                 ${order.direccion && order.tipo_pedido === 'envío' ? 
-                    `<div style="font-size: 0.7rem; color: #9ca3af; margin-top: 2px;">
-                        <i class="fas fa-map-marker-alt"></i> ${order.direccion.substring(0, 20)}...
+                    `<div style="font-size: 0.7rem; color: #ef4444; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-map-marker-alt"></i> 
+                        <span style="overflow: hidden; text-overflow: ellipsis;">${order.direccion.substring(0, 25)}</span>
                     </div>` : 
-                    `<div style="font-size: 0.7rem; color: #10b981; margin-top: 2px;">
+                    `<div style="font-size: 0.7rem; color: #10b981; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
                         <i class="fas fa-store"></i> Retiro en local
                     </div>`
                 }
@@ -764,47 +1128,51 @@ function updateOrdersTable() {
         const commentsHtml = order.comentarios ? `
             <div style="position: relative; display: inline-block;">
                 <i class="fas fa-sticky-note" style="color: #f59e0b; cursor: help;" 
-                   title="${order.comentarios}"></i>
+                   title="${order.comentarios.replace(/"/g, '&quot;')}"></i>
+            </div>
+        ` : '';
+        
+        const itemsCount = order.items?.length || 0;
+        const itemsHtml = order.items ? `
+            <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">
+                ${itemsCount} item${itemsCount !== 1 ? 's' : ''}
             </div>
         ` : '';
         
         const actionButtons = `
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                 <button class="action-button button-view" onclick="showOrderDetails('${order.id}')" 
-                        style="padding: 4px 8px; font-size: 0.8rem;">
+                        style="padding: 4px 8px; font-size: 0.8rem; background: #3b82f6;">
                     <i class="fas fa-eye"></i> Detalles
                 </button>
                 ${order.telefono ? `
                     <button class="action-button button-whatsapp" 
                             onclick="openWhatsAppAdmin('${order.telefono}', '${order.id_pedido || order.id}', '${order.nombre_cliente || ''}', ${order.total || 0}, '${order.estado || 'Recibido'}', ${order.tiempo_estimado_actual || 30})"
-                            style="padding: 4px 8px; font-size: 0.8rem;">
+                            style="padding: 4px 8px; font-size: 0.8rem; background: #25D366;">
                         <i class="fab fa-whatsapp"></i> WhatsApp
                     </button>
                 ` : ''}
             </div>
         `;
         
-        const itemsHtml = order.items ? `
-            <div style="font-size: 0.8rem; color: #6b7280;">
-                ${order.items.slice(0, 2).map(item => 
-                    `${item.cantidad}x ${item.nombre}`
-                ).join(', ')}
-                ${order.items.length > 2 ? `... (+${order.items.length - 2})` : ''}
-            </div>
-        ` : '';
-        
         const isUrgent = order.estado === 'Recibido' && order.tipo_pedido === 'envío';
-        const rowStyle = isUrgent ? 'background-color: #fef3c7;' : '';
+        const isNew = adminState.lastOrderId === order.id;
+        const rowStyle = isUrgent ? 'background-color: #fef3c7 !important;' : 
+                       isNew ? 'background-color: #f0f9ff !important; animation: highlightRow 2s;' : '';
         
         row.innerHTML = `
             <td style="${rowStyle}">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div style="min-width: 24px;">
-                        ${isUrgent ? '<i class="fas fa-bolt" style="color: #f59e0b;"></i>' : ''}
+                        ${isUrgent ? '<i class="fas fa-bolt" style="color: #f59e0b;"></i>' : 
+                          isNew ? '<i class="fas fa-star" style="color: #3b82f6;"></i>' : ''}
                     </div>
                     <div>
-                        <strong style="font-size: 0.9rem;">${order.id_pedido || order.id}</strong>
-                        ${commentsHtml}
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <strong style="font-size: 0.9rem; color: #1e40af;">${order.id_pedido || order.id.substring(0, 8)}</strong>
+                            ${commentsHtml}
+                            ${isNew ? '<span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 600;">NUEVO</span>' : ''}
+                        </div>
                         ${itemsHtml}
                     </div>
                 </div>
@@ -816,7 +1184,7 @@ function updateOrdersTable() {
                 ${customerInfo}
             </td>
             <td style="${rowStyle}">
-                <strong style="color: #1e40af;">$${order.total || 0}</strong>
+                <strong style="color: #1e40af; font-size: 1rem;">$${order.total || 0}</strong>
             </td>
             <td style="${rowStyle}">
                 ${statusSelect}
@@ -831,6 +1199,19 @@ function updateOrdersTable() {
         
         tbody.appendChild(row);
     });
+    
+    // Agregar estilo para highlight
+    if (!document.getElementById('highlightStyle')) {
+        const style = document.createElement('style');
+        style.id = 'highlightStyle';
+        style.textContent = `
+            @keyframes highlightRow {
+                0% { background-color: #f0f9ff; }
+                100% { background-color: transparent; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 // FUNCIONES DE PEDIDOS
@@ -853,11 +1234,16 @@ async function updateOrderStatus(select) {
         applyOrderFilter(adminState.currentFilter);
         updateDashboard();
         
-        showNotification(`Estado del pedido actualizado a: ${newStatus}`, 'success');
+        showNotification(`Estado actualizado a: ${newStatus}`, 'success');
         
     } catch (error) {
         console.error('Error actualizando estado:', error);
         showNotification('Error al actualizar el estado', 'error');
+        // Revertir el select al estado anterior
+        const order = adminState.orders.find(o => o.id === orderId);
+        if (order) {
+            select.value = order.estado;
+        }
     }
 }
 
@@ -865,8 +1251,9 @@ async function updateOrderTime(input) {
     const orderId = input.dataset.orderId;
     const newTime = parseInt(input.value);
     
-    if (isNaN(newTime) || newTime < 1) {
-        showNotification('Tiempo inválido', 'error');
+    if (isNaN(newTime) || newTime < 1 || newTime > 180) {
+        showNotification('Tiempo inválido. Use entre 1 y 180 minutos.', 'error');
+        input.value = adminState.orders.find(o => o.id === orderId)?.tiempo_estimado_actual || 30;
         return;
     }
     
@@ -923,17 +1310,26 @@ async function showOrderDetails(orderId) {
                 <div style="background: #f8fafc; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto;">
         `;
         
-        order.items.forEach((item, index) => {
+        let itemIndex = 1;
+        order.items.forEach((item) => {
             itemsHtml += `
-                <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #3b82f6;">
+                <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #3b82f6; position: relative;">
+                    <div style="position: absolute; top: 10px; right: 10px; background: #3b82f6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600;">
+                        ${itemIndex++}
+                    </div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="flex: 1;">
-                            <strong style="color: #1e40af;">${item.nombre || 'Producto'}</strong>
+                        <div style="flex: 1; padding-right: 30px;">
+                            <strong style="color: #1e40af; font-size: 1rem;">${item.nombre || 'Producto'}</strong>
                             <div style="font-size: 0.9rem; color: #6b7280; margin-top: 4px;">
-                                Cantidad: ${item.cantidad || 1} • Precio unitario: $${item.precio || 0}
+                                Cantidad: <strong>${item.cantidad || 1}</strong> • Precio unitario: <strong>$${item.precio || 0}</strong>
                             </div>
+                            ${item.comentarios ? `
+                                <div style="margin-top: 6px; padding: 6px; background: #fef3c7; border-radius: 4px; font-size: 0.85rem; color: #92400e; border-left: 3px solid #f59e0b;">
+                                    <strong>Nota:</strong> ${item.comentarios}
+                                </div>
+                            ` : ''}
                         </div>
-                        <div style="font-weight: 700; color: #1e40af;">
+                        <div style="font-weight: 700; color: #1e40af; font-size: 1.2rem;">
                             $${(item.precio || 0) * (item.cantidad || 1)}
                         </div>
                     </div>
@@ -949,17 +1345,19 @@ async function showOrderDetails(orderId) {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
             <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
                 <div style="font-size: 0.9rem; color: #6b7280;">Cliente</div>
-                <div style="font-weight: 600; font-size: 1.1rem;">${order.nombre_cliente || '--'}</div>
-                <div style="margin-top: 5px;">
-                    <i class="fas fa-phone" style="color: #6b7280;"></i> ${order.telefono || '--'}
+                <div style="font-weight: 600; font-size: 1.1rem; color: #1e40af;">${order.nombre_cliente || '--'}</div>
+                <div style="margin-top: 5px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-phone" style="color: #10b981;"></i> 
+                    <span>${order.telefono || '--'}</span>
                 </div>
             </div>
             
             <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
                 <div style="font-size: 0.9rem; color: #6b7280;">Fecha y Hora</div>
                 <div style="font-weight: 600; font-size: 1.1rem;">${fechaStr}</div>
-                <div style="margin-top: 5px;">
-                    <i class="fas fa-clock" style="color: #6b7280;"></i> ${order.tiempo_estimado_actual || '--'} min estimados
+                <div style="margin-top: 5px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-clock" style="color: #f59e0b;"></i> 
+                    <span>${order.tiempo_estimado_actual || adminState.settings?.tiempo_base_estimado || 30} min estimados</span>
                 </div>
             </div>
         </div>
@@ -971,8 +1369,9 @@ async function showOrderDetails(orderId) {
                     ${order.tipo_pedido === 'envío' ? '🚚 Envío a domicilio' : '🏪 Retiro en local'}
                 </div>
                 ${order.direccion && order.tipo_pedido === 'envío' ? `
-                    <div style="margin-top: 5px; font-size: 0.9rem;">
-                        <i class="fas fa-map-marker-alt" style="color: #ef4444;"></i> ${order.direccion}
+                    <div style="margin-top: 5px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; color: #ef4444;">
+                        <i class="fas fa-map-marker-alt"></i> 
+                        <span>${order.direccion}</span>
                     </div>
                 ` : ''}
             </div>
@@ -982,18 +1381,18 @@ async function showOrderDetails(orderId) {
                 <div style="font-weight: 600; font-size: 1.1rem; color: #${getStatusColor(order.estado)};">
                     ${order.estado || 'Recibido'}
                 </div>
-                <div style="margin-top: 5px; font-size: 0.9rem;">
-                    Actualizado: ${order.fecha_actualizacion ? new Date(order.fecha_actualizacion).toLocaleTimeString('es-ES') : '--'}
+                <div style="margin-top: 5px; font-size: 0.9rem; color: #6b7280;">
+                    <i class="fas fa-history"></i> Actualizado: ${order.fecha_actualizacion ? new Date(order.fecha_actualizacion).toLocaleTimeString('es-ES') : '--'}
                 </div>
             </div>
         </div>
         
         ${order.comentarios ? `
             <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-                <div style="font-weight: 600; color: #92400e; margin-bottom: 5px;">
+                <div style="font-weight: 600; color: #92400e; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-sticky-note"></i> Comentarios del Cliente
                 </div>
-                <div style="color: #92400e;">${order.comentarios}</div>
+                <div style="color: #92400e; line-height: 1.5;">${order.comentarios}</div>
             </div>
         ` : ''}
         
@@ -1001,25 +1400,37 @@ async function showOrderDetails(orderId) {
         
         <hr style="margin: 25px 0; border: none; border-top: 2px solid #e5e7eb;">
         
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); border-radius: 12px; color: white;">
             <div>
-                <div style="font-size: 0.9rem; color: #6b7280;">Resumen de Pago</div>
-                <div style="font-size: 0.9rem;">
-                    Subtotal: $${order.subtotal || order.total || 0}<br>
-                    ${order.precio_envio ? `Envío: $${order.precio_envio}<br>` : ''}
+                <div style="font-size: 0.9rem; opacity: 0.9;">Resumen de Pago</div>
+                <div style="font-size: 0.9rem; margin-top: 5px;">
+                    <div>Subtotal: <strong>$${order.subtotal || order.total || 0}</strong></div>
+                    ${order.precio_envio ? `<div>Envío: <strong>$${order.precio_envio}</strong></div>` : ''}
+                    ${order.descuento ? `<div>Descuento: <strong>-$${order.descuento}</strong></div>` : ''}
                 </div>
             </div>
             <div style="text-align: right;">
-                <div style="font-size: 1.1rem; font-weight: 600; color: #6b7280;">Total</div>
-                <div style="font-size: 2rem; font-weight: 800; color: #1e40af;">$${order.total || 0}</div>
+                <div style="font-size: 1rem; opacity: 0.9;">Total</div>
+                <div style="font-size: 2.5rem; font-weight: 800;">$${order.total || 0}</div>
             </div>
+        </div>
+        
+        <div style="margin-top: 20px; display: flex; gap: 10px;">
+            ${order.telefono ? `
+                <button class="button-primary" onclick="openWhatsAppAdmin('${order.telefono}', '${order.id_pedido || order.id}', '${order.nombre_cliente || ''}', ${order.total || 0}, '${order.estado || 'Recibido'}', ${order.tiempo_estimado_actual || 30})" style="flex: 1;">
+                    <i class="fab fa-whatsapp"></i> Enviar WhatsApp
+                </button>
+            ` : ''}
+            <button class="button-secondary" onclick="document.getElementById('orderModal').style.display = 'none'" style="flex: 1;">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
         </div>
     `;
     
     modal.style.display = 'flex';
 }
 
-// FUNCIÓN WHATSAPP (definida aquí)
+// FUNCIÓN WHATSAPP
 function openWhatsAppAdmin(phone, orderId, customerName, total, status, estimatedTime) {
     if (!phone) {
         showNotification('No hay número de teléfono para este pedido', 'error');
@@ -1031,7 +1442,7 @@ function openWhatsAppAdmin(phone, orderId, customerName, total, status, estimate
     
     switch(status) {
         case 'En preparación':
-            message += `Tu pedido ${orderId} está en preparación. `;
+            message += `Tu pedido #${orderId} está en preparación. `;
             if (estimatedTime) {
                 message += `Tiempo estimado: ${estimatedTime} minutos. `;
             }
@@ -1039,23 +1450,24 @@ function openWhatsAppAdmin(phone, orderId, customerName, total, status, estimate
             break;
             
         case 'Listo':
-            message += `¡Tu pedido ${orderId} está listo para retirar! `;
+            message += `¡Tu pedido #${orderId} está listo para retirar! `;
             if (adminState.settings?.retiro_habilitado) {
                 message += `Podés pasar por el local cuando quieras.`;
             }
             break;
             
         case 'Entregado':
-            message += `¡Gracias por tu pedido ${orderId}! `;
+            message += `¡Gracias por tu pedido #${orderId}! `;
             message += `Esperamos que hayas disfrutado. ¡Te esperamos pronto!`;
             break;
             
         default:
-            message += `Tu pedido ${orderId} ha sido recibido. `;
+            message += `Tu pedido #${orderId} ha sido recibido. `;
             message += `Te mantendremos informado sobre el estado.`;
     }
     
     message += `\n\nTotal: $${total}`;
+    message += `\n\n¡Gracias por elegirnos!`;
     
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
@@ -1071,7 +1483,11 @@ function updateProductsGrid() {
     if (adminState.products.length === 0) {
         grid.innerHTML = `
             <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
-                <p>No hay productos registrados</p>
+                <i class="fas fa-hamburger" style="font-size: 3rem; color: #e5e7eb; margin-bottom: 20px;"></i>
+                <p style="color: #6b7280; margin-bottom: 10px;">No hay productos registrados</p>
+                <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 20px;">
+                    Agrega productos para comenzar a vender
+                </p>
                 <button class="button-primary" id="addFirstProduct" style="margin-top: 15px;">
                     <i class="fas fa-plus"></i> Agregar primer producto
                 </button>
@@ -1100,29 +1516,41 @@ function updateProductsGrid() {
         
         const card = document.createElement('div');
         card.className = 'product-card';
+        card.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid ${product.disponible ? '#e5e7eb' : '#fee2e2'};
+            transition: all 0.2s;
+            opacity: ${product.disponible ? '1' : '0.7'};
+        `;
         card.innerHTML = `
-            <h3 class="card-title">${product.nombre}</h3>
-            <p style="color: #6b7280; margin-bottom: 8px; font-size: 0.9rem; min-height: 40px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                <h3 class="card-title" style="margin: 0; color: #1e40af;">${product.nombre}</h3>
+                <span class="status-badge ${product.disponible ? 'status-listo' : 'status-entregado'}" style="font-size: 0.75rem;">
+                    ${product.disponible ? '✓ Disponible' : '✗ No disponible'}
+                </span>
+            </div>
+            <p style="color: #6b7280; margin-bottom: 15px; font-size: 0.9rem; min-height: 40px; line-height: 1.4;">
                 ${product.descripcion || 'Sin descripción'}
             </p>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div>
-                    <div class="card-value">$${product.precio}</div>
-                    <div style="font-size: 0.8rem; color: #6b7280;">
-                        ${soldCount} vendidos
+                    <div class="card-value" style="color: #1e40af; font-size: 1.5rem; font-weight: 700;">$${product.precio}</div>
+                    <div style="font-size: 0.8rem; color: #6b7280; display: flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-chart-line"></i> ${soldCount} vendidos
                     </div>
                 </div>
-                <div>
-                    <span class="status-badge ${product.disponible ? 'status-listo' : 'status-entregado'}" style="font-size: 0.75rem;">
-                        ${product.disponible ? 'Disponible' : 'No disponible'}
-                    </span>
+                <div style="font-size: 0.8rem; color: #9ca3af; background: #f3f4f6; padding: 4px 10px; border-radius: 12px;">
+                    ${adminState.categories.find(c => c.id === product.categoria)?.nombre || 'Sin categoría'}
                 </div>
             </div>
             <div style="display: flex; gap: 8px;">
-                <button class="action-button button-edit" onclick="editProduct('${product.id}')" style="flex: 1;">
+                <button class="action-button button-edit" onclick="editProduct('${product.id}')" style="flex: 1; background: #f59e0b; color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
                     <i class="fas fa-edit"></i> Editar
                 </button>
-                <button class="action-button button-delete" onclick="deleteProduct('${product.id}')" style="width: 40px;">
+                <button class="action-button button-delete" onclick="deleteProduct('${product.id}')" style="width: 40px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -1299,8 +1727,9 @@ function updateCategoriesGrid() {
     if (adminState.categories.length === 0) {
         grid.innerHTML = `
             <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
-                <p>No hay categorías registradas</p>
-                <p style="font-size: 0.9rem; color: #6b7280; margin-top: 10px;">
+                <i class="fas fa-folder" style="font-size: 3rem; color: #e5e7eb; margin-bottom: 20px;"></i>
+                <p style="color: #6b7280;">No hay categorías registradas</p>
+                <p style="font-size: 0.9rem; color: #9ca3af; margin-top: 10px;">
                     Agrega categorías para organizar tus productos
                 </p>
             </div>
@@ -1315,23 +1744,30 @@ function updateCategoriesGrid() {
         
         const card = document.createElement('div');
         card.className = 'card';
+        card.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #e5e7eb;
+        `;
         card.innerHTML = `
-            <h3 class="card-title">${category.nombre}</h3>
+            <h3 class="card-title" style="margin: 0 0 15px 0; color: #1e40af; font-size: 1.2rem;">${category.nombre}</h3>
             <div style="margin-top: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.9rem; color: #6b7280;">
-                        ${productCount} producto${productCount !== 1 ? 's' : ''}
+                    <span style="font-size: 0.9rem; color: #6b7280; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-box"></i> ${productCount} producto${productCount !== 1 ? 's' : ''}
                     </span>
-                    <span style="font-size: 0.8rem; color: #9ca3af; background: #f3f4f6; padding: 2px 8px; border-radius: 10px;">
+                    <span style="font-size: 0.8rem; color: #9ca3af; background: #f3f4f6; padding: 4px 10px; border-radius: 10px;">
                         Orden: ${category.orden}
                     </span>
                 </div>
             </div>
             <div style="margin-top: 20px; display: flex; gap: 8px;">
-                <button class="action-button button-edit" onclick="editCategory('${category.id}')" style="flex: 1;">
+                <button class="action-button button-edit" onclick="editCategory('${category.id}')" style="flex: 1; background: #f59e0b; color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
                     <i class="fas fa-edit"></i> Editar
                 </button>
-                <button class="action-button button-delete" onclick="deleteCategory('${category.id}')" style="width: 40px;" ${productCount > 0 ? 'disabled title="No se puede eliminar categorías con productos"' : ''}>
+                <button class="action-button button-delete" onclick="deleteCategory('${category.id}')" style="width: 40px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;" ${productCount > 0 ? 'disabled title="No se puede eliminar categorías con productos"' : ''}>
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -1631,255 +2067,6 @@ async function loadAllData() {
     }
 }
 
-// EVENT LISTENERS
-function setupAdminEventListeners() {
-    const logoutButton = document.getElementById('logoutButton');
-    if (logoutButton) {
-        logoutButton.addEventListener('click', () => {
-            if (confirm('¿Estás seguro de cerrar sesión?')) {
-                auth.signOut();
-            }
-        });
-    }
-    
-    document.querySelectorAll('.nav-button').forEach(button => {
-        button.addEventListener('click', () => {
-            const tab = button.dataset.tab;
-            
-            document.querySelectorAll('.nav-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            button.classList.add('active');
-            
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            const tabElement = document.getElementById(`${tab}Tab`);
-            if (tabElement) {
-                tabElement.classList.add('active');
-            }
-            
-            adminState.currentTab = tab;
-            
-            if (tab === 'orders') {
-                updateOrdersTable();
-            } else if (tab === 'products') {
-                updateProductsGrid();
-            } else if (tab === 'dashboard') {
-                updateDashboard();
-            }
-        });
-    });
-    
-    const orderFilter = document.getElementById('orderFilter');
-    if (orderFilter) {
-        orderFilter.addEventListener('change', function() {
-            applyOrderFilter(this.value);
-        });
-    }
-    
-    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-    if (clearHistoryBtn) {
-        clearHistoryBtn.addEventListener('click', clearOrderHistory);
-    }
-    
-    const clearAllBtn = document.getElementById('clearAllOrdersBtn');
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', clearAllOrders);
-    }
-    
-    const addProductButton = document.getElementById('addProductButton');
-    if (addProductButton) {
-        addProductButton.addEventListener('click', () => {
-            showNewProductForm();
-        });
-    }
-    
-    const cancelProductFormButton = document.getElementById('cancelProductFormButton');
-    if (cancelProductFormButton) {
-        cancelProductFormButton.addEventListener('click', hideProductForm);
-    }
-    
-    const addCategoryButton = document.getElementById('addCategoryButton');
-    if (addCategoryButton) {
-        addCategoryButton.addEventListener('click', addCategory);
-    }
-    
-    const cancelEditButton = document.getElementById('cancelEditCategoryButton');
-    if (cancelEditButton) {
-        cancelEditButton.addEventListener('click', cancelEditCategory);
-    }
-    
-    const storeToggle = document.getElementById('storeToggle');
-    if (storeToggle) {
-        storeToggle.addEventListener('change', function() {
-            toggleStoreStatus(this);
-        });
-    }
-    
-    const saveSettingsButton = document.getElementById('saveSettingsButton');
-    if (saveSettingsButton) {
-        saveSettingsButton.addEventListener('click', saveSettings);
-    }
-    
-    const reportPeriod = document.getElementById('reportPeriod');
-    if (reportPeriod) {
-        reportPeriod.addEventListener('change', function() {
-            const customRange = document.getElementById('customDateRange');
-            if (customRange) {
-                customRange.style.display = this.value === 'custom' ? 'block' : 'none';
-            }
-        });
-    }
-    
-    const generateReportButton = document.getElementById('generateReportButton');
-    if (generateReportButton) {
-        generateReportButton.addEventListener('click', generateReport);
-    }
-    
-    const closeModalButton = document.getElementById('closeModalButton');
-    if (closeModalButton) {
-        closeModalButton.addEventListener('click', () => {
-            document.getElementById('orderModal').style.display = 'none';
-        });
-    }
-    
-    const closeModalBtn = document.getElementById('closeModalBtn');
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => {
-            document.getElementById('orderModal').style.display = 'none';
-        });
-    }
-    
-    const orderModal = document.getElementById('orderModal');
-    if (orderModal) {
-        orderModal.addEventListener('click', (e) => {
-            if (e.target === orderModal) {
-                orderModal.style.display = 'none';
-            }
-        });
-    }
-}
-
-function setupLoginEvents() {
-    const loginButton = document.getElementById('loginButton');
-    const passwordInput = document.getElementById('passwordInput');
-    
-    if (loginButton) {
-        loginButton.addEventListener('click', handleLogin);
-    }
-    
-    if (passwordInput) {
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleLogin();
-        });
-    }
-}
-
-async function handleLogin() {
-    const email = document.getElementById('emailInput').value;
-    const password = document.getElementById('passwordInput').value;
-    const errorElement = document.getElementById('loginError');
-    
-    if (!email || !password) {
-        showError('Por favor completa todos los campos', errorElement);
-        return;
-    }
-    
-    try {
-        showLoading(true);
-        await auth.signInWithEmailAndPassword(email, password);
-        hideError(errorElement);
-    } catch (error) {
-        console.error('Login error:', error);
-        showError('Error al iniciar sesión. Verifica tus credenciales.', errorElement);
-    } finally {
-        showLoading(false);
-    }
-}
-
-function showAdminPanel() {
-    document.getElementById('loginContainer').style.display = 'none';
-    document.getElementById('adminContainer').style.display = 'block';
-}
-
-function showLoginScreen() {
-    document.getElementById('loginContainer').style.display = 'block';
-    document.getElementById('adminContainer').style.display = 'none';
-}
-
-// INICIALIZACIÓN PRINCIPAL
-async function initAdminApp() {
-    try {
-        console.log('🚀 Inicializando Panel Admin...');
-        
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                adminState.currentUser = user;
-                showAdminPanel();
-                await loadAllData();
-                setupAdminEventListeners();
-                startRealtimeUpdates();
-            } else {
-                showLoginScreen();
-            }
-        });
-        
-        setupLoginEvents();
-        
-        console.log('✅ Panel Admin inicializado');
-        
-    } catch (error) {
-        console.error('❌ Error inicializando admin:', error);
-        showNotification('Error inicializando el sistema', 'error');
-    }
-}
-
-// FUNCIONES DE TIEMPO REAL
-function startRealtimeUpdates() {
-    db.collection('orders')
-        .orderBy('fecha', 'desc')
-        .limit(1)
-        .onSnapshot((snapshot) => {
-            if (!snapshot.empty) {
-                const lastOrder = snapshot.docs[0];
-                const isNew = !adminState.orders.find(o => o.id === lastOrder.id);
-                
-                if (isNew) {
-                    loadOrders().then(() => {
-                        updateDashboard();
-                        updateOrdersTable();
-                        
-                        const orderData = lastOrder.data();
-                        showNotification(`📦 Nuevo pedido: ${orderData.id_pedido || lastOrder.id} por $${orderData.total || 0}`, 'success');
-                    });
-                }
-            }
-        });
-    
-    db.collection('products').onSnapshot(() => {
-        loadProducts().then(() => {
-            updateProductsGrid();
-            updateDashboard();
-        });
-    });
-    
-    db.collection('categories').onSnapshot(() => {
-        loadCategories().then(() => {
-            updateCategoriesGrid();
-        });
-    });
-    
-    db.collection('settings').doc('config').onSnapshot((doc) => {
-        if (doc.exists) {
-            adminState.settings = doc.data();
-            updateStoreStatus();
-            updateSettingsForm();
-        }
-    });
-}
-
 // FUNCIONES DE REPORTES
 async function generateReport() {
     const period = document.getElementById('reportPeriod').value;
@@ -1950,149 +2137,3 @@ async function generateReport() {
         
         const reportSummary = document.getElementById('reportSummary');
         if (reportSummary) {
-            reportSummary.innerHTML = `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px;">
-                    <div class="card">
-                        <h4 style="color: #6b7280; font-size: 0.9rem; margin-bottom: 5px;">Total Pedidos</h4>
-                        <div style="font-size: 2rem; font-weight: 800; color: #1e40af;">${totalOrders}</div>
-                    </div>
-                    
-                    <div class="card">
-                        <h4 style="color: #6b7280; font-size: 0.9rem; margin-bottom: 5px;">Ventas Totales</h4>
-                        <div style="font-size: 2rem; font-weight: 800; color: #10b981;">$${totalSales}</div>
-                    </div>
-                    
-                    <div class="card">
-                        <h4 style="color: #6b7280; font-size: 0.9rem; margin-bottom: 5px;">Ticket Promedio</h4>
-                        <div style="font-size: 2rem; font-weight: 800; color: #f59e0b;">$${avgOrderValue.toFixed(2)}</div>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h4 style="margin-bottom: 15px;">Distribución por Estado</h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
-                        ${Object.entries(statusCount).map(([status, count]) => `
-                            <div style="text-align: center;">
-                                <div style="font-size: 1.5rem; font-weight: 700; color: #1e40af;">${count}</div>
-                                <div style="font-size: 0.9rem; color: #6b7280;">${status}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        
-        updateSalesChart(filteredOrders);
-        
-        showNotification(`Reporte generado para ${period === 'custom' ? 'período personalizado' : period}`, 'success');
-        
-    } catch (error) {
-        console.error('Error generando reporte:', error);
-        showNotification('Error al generar el reporte', 'error');
-    }
-}
-
-function updateSalesChart(orders) {
-    const ctx = document.getElementById('salesChart');
-    if (!ctx) return;
-    
-    if (window.salesChartInstance) {
-        window.salesChartInstance.destroy();
-    }
-    
-    const salesByDay = {};
-    orders.forEach(order => {
-        if (!order.fecha) return;
-        
-        const orderDate = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
-        const dateStr = orderDate.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'short'
-        });
-        
-        if (!salesByDay[dateStr]) {
-            salesByDay[dateStr] = 0;
-        }
-        salesByDay[dateStr] += order.total || 0;
-    });
-    
-    const labels = Object.keys(salesByDay);
-    const data = Object.values(salesByDay);
-    
-    window.salesChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Ventas por día',
-                data: data,
-                backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                borderColor: '#3b82f6',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '$' + value;
-                        }
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
-}
-
-// AGREGAR ESTILOS DE ANIMACIÓN
-document.addEventListener('DOMContentLoaded', function() {
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    `;
-    document.head.appendChild(style);
-});
-
-// INICIALIZAR LA APLICACIÓN
-document.addEventListener('DOMContentLoaded', initAdminApp);
-
-// EXPORTAR FUNCIONES GLOBALES
-window.updateOrderStatus = updateOrderStatus;
-window.updateOrderTime = updateOrderTime;
-window.showOrderDetails = showOrderDetails;
-window.openWhatsAppAdmin = openWhatsAppAdmin;
-window.editProduct = editProduct;
-window.deleteProduct = deleteProduct;
-window.editCategory = editCategory;
-window.deleteCategory = deleteCategory;
-window.toggleStoreStatus = toggleStoreStatus;
-window.addCategory = addCategory;
-window.cancelEditCategory = cancelEditCategory;
-window.applyOrderFilter = applyOrderFilter;
-window.clearOrderHistory = clearOrderHistory;
-window.clearAllOrders = clearAllOrders;
