@@ -189,7 +189,7 @@ async function loadOrders() {
     try {
         const snapshot = await db.collection('orders')
             .orderBy('fecha', 'desc')
-            .limit(100)
+            .limit(200)
             .get();
         
         adminState.orders = snapshot.docs.map(doc => ({
@@ -332,7 +332,7 @@ function updateTopProductsList() {
     adminState.orders.forEach(order => {
         if (order.items) {
             order.items.forEach(item => {
-                const productId = item.productId || item.id;
+                const productId = item.id;
                 if (!productCount[productId]) {
                     productCount[productId] = 0;
                 }
@@ -387,9 +387,29 @@ function updateOrdersChart() {
         window.ordersChartInstance.destroy();
     }
     
-    // Datos de ejemplo por hora (en producción usarías datos reales)
-    const labels = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
-    const data = labels.map(() => Math.floor(Math.random() * 10) + 1);
+    // Agrupar pedidos por hora del día actual
+    const today = new Date();
+    const labels = Array.from({length: 12}, (_, i) => {
+        const hour = 10 + i;
+        return `${hour}:00`;
+    });
+    
+    const ordersByHour = Array(12).fill(0);
+    
+    adminState.orders.forEach(order => {
+        if (!order.fecha) return;
+        
+        const orderDate = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
+        if (orderDate.getDate() === today.getDate() && 
+            orderDate.getMonth() === today.getMonth() && 
+            orderDate.getFullYear() === today.getFullYear()) {
+            
+            const hour = orderDate.getHours();
+            if (hour >= 10 && hour <= 21) {
+                ordersByHour[hour - 10]++;
+            }
+        }
+    });
     
     window.ordersChartInstance = new Chart(ctx, {
         type: 'line',
@@ -397,7 +417,7 @@ function updateOrdersChart() {
             labels: labels,
             datasets: [{
                 label: 'Pedidos por hora',
-                data: data,
+                data: ordersByHour,
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 borderColor: '#3b82f6',
                 borderWidth: 2,
@@ -416,7 +436,7 @@ function updateOrdersChart() {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 2
+                        stepSize: 1
                     }
                 },
                 x: {
@@ -429,7 +449,32 @@ function updateOrdersChart() {
     });
 }
 
-// Actualizar tabla de pedidos
+// Función para ordenar pedidos por prioridad
+function sortOrdersByPriority(orders) {
+    const priorityOrder = {
+        'En preparación': 1,
+        'Recibido': 2,
+        'Listo': 3,
+        'Entregado': 4,
+        'Cancelado': 5
+    };
+    
+    return orders.sort((a, b) => {
+        const priorityA = priorityOrder[a.estado] || 6;
+        const priorityB = priorityOrder[b.estado] || 6;
+        
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+        
+        // Si misma prioridad, ordenar por fecha (más reciente primero)
+        const dateA = a.fecha?.toDate ? a.fecha.toDate() : new Date(a.fecha);
+        const dateB = b.fecha?.toDate ? b.fecha.toDate() : new Date(b.fecha);
+        return dateB - dateA;
+    });
+}
+
+// Actualizar tabla de pedidos (MEJORADA)
 function updateOrdersTable() {
     const tbody = document.getElementById('ordersTableBody');
     if (!tbody) return;
@@ -437,17 +482,23 @@ function updateOrdersTable() {
     if (adminState.orders.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 40px;">
-                    No hay pedidos registrados
+                <td colspan="8" style="text-align: center; padding: 40px;">
+                    <div style="color: #6b7280;">
+                        <i class="fas fa-shopping-cart" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i>
+                        <p>No hay pedidos registrados</p>
+                    </div>
                 </td>
             </tr>
         `;
         return;
     }
     
+    // Ordenar pedidos por prioridad
+    const sortedOrders = sortOrdersByPriority([...adminState.orders]);
+    
     tbody.innerHTML = '';
     
-    adminState.orders.forEach(order => {
+    sortedOrders.forEach(order => {
         const row = document.createElement('tr');
         
         // Formatear fecha
@@ -455,69 +506,142 @@ function updateOrdersTable() {
         const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', {
             day: '2-digit',
             month: '2-digit',
-            year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
         }) : '--';
         
-        // Estado
-        const statusOptions = ['Recibido', 'En preparación', 'Listo', 'Entregado'];
+        // Estado con colores mejorados
+        const statusOptions = ['Recibido', 'En preparación', 'Listo', 'Entregado', 'Cancelado'];
+        const statusColors = {
+            'Recibido': '#3b82f6',
+            'En preparación': '#f59e0b',
+            'Listo': '#10b981',
+            'Entregado': '#6b7280',
+            'Cancelado': '#ef4444'
+        };
+        
         const statusSelect = `
-            <select class="form-input" style="width: 140px; padding: 6px 8px; font-size: 0.9rem;" 
+            <select class="status-select" 
                     data-order-id="${order.id}"
-                    onchange="updateOrderStatus(this)">
+                    onchange="updateOrderStatus(this)"
+                    style="background-color: ${statusColors[order.estado] || '#6b7280'}; 
+                           color: white; 
+                           border: none; 
+                           padding: 6px 12px; 
+                           border-radius: 20px; 
+                           font-weight: 600;
+                           cursor: pointer;
+                           min-width: 140px;">
                 ${statusOptions.map(status => 
-                    `<option value="${status}" ${order.estado === status ? 'selected' : ''}>${status}</option>`
+                    `<option value="${status}" ${order.estado === status ? 'selected' : ''}>
+                        ${status}
+                    </option>`
                 ).join('')}
             </select>
         `;
         
-        // Tiempo estimado
+        // Tiempo estimado con indicador visual
         const timeInput = `
-            <input type="number" 
-                class="form-input" 
-                style="width: 70px; padding: 6px 8px; font-size: 0.9rem;" 
-                value="${order.tiempo_estimado_actual || adminState.settings?.tiempo_base_estimado || 30}"
-                data-order-id="${order.id}"
-                onchange="updateOrderTime(this)"
-                min="1"
-                max="180">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <input type="number" 
+                    class="time-input" 
+                    style="width: 50px; padding: 4px 6px; border: 1px solid #e5e7eb; border-radius: 6px; text-align: center;" 
+                    value="${order.tiempo_estimado_actual || adminState.settings?.tiempo_base_estimado || 30}"
+                    data-order-id="${order.id}"
+                    onchange="updateOrderTime(this)"
+                    min="1"
+                    max="180">
+                <span style="font-size: 0.8rem;">min</span>
+            </div>
         `;
         
-        // Comentarios
+        // Información del cliente compacta
+        const customerInfo = `
+            <div style="max-width: 150px;">
+                <div style="font-weight: 600; font-size: 0.9rem;">${order.nombre_cliente || '--'}</div>
+                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">
+                    <i class="fas fa-phone"></i> ${order.telefono || '--'}
+                </div>
+                ${order.direccion && order.tipo_pedido === 'envío' ? 
+                    `<div style="font-size: 0.7rem; color: #9ca3af; margin-top: 2px;">
+                        <i class="fas fa-map-marker-alt"></i> ${order.direccion.substring(0, 20)}...
+                    </div>` : 
+                    `<div style="font-size: 0.7rem; color: #10b981; margin-top: 2px;">
+                        <i class="fas fa-store"></i> Retiro en local
+                    </div>`
+                }
+            </div>
+        `;
+        
+        // Comentarios con tooltip
         const commentsHtml = order.comentarios ? `
-            <div class="comentarios-cliente" style="margin-top: 5px; font-size: 0.8rem;">
-                <strong>✏️ Comentarios:</strong> ${order.comentarios}
+            <div style="position: relative; display: inline-block;">
+                <i class="fas fa-sticky-note" style="color: #f59e0b; cursor: help;" 
+                   title="${order.comentarios}"></i>
             </div>
         ` : '';
         
-        // Botón WhatsApp
-        const whatsappBtn = adminState.settings?.telefono_whatsapp && order.telefono ? `
-            <button class="btn-whatsapp" style="margin-top: 5px;" onclick="openWhatsAppAdmin('${order.telefono}', '${order.id_pedido || order.id}', '${order.nombre_cliente || ''}', ${order.total || 0}, '${order.estado || 'Recibido'}', ${order.tiempo_estimado_actual || 30})">
-                <i class="fab fa-whatsapp"></i> WhatsApp
-            </button>
+        // Botones de acción mejorados
+        const actionButtons = `
+            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                <button class="action-button button-view" onclick="showOrderDetails('${order.id}')" 
+                        style="padding: 4px 8px; font-size: 0.8rem;">
+                    <i class="fas fa-eye"></i> Detalles
+                </button>
+                ${order.telefono ? `
+                    <button class="action-button button-whatsapp" 
+                            onclick="openWhatsAppAdmin('${order.telefono}', '${order.id_pedido || order.id}', '${order.nombre_cliente || ''}', ${order.total || 0}, '${order.estado || 'Recibido'}', ${order.tiempo_estimado_actual || 30})"
+                            style="padding: 4px 8px; font-size: 0.8rem;">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        
+        // Items del pedido
+        const itemsHtml = order.items ? `
+            <div style="font-size: 0.8rem; color: #6b7280;">
+                ${order.items.slice(0, 2).map(item => 
+                    `${item.cantidad}x ${item.nombre}`
+                ).join(', ')}
+                ${order.items.length > 2 ? `... (+${order.items.length - 2})` : ''}
+            </div>
         ` : '';
         
+        // Resaltar pedidos urgentes
+        const isUrgent = order.estado === 'Recibido' && order.tipo_pedido === 'envío';
+        const rowStyle = isUrgent ? 'background-color: #fef3c7;' : '';
+        
         row.innerHTML = `
-            <td>
-                <strong>${order.id_pedido || order.id}</strong>
-                ${commentsHtml}
+            <td style="${rowStyle}">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="min-width: 24px;">
+                        ${isUrgent ? '<i class="fas fa-bolt" style="color: #f59e0b;"></i>' : ''}
+                    </div>
+                    <div>
+                        <strong style="font-size: 0.9rem;">${order.id_pedido || order.id}</strong>
+                        ${commentsHtml}
+                        ${itemsHtml}
+                    </div>
+                </div>
             </td>
-            <td>${fechaStr}</td>
-            <td>
-                <div>${order.nombre_cliente || '--'}</div>
-                <div style="font-size: 0.8rem; color: #6b7280;">${order.telefono || '--'}</div>
+            <td style="${rowStyle}">
+                <div style="font-size: 0.85rem;">${fechaStr}</div>
             </td>
-            <td>$${order.total || 0}</td>
-            <td>${statusSelect}</td>
-            <td>
-                ${timeInput} min
+            <td style="${rowStyle}">
+                ${customerInfo}
             </td>
-            <td>
-                <button class="action-button button-edit" onclick="showOrderDetails('${order.id}')" style="margin-bottom: 5px;">
-                    <i class="fas fa-eye"></i> Ver
-                </button>
-                ${whatsappBtn}
+            <td style="${rowStyle}">
+                <strong style="color: #1e40af;">$${order.total || 0}</strong>
+            </td>
+            <td style="${rowStyle}">
+                ${statusSelect}
+            </td>
+            <td style="${rowStyle}">
+                ${timeInput}
+            </td>
+            <td style="${rowStyle}">
+                ${actionButtons}
             </td>
         `;
         
@@ -545,12 +669,13 @@ async function updateOrderStatus(select) {
         
         // Actualizar dashboard
         updateDashboard();
+        updateOrdersTable();
         
-        showSuccess('Estado actualizado correctamente');
+        showNotification(`Estado del pedido actualizado a: ${newStatus}`, 'success');
         
     } catch (error) {
         console.error('Error actualizando estado:', error);
-        showError('Error al actualizar el estado');
+        showNotification('Error al actualizar el estado', 'error');
     }
 }
 
@@ -560,7 +685,7 @@ async function updateOrderTime(input) {
     const newTime = parseInt(input.value);
     
     if (isNaN(newTime) || newTime < 1) {
-        showError('Tiempo inválido');
+        showNotification('Tiempo inválido', 'error');
         return;
     }
     
@@ -575,11 +700,11 @@ async function updateOrderTime(input) {
             adminState.orders[orderIndex].tiempo_estimado_actual = newTime;
         }
         
-        showSuccess('Tiempo actualizado correctamente');
+        showNotification('Tiempo estimado actualizado', 'success');
         
     } catch (error) {
         console.error('Error actualizando tiempo:', error);
-        showError('Error al actualizar el tiempo');
+        showNotification('Error al actualizar el tiempo', 'error');
     }
 }
 
@@ -587,7 +712,7 @@ async function updateOrderTime(input) {
 async function showOrderDetails(orderId) {
     const order = adminState.orders.find(o => o.id === orderId);
     if (!order) {
-        showError('Pedido no encontrado');
+        showNotification('Pedido no encontrado', 'error');
         return;
     }
     
@@ -614,89 +739,104 @@ async function showOrderDetails(orderId) {
     let itemsHtml = '';
     if (order.items && order.items.length > 0) {
         itemsHtml = `
-            <h4 style="margin-top: 20px; margin-bottom: 10px;">Detalle del pedido:</h4>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
+            <div style="margin-top: 20px;">
+                <h4 style="margin-bottom: 10px; color: #1e40af; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">
+                    Detalle del pedido (${order.items.length} items)
+                </h4>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto;">
         `;
         
-        order.items.forEach(item => {
+        order.items.forEach((item, index) => {
             itemsHtml += `
-                <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <strong>${item.nombre || 'Producto'}</strong>
-                        <span>$${item.precio || 0}</span>
-                    </div>
-                    <div style="font-size: 0.9rem; color: #6b7280;">
-                        Cantidad: ${item.cantidad || 1} | Total: $${(item.precio || 0) * (item.cantidad || 1)}
-                    </div>
-                    ${item.modificaciones ? `
-                        <div style="font-size: 0.85rem; color: #ef4444; margin-top: 2px;">
-                            <strong>Modificaciones:</strong> ${item.modificaciones}
+                <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #3b82f6;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <strong style="color: #1e40af;">${item.nombre || 'Producto'}</strong>
+                            <div style="font-size: 0.9rem; color: #6b7280; margin-top: 4px;">
+                                Cantidad: ${item.cantidad || 1} • Precio unitario: $${item.precio || 0}
+                            </div>
                         </div>
-                    ` : ''}
+                        <div style="font-weight: 700; color: #1e40af;">
+                            $${(item.precio || 0) * (item.cantidad || 1)}
+                        </div>
+                    </div>
                 </div>
             `;
         });
         
-        itemsHtml += '</div>';
-    } else if (order.pedido_detallado) {
-        itemsHtml = `
-            <h4 style="margin-top: 20px; margin-bottom: 10px;">Detalle del pedido:</h4>
-            <pre style="white-space: pre-wrap; background: #f3f4f6; padding: 15px; border-radius: 8px; font-size: 0.9rem;">
-${order.pedido_detallado}
-            </pre>
-        `;
+        itemsHtml += '</div></div>';
     }
     
     // Construir contenido del modal
     modalOrderId.textContent = `Pedido: ${order.id_pedido || order.id}`;
     modalOrderDetails.innerHTML = `
-        <div style="margin-bottom: 15px;">
-            <strong>Fecha:</strong> ${fechaStr}
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-            <strong>Cliente:</strong> ${order.nombre_cliente || '--'}
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-            <strong>Teléfono:</strong> ${order.telefono || '--'}
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-            <strong>Tipo de pedido:</strong> ${order.tipo_pedido === 'envío' ? 'Envío a domicilio' : 'Retiro en local'}
-        </div>
-        
-        ${order.direccion && order.tipo_pedido === 'envío' ? `
-            <div style="margin-bottom: 15px;">
-                <strong>Dirección:</strong> ${order.direccion}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                <div style="font-size: 0.9rem; color: #6b7280;">Cliente</div>
+                <div style="font-weight: 600; font-size: 1.1rem;">${order.nombre_cliente || '--'}</div>
+                <div style="margin-top: 5px;">
+                    <i class="fas fa-phone" style="color: #6b7280;"></i> ${order.telefono || '--'}
+                </div>
             </div>
-        ` : ''}
-        
-        <div style="margin-bottom: 15px;">
-            <strong>Estado:</strong> 
-            <span class="status-badge status-${getStatusClass(order.estado)}">
-                ${order.estado || 'Recibido'}
-            </span>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <div style="font-size: 0.9rem; color: #6b7280;">Fecha y Hora</div>
+                <div style="font-weight: 600; font-size: 1.1rem;">${fechaStr}</div>
+                <div style="margin-top: 5px;">
+                    <i class="fas fa-clock" style="color: #6b7280;"></i> ${order.tiempo_estimado_actual || '--'} min estimados
+                </div>
+            </div>
         </div>
         
-        <div style="margin-bottom: 15px;">
-            <strong>Tiempo estimado:</strong> ${order.tiempo_estimado_actual || '--'} minutos
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <div style="background: ${order.tipo_pedido === 'envío' ? '#f0fdf4' : '#f8fafc'}; padding: 15px; border-radius: 8px; border-left: 4px solid ${order.tipo_pedido === 'envío' ? '#10b981' : '#6b7280'};">
+                <div style="font-size: 0.9rem; color: #6b7280;">Tipo de Pedido</div>
+                <div style="font-weight: 600; font-size: 1.1rem; color: ${order.tipo_pedido === 'envío' ? '#10b981' : '#1e40af'};">
+                    ${order.tipo_pedido === 'envío' ? '🚚 Envío a domicilio' : '🏪 Retiro en local'}
+                </div>
+                ${order.direccion && order.tipo_pedido === 'envío' ? `
+                    <div style="margin-top: 5px; font-size: 0.9rem;">
+                        <i class="fas fa-map-marker-alt" style="color: #ef4444;"></i> ${order.direccion}
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid #${getStatusColor(order.estado)};">
+                <div style="font-size: 0.9rem; color: #6b7280;">Estado Actual</div>
+                <div style="font-weight: 600; font-size: 1.1rem; color: #${getStatusColor(order.estado)};">
+                    ${order.estado || 'Recibido'}
+                </div>
+                <div style="margin-top: 5px; font-size: 0.9rem;">
+                    Actualizado: ${order.fecha_actualizacion ? new Date(order.fecha_actualizacion).toLocaleTimeString('es-ES') : '--'}
+                </div>
+            </div>
         </div>
         
         ${order.comentarios ? `
-            <div style="margin-bottom: 15px; background: #fef3c7; padding: 10px; border-radius: 6px; border-left: 3px solid #f59e0b;">
-                <strong>Comentarios del cliente:</strong>
-                <div style="margin-top: 5px;">${order.comentarios}</div>
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                <div style="font-weight: 600; color: #92400e; margin-bottom: 5px;">
+                    <i class="fas fa-sticky-note"></i> Comentarios del Cliente
+                </div>
+                <div style="color: #92400e;">${order.comentarios}</div>
             </div>
         ` : ''}
         
         ${itemsHtml}
         
-        <hr style="margin: 20px 0;">
+        <hr style="margin: 25px 0; border: none; border-top: 2px solid #e5e7eb;">
         
-        <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold;">
-            <span>Total:</span>
-            <span>$${order.total || 0}</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 8px;">
+            <div>
+                <div style="font-size: 0.9rem; color: #6b7280;">Resumen de Pago</div>
+                <div style="font-size: 0.9rem;">
+                    Subtotal: $${order.subtotal || order.total || 0}<br>
+                    ${order.precio_envio ? `Envío: $${order.precio_envio}<br>` : ''}
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 1.1rem; font-weight: 600; color: #6b7280;">Total</div>
+                <div style="font-size: 2rem; font-weight: 800; color: #1e40af;">$${order.total || 0}</div>
+            </div>
         </div>
     `;
     
@@ -707,7 +847,7 @@ ${order.pedido_detallado}
 // Abrir WhatsApp desde panel admin
 function openWhatsAppAdmin(phone, orderId, customerName, total, status, estimatedTime) {
     if (!phone) {
-        showError('No hay número de teléfono para este pedido');
+        showNotification('No hay número de teléfono para este pedido', 'error');
         return;
     }
     
@@ -764,7 +904,7 @@ function updateProductsGrid() {
         `;
         
         document.getElementById('addFirstProduct')?.addEventListener('click', () => {
-            document.getElementById('addProductButton').click();
+            showNewProductForm();
         });
         
         return;
@@ -773,13 +913,10 @@ function updateProductsGrid() {
     grid.innerHTML = '';
     
     adminState.products.forEach(product => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        
-        // Contar productos en pedidos (simplificado)
+        // Contar productos en pedidos
         const soldCount = adminState.orders.reduce((count, order) => {
             if (order.items) {
-                const item = order.items.find(i => i.productId === product.id || i.id === product.id);
+                const item = order.items.find(i => i.id === product.id);
                 if (item) {
                     return count + (item.cantidad || 1);
                 }
@@ -787,9 +924,11 @@ function updateProductsGrid() {
             return count;
         }, 0);
         
+        const card = document.createElement('div');
+        card.className = 'product-card';
         card.innerHTML = `
             <h3 class="card-title">${product.nombre}</h3>
-            <p style="color: #6b7280; margin-bottom: 8px; font-size: 0.9rem;">
+            <p style="color: #6b7280; margin-bottom: 8px; font-size: 0.9rem; min-height: 40px;">
                 ${product.descripcion || 'Sin descripción'}
             </p>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -819,13 +958,63 @@ function updateProductsGrid() {
     });
 }
 
+// CORREGIDO: Mostrar formulario de nuevo producto
+function showNewProductForm() {
+    const form = document.getElementById('productForm');
+    const title = document.getElementById('productFormTitle');
+    const saveButton = document.getElementById('saveProductButton');
+    
+    if (form && title && saveButton) {
+        // Limpiar formulario manualmente
+        document.getElementById('productName').value = '';
+        document.getElementById('productDescription').value = '';
+        document.getElementById('productPrice').value = '';
+        document.getElementById('productAderezos').value = '';
+        document.getElementById('productAvailable').checked = true;
+        
+        // Llenar categorías
+        const categorySelect = document.getElementById('productCategory');
+        categorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
+        
+        adminState.categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.nombre;
+            categorySelect.appendChild(option);
+        });
+        
+        // Configurar botón
+        saveButton.onclick = () => saveProduct();
+        saveButton.textContent = 'Guardar Producto';
+        
+        // Mostrar
+        form.classList.remove('hidden');
+        title.textContent = 'Nuevo Producto';
+        
+        // Scroll al formulario
+        form.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// CORREGIDO: Ocultar formulario de producto
+function hideProductForm() {
+    const form = document.getElementById('productForm');
+    if (form) {
+        form.classList.add('hidden');
+    }
+}
+
 // Editar producto
 function editProduct(productId) {
     const product = adminState.products.find(p => p.id === productId);
     if (!product) return;
     
     // Mostrar formulario
-    showProductForm();
+    const form = document.getElementById('productForm');
+    const title = document.getElementById('productFormTitle');
+    const saveButton = document.getElementById('saveProductButton');
+    
+    if (!form || !title || !saveButton) return;
     
     // Llenar formulario
     document.getElementById('productName').value = product.nombre;
@@ -838,10 +1027,6 @@ function editProduct(productId) {
         Array.isArray(product.aderezos_disponibles) 
             ? product.aderezos_disponibles.join(', ')
             : '';
-    
-    // Precios extra (mantener para compatibilidad)
-    document.getElementById('productAderezosPrices').value = 
-        JSON.stringify(product.precios_extra_aderezos || {}, null, 2);
     
     // Llenar categorías
     const categorySelect = document.getElementById('productCategory');
@@ -858,32 +1043,15 @@ function editProduct(productId) {
     });
     
     // Configurar botón guardar
-    const saveButton = document.getElementById('saveProductButton');
     saveButton.onclick = () => saveProduct(productId);
     saveButton.textContent = 'Actualizar Producto';
     
-    // Scroll al formulario
-    document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-}
-
-// Mostrar formulario de producto
-function showProductForm() {
-    const form = document.getElementById('productForm');
-    const title = document.getElementById('productFormTitle');
+    // Mostrar formulario
+    form.classList.remove('hidden');
+    title.textContent = 'Editar Producto';
     
-    if (form && title) {
-        form.style.display = 'block';
-        title.textContent = 'Editar Producto';
-    }
-}
-
-// Ocultar formulario de producto
-function hideProductForm() {
-    const form = document.getElementById('productForm');
-    if (form) {
-        form.style.display = 'none';
-        form.reset();
-    }
+    // Scroll al formulario
+    form.scrollIntoView({ behavior: 'smooth' });
 }
 
 // Guardar producto
@@ -906,17 +1074,17 @@ async function saveProduct(productId = null) {
     
     // Validaciones
     if (!productData.nombre) {
-        showError('El nombre del producto es requerido');
+        showNotification('El nombre del producto es requerido', 'error');
         return;
     }
     
     if (isNaN(productData.precio) || productData.precio < 0) {
-        showError('Precio inválido');
+        showNotification('Precio inválido', 'error');
         return;
     }
     
     if (!productData.categoria) {
-        showError('Selecciona una categoría');
+        showNotification('Selecciona una categoría', 'error');
         return;
     }
     
@@ -944,11 +1112,11 @@ async function saveProduct(productId = null) {
         // Ocultar formulario
         hideProductForm();
         
-        showSuccess(`Producto ${isNew ? 'agregado' : 'actualizado'} correctamente`);
+        showNotification(`Producto ${isNew ? 'agregado' : 'actualizado'} correctamente`, 'success');
         
     } catch (error) {
         console.error('Error guardando producto:', error);
-        showError('Error al guardar el producto');
+        showNotification('Error al guardar el producto', 'error');
     }
 }
 
@@ -965,11 +1133,11 @@ async function deleteProduct(productId) {
         await loadProducts();
         updateProductsGrid();
         
-        showSuccess('Producto eliminado correctamente');
+        showNotification('Producto eliminado correctamente', 'success');
         
     } catch (error) {
         console.error('Error eliminando producto:', error);
-        showError('Error al eliminar el producto');
+        showNotification('Error al eliminar el producto', 'error');
     }
 }
 
@@ -1037,7 +1205,7 @@ function editCategory(categoryId) {
     document.getElementById('categoryFormTitle').textContent = 'Editar Categoría';
     document.getElementById('addCategoryButton').textContent = 'Actualizar Categoría';
     document.getElementById('addCategoryButton').dataset.editingId = categoryId;
-    document.getElementById('cancelEditButton').style.display = 'inline-block';
+    document.getElementById('cancelEditCategoryButton').style.display = 'inline-block';
     
     // Hacer scroll al formulario
     document.getElementById('categoryName').focus();
@@ -1055,12 +1223,12 @@ async function addCategory() {
     
     // Validaciones
     if (!name) {
-        showError('El nombre de la categoría es requerido');
+        showNotification('El nombre de la categoría es requerido', 'error');
         return;
     }
     
     if (isNaN(order) || order < 1) {
-        showError('El orden debe ser un número mayor a 0');
+        showNotification('El orden debe ser un número mayor a 0', 'error');
         return;
     }
     
@@ -1076,7 +1244,7 @@ async function addCategory() {
             // Restaurar formulario
             cancelEditCategory();
             
-            showSuccess('Categoría actualizada correctamente');
+            showNotification('Categoría actualizada correctamente', 'success');
             
         } else {
             // Crear nueva categoría
@@ -1096,7 +1264,7 @@ async function addCategory() {
             nameInput.value = '';
             orderInput.value = adminState.categories.length + 1;
             
-            showSuccess('Categoría agregada correctamente');
+            showNotification('Categoría agregada correctamente', 'success');
         }
         
         // Recargar categorías
@@ -1107,9 +1275,9 @@ async function addCategory() {
         console.error('Error guardando categoría:', error);
         
         if (error.code === 'permission-denied') {
-            showError('No tienes permisos para realizar esta acción');
+            showNotification('No tienes permisos para realizar esta acción', 'error');
         } else {
-            showError('Error al guardar la categoría');
+            showNotification('Error al guardar la categoría', 'error');
         }
     }
 }
@@ -1120,7 +1288,7 @@ async function deleteCategory(categoryId) {
     const productsInCategory = adminState.products.filter(p => p.categoria === categoryId);
     
     if (productsInCategory.length > 0) {
-        showError(`No se puede eliminar la categoría porque tiene ${productsInCategory.length} producto(s). Reasigna los productos primero.`);
+        showNotification(`No se puede eliminar la categoría porque tiene ${productsInCategory.length} producto(s). Reasigna los productos primero.`, 'error');
         return;
     }
     
@@ -1135,11 +1303,11 @@ async function deleteCategory(categoryId) {
         await loadCategories();
         updateCategoriesGrid();
         
-        showSuccess('Categoría eliminada correctamente');
+        showNotification('Categoría eliminada correctamente', 'success');
         
     } catch (error) {
         console.error('Error eliminando categoría:', error);
-        showError('Error al eliminar la categoría');
+        showNotification('Error al eliminar la categoría', 'error');
     }
 }
 
@@ -1148,7 +1316,7 @@ function cancelEditCategory() {
     // Restaurar formulario
     document.getElementById('categoryFormTitle').textContent = 'Agregar Nueva Categoría';
     document.getElementById('addCategoryButton').textContent = 'Agregar Categoría';
-    document.getElementById('cancelEditButton').style.display = 'none';
+    document.getElementById('cancelEditCategoryButton').style.display = 'none';
     
     // Limpiar campos
     document.getElementById('categoryName').value = '';
@@ -1248,11 +1416,11 @@ async function saveSettings() {
         // Actualizar estado del local en UI
         updateStoreStatus();
         
-        showSuccess('Configuración guardada correctamente');
+        showNotification('Configuración guardada correctamente', 'success');
         
     } catch (error) {
         console.error('Error guardando configuración:', error);
-        showError('Error al guardar la configuración');
+        showNotification('Error al guardar la configuración', 'error');
     }
 }
 
@@ -1302,11 +1470,11 @@ async function toggleStoreStatus(checkbox) {
         // Actualizar UI
         updateStoreStatus();
         
-        showSuccess(`Local ${isOpen ? 'abierto' : 'cerrado'} correctamente`);
+        showNotification(`Local ${isOpen ? 'abierto' : 'cerrado'} correctamente`, 'success');
         
     } catch (error) {
         console.error('Error cambiando estado:', error);
-        showError('Error al cambiar el estado del local');
+        showNotification('Error al cambiar el estado del local', 'error');
         checkbox.checked = !isOpen; // Revertir visualmente
     }
 }
@@ -1345,6 +1513,15 @@ function setupAdminEventListeners() {
             }
             
             adminState.currentTab = tab;
+            
+            // Actualizar datos específicos del tab
+            if (tab === 'orders') {
+                updateOrdersTable();
+            } else if (tab === 'products') {
+                updateProductsGrid();
+            } else if (tab === 'dashboard') {
+                updateDashboard();
+            }
         });
     });
     
@@ -1356,9 +1533,9 @@ function setupAdminEventListeners() {
         });
     }
     
-    const cancelProductButton = document.getElementById('cancelProductButton');
-    if (cancelProductButton) {
-        cancelProductButton.addEventListener('click', hideProductForm);
+    const cancelProductFormButton = document.getElementById('cancelProductFormButton');
+    if (cancelProductFormButton) {
+        cancelProductFormButton.addEventListener('click', hideProductForm);
     }
     
     // Categorías
@@ -1367,7 +1544,7 @@ function setupAdminEventListeners() {
         addCategoryButton.addEventListener('click', addCategory);
     }
     
-    const cancelEditButton = document.getElementById('cancelEditButton');
+    const cancelEditButton = document.getElementById('cancelEditCategoryButton');
     if (cancelEditButton) {
         cancelEditButton.addEventListener('click', cancelEditCategory);
     }
@@ -1409,6 +1586,13 @@ function setupAdminEventListeners() {
         });
     }
     
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            document.getElementById('orderModal').style.display = 'none';
+        });
+    }
+    
     // Cerrar modal al hacer clic fuera
     const orderModal = document.getElementById('orderModal');
     if (orderModal) {
@@ -1417,43 +1601,6 @@ function setupAdminEventListeners() {
                 orderModal.style.display = 'none';
             }
         });
-    }
-}
-
-// Mostrar formulario para nuevo producto
-function showNewProductForm() {
-    const form = document.getElementById('productForm');
-    const title = document.getElementById('productFormTitle');
-    const saveButton = document.getElementById('saveProductButton');
-    
-    if (form && title && saveButton) {
-        // Resetear formulario
-        form.reset();
-        
-        // Establecer valores por defecto
-        document.getElementById('productAvailable').checked = true;
-        
-        // Llenar categorías
-        const categorySelect = document.getElementById('productCategory');
-        categorySelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
-        
-        adminState.categories.forEach(cat => {
-            const option = document.createElement('option');
-            option.value = cat.id;
-            option.textContent = cat.nombre;
-            categorySelect.appendChild(option);
-        });
-        
-        // Configurar botón
-        saveButton.onclick = () => saveProduct();
-        saveButton.textContent = 'Guardar Producto';
-        
-        // Mostrar
-        form.style.display = 'block';
-        title.textContent = 'Nuevo Producto';
-        
-        // Scroll al formulario
-        form.scrollIntoView({ behavior: 'smooth' });
     }
 }
 
@@ -1491,7 +1638,7 @@ async function generateReport() {
             
         case 'custom':
             if (!dateFrom || !dateTo) {
-                showError('Selecciona ambas fechas para el período personalizado');
+                showNotification('Selecciona ambas fechas para el período personalizado', 'error');
                 return;
             }
             startDate = new Date(dateFrom);
@@ -1518,7 +1665,8 @@ async function generateReport() {
             Recibido: 0,
             'En preparación': 0,
             Listo: 0,
-            Entregado: 0
+            Entregado: 0,
+            Cancelado: 0
         };
         
         filteredOrders.forEach(order => {
@@ -1566,11 +1714,11 @@ async function generateReport() {
         // Actualizar gráfico de ventas
         updateSalesChart(filteredOrders);
         
-        showSuccess(`Reporte generado para ${period === 'custom' ? 'período personalizado' : period}`);
+        showNotification(`Reporte generado para ${period === 'custom' ? 'período personalizado' : period}`, 'success');
         
     } catch (error) {
         console.error('Error generando reporte:', error);
-        showError('Error al generar el reporte');
+        showNotification('Error al generar el reporte', 'error');
     }
 }
 
@@ -1660,7 +1808,7 @@ function startRealtimeUpdates() {
                         
                         // Mostrar notificación
                         const orderData = lastOrder.data();
-                        showNotification(`Nuevo pedido: ${orderData.id_pedido || lastOrder.id} por $${orderData.total || 0}`);
+                        showNotification(`📦 Nuevo pedido: ${orderData.id_pedido || lastOrder.id} por $${orderData.total || 0}`, 'success');
                     });
                 }
             }
@@ -1691,15 +1839,15 @@ function startRealtimeUpdates() {
     });
 }
 
-// Mostrar notificación
-function showNotification(message) {
+// Mostrar notificación mejorada
+function showNotification(message, type = 'info') {
     // Crear elemento de notificación
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #10b981;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
         color: white;
         padding: 15px 20px;
         border-radius: 10px;
@@ -1707,13 +1855,15 @@ function showNotification(message) {
         z-index: 9999;
         animation: slideIn 0.3s ease;
         max-width: 300px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     `;
     
     notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <i class="fas fa-bell" style="font-size: 1.2rem;"></i>
-            <div>${message}</div>
-        </div>
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}" 
+           style="font-size: 1.2rem;"></i>
+        <div>${message}</div>
     `;
     
     document.body.appendChild(notification);
@@ -1741,6 +1891,58 @@ style.textContent = `
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(100%); opacity: 0; }
     }
+    
+    .status-select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 25px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 16px;
+    }
+    
+    .status-select:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    
+    .time-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    
+    .button-view {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.2s;
+    }
+    
+    .button-view:hover {
+        background: #2563eb;
+    }
+    
+    .button-whatsapp {
+        background: #25D366;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.2s;
+    }
+    
+    .button-whatsapp:hover {
+        background: #128C7E;
+    }
 `;
 document.head.appendChild(style);
 
@@ -1750,18 +1952,55 @@ function getStatusClass(status) {
         'Recibido': 'recibido',
         'En preparación': 'preparacion',
         'Listo': 'listo',
-        'Entregado': 'entregado'
+        'Entregado': 'entregado',
+        'Cancelado': 'entregado'
     };
     
     return statusMap[status] || 'recibido';
 }
 
+function getStatusColor(status) {
+    const statusMap = {
+        'Recibido': '3b82f6',
+        'En preparación': 'f59e0b',
+        'Listo': '10b981',
+        'Entregado': '6b7280',
+        'Cancelado': 'ef4444'
+    };
+    
+    return statusMap[status] || '6b7280';
+}
+
 function showLoading(show) {
-    // Implementar lógica de loading si es necesario
+    const loadingElement = document.getElementById('loadingOverlay');
     if (show) {
-        document.body.style.cursor = 'wait';
+        if (!loadingElement) {
+            const overlay = document.createElement('div');
+            overlay.id = 'loadingOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(255,255,255,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            `;
+            overlay.innerHTML = `
+                <div style="text-align: center;">
+                    <div class="loading-spinner" style="width: 50px; height: 50px;"></div>
+                    <p style="margin-top: 10px; color: #6b7280;">Cargando...</p>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
     } else {
-        document.body.style.cursor = 'default';
+        if (loadingElement) {
+            loadingElement.remove();
+        }
     }
 }
 
@@ -1770,7 +2009,7 @@ function showError(message, element = null) {
         element.textContent = message;
         element.style.display = 'block';
     } else {
-        alert(message);
+        showNotification(message, 'error');
     }
 }
 
@@ -1778,12 +2017,6 @@ function hideError(element) {
     if (element) {
         element.style.display = 'none';
     }
-}
-
-function showSuccess(message) {
-    // Puedes implementar un sistema de notificaciones más elegante
-    console.log('✅ ' + message);
-    alert(message);
 }
 
 // Inicializar cuando el DOM esté listo
