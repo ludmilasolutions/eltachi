@@ -243,6 +243,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            position: relative;
         }
         
         .nav-button:hover {
@@ -876,6 +877,239 @@
             to { transform: translateX(100%); opacity: 0; }
         }
         
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes highlightRow {
+            0% { background-color: #f0f9ff; }
+            100% { background-color: transparent; }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* MEJORAS PARA GRÁFICOS */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-top: 15px;
+        }
+        
+        .chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        .chart-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            z-index: 10;
+        }
+        
+        .chart-error {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #fef2f2;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            border: 2px dashed #fecaca;
+            z-index: 10;
+        }
+        
+        .chart-error i {
+            font-size: 2.5rem;
+            color: #ef4444;
+            margin-bottom: 10px;
+        }
+        
+        .chart-no-data {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            border: 2px dashed #e2e8f0;
+            z-index: 10;
+        }
+        
+        .chart-no-data i {
+            font-size: 2.5rem;
+            color: #cbd5e1;
+            margin-bottom: 10px;
+        }
+        
+        /* ANIMACIONES PARA GRÁFICOS */
+        @keyframes chartFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .chart-container {
+            animation: chartFadeIn 0.5s ease-out;
+        }
+        
+        /* ESTILOS PARA TOOLTIPS PERSONALIZADOS */
+        .custom-tooltip {
+            background: rgba(30, 41, 59, 0.95) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 8px !important;
+            padding: 12px !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+            backdrop-filter: blur(10px) !important;
+        }
+        
+        .custom-tooltip .tooltip-header {
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .custom-tooltip .tooltip-body {
+            color: #cbd5e1;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        /* INDICADOR DE TIEMPO REAL */
+        .realtime-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        .realtime-indicator.offline {
+            background: #ef4444;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            animation: none;
+        }
+        
+        /* BADGE DE NUEVO PEDIDO */
+        .new-order-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 800;
+            animation: pulse 1s infinite;
+        }
+        
+        /* BOTÓN FLOTANTE PARA ACTUALIZAR */
+        .floating-refresh {
+            position: fixed;
+            bottom: 70px;
+            right: 20px;
+            background: var(--azul-primario);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+            z-index: 100;
+            transition: all 0.3s;
+            border: none;
+        }
+        
+        .floating-refresh:hover {
+            background: #1e3a8a;
+            transform: scale(1.1);
+        }
+        
+        .floating-refresh:active {
+            transform: scale(0.95);
+        }
+        
+        /* NOTIFICACIONES DE SISTEMA */
+        .system-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e40af;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+        }
+        
+        .system-notification.error {
+            background: #ef4444;
+        }
+        
+        .system-notification.success {
+            background: #10b981;
+        }
+        
+        .system-notification.warning {
+            background: #f59e0b;
+        }
+        
         /* RESPONSIVE */
         @media (max-width: 1024px) {
             .admin-content {
@@ -888,6 +1122,10 @@
             
             .products-grid {
                 grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            }
+            
+            .chart-container {
+                height: 250px;
             }
         }
         
@@ -946,6 +1184,10 @@
                 justify-content: flex-start;
                 flex-wrap: wrap;
             }
+            
+            .chart-container {
+                height: 200px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -972,6 +1214,10 @@
             
             .modal-content {
                 padding: 20px;
+            }
+            
+            .chart-container {
+                height: 180px;
             }
         }
         
@@ -1019,8 +1265,12 @@
             margin-bottom: 1rem;
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        /* RESPONSIVE PARA GRÁFICOS */
+        @media (max-width: 768px) {
+            .sales-chart-tooltip {
+                max-width: 200px !important;
+                font-size: 0.8rem !important;
+            }
         }
     </style>
 </head>
@@ -1077,6 +1327,7 @@
             </button>
             <button class="nav-button" data-tab="orders">
                 <i class="fas fa-shopping-cart"></i> Pedidos
+                <span id="newOrdersBadge" class="new-order-badge" style="display: none;">!</span>
             </button>
             <button class="nav-button" data-tab="products">
                 <i class="fas fa-hamburger"></i> Productos
@@ -1168,9 +1419,19 @@
                 
                 <div class="card mt-3">
                     <h3 class="card-title">
-                        <i class="fas fa-chart-line"></i> Pedidos por Hora
+                        <i class="fas fa-chart-line"></i> Pedidos por Hora (Hoy)
                     </h3>
-                    <canvas id="ordersChart" height="100"></canvas>
+                    <div class="chart-container">
+                        <canvas id="ordersChart"></canvas>
+                        <div id="ordersChartLoading" class="chart-loading" style="display: none;">
+                            <div class="loading-spinner"></div>
+                            <p>Cargando gráfico...</p>
+                        </div>
+                        <div id="ordersChartError" class="chart-error" style="display: none;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Error cargando el gráfico</p>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -1508,7 +1769,24 @@
                     <h3 class="card-title">
                         <i class="fas fa-chart-line"></i> Gráfico de Ventas
                     </h3>
-                    <canvas id="salesChart" height="100"></canvas>
+                    <div class="chart-container">
+                        <canvas id="salesChart"></canvas>
+                        <div id="salesChartLoading" class="chart-loading" style="display: none;">
+                            <div class="loading-spinner"></div>
+                            <p>Cargando gráfico...</p>
+                        </div>
+                        <div id="salesChartError" class="chart-error" style="display: none;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Error cargando el gráfico</p>
+                        </div>
+                        <div id="salesChartNoData" class="chart-no-data">
+                            <i class="fas fa-chart-bar"></i>
+                            <p>No hay datos para mostrar</p>
+                            <p style="font-size: 0.9rem; color: #9ca3af; margin-top: 5px;">
+                                Genera un reporte para ver las ventas
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -1529,28 +1807,28 @@
                     Cerrar
                 </button>
             </div>
+        </div>
+    </div>
 
-    <!-- SONIDO DE NOTIFICACIÓN -->
+    <!-- BOTÓN FLOTANTE PARA ACTUALIZAR -->
+    <button class="floating-refresh" id="floatingRefresh" title="Actualizar pedidos">
+        <i class="fas fa-sync-alt"></i>
+    </button>
+
+    <!-- SONIDOS PARA NOTIFICACIONES -->
     <audio id="notificationSound" preload="auto" style="display:none;">
         <source src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" type="audio/mpeg">
     </audio>
-
-    <!-- SONIDO DE PEDIDO NUEVO -->
+    
     <audio id="newOrderSound" preload="auto" style="display:none;">
         <source src="https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3" type="audio/mpeg">
     </audio>
 
-            
-        </div>
-    </div>
-
-    <!-- FIREBASE CONFIG -->
+    <!-- SCRIPTS -->
     <script src="firebase-config.js"></script>
-    
-    <!-- ARCHIVO JS DEL PANEL -->
     <script src="admin-app.js"></script>
     
-    <!-- SCRIPT ADICIONAL -->
+    <!-- SCRIPT ADICIONAL PARA FUNCIONALIDADES BÁSICAS Y GRÁFICOS -->
     <script>
         // Inicializar cuando el DOM esté listo
         document.addEventListener('DOMContentLoaded', function() {
@@ -1558,6 +1836,12 @@
             
             // Configurar eventos básicos
             setupBasicEventListeners();
+            
+            // Crear indicador de tiempo real
+            createRealtimeIndicator();
+            
+            // Inicializar fecha y hora
+            updateDateTime();
         });
         
         // Configurar event listeners básicos
@@ -1582,20 +1866,35 @@
             }
             
             // Cerrar formulario de producto
-            document.getElementById('cancelProductFormButton')?.addEventListener('click', function() {
-                document.getElementById('productForm').classList.add('hidden');
-            });
+            const cancelProductFormButton = document.getElementById('cancelProductFormButton');
+            if (cancelProductFormButton) {
+                cancelProductFormButton.addEventListener('click', function() {
+                    const form = document.getElementById('productForm');
+                    if (form) {
+                        form.classList.add('hidden');
+                    }
+                });
+            }
             
-            document.getElementById('cancelProductButton')?.addEventListener('click', function() {
-                document.getElementById('productForm').classList.add('hidden');
-            });
+            const cancelProductButton = document.getElementById('cancelProductButton');
+            if (cancelProductButton) {
+                cancelProductButton.addEventListener('click', function() {
+                    const form = document.getElementById('productForm');
+                    if (form) {
+                        form.classList.add('hidden');
+                    }
+                });
+            }
             
             // Cancelar edición de categoría
-            document.getElementById('cancelEditCategoryButton')?.addEventListener('click', function() {
-                if (window.cancelEditCategory) {
-                    window.cancelEditCategory();
-                }
-            });
+            const cancelEditCategoryButton = document.getElementById('cancelEditCategoryButton');
+            if (cancelEditCategoryButton) {
+                cancelEditCategoryButton.addEventListener('click', function() {
+                    if (window.cancelEditCategory) {
+                        window.cancelEditCategory();
+                    }
+                });
+            }
             
             // Mostrar/ocultar fechas personalizadas en reportes
             const reportPeriod = document.getElementById('reportPeriod');
@@ -1611,9 +1910,22 @@
             }
             
             // Exportar a CSV (placeholder)
-            document.getElementById('exportCSVButton')?.addEventListener('click', function() {
-                alert('Función de exportación a CSV será implementada en la próxima versión.');
-            });
+            const exportCSVButton = document.getElementById('exportCSVButton');
+            if (exportCSVButton) {
+                exportCSVButton.addEventListener('click', function() {
+                    alert('Función de exportación a CSV será implementada en la próxima versión.');
+                });
+            }
+            
+            // Botón flotante de actualización
+            const floatingRefresh = document.getElementById('floatingRefresh');
+            if (floatingRefresh) {
+                floatingRefresh.addEventListener('click', function() {
+                    if (window.forceRefreshOrders) {
+                        window.forceRefreshOrders();
+                    }
+                });
+            }
             
             // Prevenir envío de formularios por defecto
             document.querySelectorAll('form').forEach(form => {
@@ -1623,10 +1935,173 @@
             });
         }
         
+        // Crear indicador de estado de tiempo real
+        function createRealtimeIndicator() {
+            const indicator = document.createElement('div');
+            indicator.id = 'realtimeIndicator';
+            indicator.className = 'realtime-indicator';
+            indicator.innerHTML = `
+                <i class="fas fa-circle"></i>
+                <span>Tiempo real activo</span>
+            `;
+            document.body.appendChild(indicator);
+            
+            // Actualizar estado del indicador
+            setInterval(() => {
+                updateRealtimeIndicator();
+            }, 5000);
+        }
+        
+        // Actualizar indicador de tiempo real
+        function updateRealtimeIndicator() {
+            const indicator = document.getElementById('realtimeIndicator');
+            if (!indicator) return;
+            
+            const isOnline = navigator.onLine;
+            
+            if (isOnline) {
+                indicator.classList.remove('offline');
+                indicator.innerHTML = `<i class="fas fa-circle" style="color: #10b981;"></i> <span>Tiempo real activo</span>`;
+            } else {
+                indicator.classList.add('offline');
+                indicator.innerHTML = `<i class="fas fa-circle" style="color: #ef4444;"></i> <span>Sin conexión</span>`;
+            }
+        }
+        
         // Mostrar notificación (función auxiliar)
         window.showAlert = function(message, type = 'info') {
-            alert(message);
+            // Eliminar notificaciones anteriores
+            document.querySelectorAll('.system-notification').forEach(el => {
+                el.remove();
+            });
+            
+            const notification = document.createElement('div');
+            notification.className = `system-notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remover después de 5 segundos
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
         };
+        
+        // Función para probar sonidos
+        window.testSounds = function() {
+            const notificationSound = document.getElementById('notificationSound');
+            if (notificationSound) {
+                notificationSound.currentTime = 0;
+                notificationSound.play().catch(e => console.log('Error reproduciendo sonido de notificación:', e));
+            }
+            
+            setTimeout(() => {
+                const newOrderSound = document.getElementById('newOrderSound');
+                if (newOrderSound) {
+                    newOrderSound.currentTime = 0;
+                    newOrderSound.play().catch(e => console.log('Error reproduciendo sonido de nuevo pedido:', e));
+                }
+            }, 1000);
+        };
+        
+        // Función para mostrar contador de nuevos pedidos
+        window.updateNewOrdersBadge = function(count) {
+            const badge = document.getElementById('newOrdersBadge');
+            if (!badge) return;
+            
+            if (count > 0) {
+                badge.textContent = count > 9 ? '9+' : count;
+                badge.style.display = 'flex';
+                
+                // Parpadeo para llamar la atención
+                badge.style.animation = 'pulse 1s infinite';
+            } else {
+                badge.style.display = 'none';
+            }
+        };
+        
+        // Mostrar fecha y hora actual
+        function updateDateTime() {
+            const now = new Date();
+            const dateTimeStr = now.toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            // Actualizar en el header si existe un elemento para ello
+            const dateTimeElement = document.getElementById('currentDateTime');
+            if (!dateTimeElement) {
+                // Crear elemento si no existe
+                const adminTitle = document.querySelector('.admin-title');
+                if (adminTitle) {
+                    const dateTimeElement = document.createElement('p');
+                    dateTimeElement.id = 'currentDateTime';
+                    dateTimeElement.style.fontSize = '0.75rem';
+                    dateTimeElement.style.opacity = '0.7';
+                    dateTimeElement.style.marginTop = '2px';
+                    adminTitle.appendChild(dateTimeElement);
+                    dateTimeElement.textContent = dateTimeStr;
+                }
+            } else {
+                dateTimeElement.textContent = dateTimeStr;
+            }
+        }
+        
+        // Actualizar fecha y hora cada segundo
+        setInterval(updateDateTime, 1000);
+        
+        // FUNCIONES AUXILIARES PARA GRÁFICOS
+        function showChartLoading(chartId, show = true) {
+            const loadingElement = document.getElementById(`${chartId}Loading`);
+            const canvasElement = document.getElementById(chartId);
+            
+            if (loadingElement) {
+                loadingElement.style.display = show ? 'flex' : 'none';
+            }
+            if (canvasElement) {
+                canvasElement.style.display = show ? 'none' : 'block';
+            }
+        }
+        
+        function showChartError(chartId, show = true) {
+            const errorElement = document.getElementById(`${chartId}Error`);
+            const canvasElement = document.getElementById(chartId);
+            
+            if (errorElement) {
+                errorElement.style.display = show ? 'flex' : 'none';
+            }
+            if (canvasElement) {
+                canvasElement.style.display = show ? 'none' : 'block';
+            }
+        }
+        
+        function showChartNoData(chartId, show = true) {
+            const noDataElement = document.getElementById(`${chartId}NoData`);
+            const canvasElement = document.getElementById(chartId);
+            
+            if (noDataElement) {
+                noDataElement.style.display = show ? 'flex' : 'none';
+            }
+            if (canvasElement) {
+                canvasElement.style.display = show ? 'none' : 'block';
+            }
+        }
+        
+        // Exportar funciones al scope global
+        window.showChartLoading = showChartLoading;
+        window.showChartError = showChartError;
+        window.showChartNoData = showChartNoData;
+        window.updateDateTime = updateDateTime;
     </script>
 </body>
 </html>
