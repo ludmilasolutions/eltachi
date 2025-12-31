@@ -1312,6 +1312,20 @@ async function showOrderDetails(orderId) {
         
         let itemIndex = 1;
         order.items.forEach((item) => {
+            // OBTENER EL NOMBRE DEL PRODUCTO
+            let productName = item.nombre || 'Producto';
+            let productPrice = item.precio || 0;
+            let productQuantity = item.cantidad || 1;
+            
+            // Si no tiene nombre, buscar en la lista de productos por ID
+            if (!item.nombre && item.id) {
+                const product = adminState.products.find(p => p.id === item.id);
+                if (product) {
+                    productName = product.nombre || 'Producto';
+                    productPrice = product.precio || 0;
+                }
+            }
+            
             itemsHtml += `
                 <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #3b82f6; position: relative;">
                     <div style="position: absolute; top: 10px; right: 10px; background: #3b82f6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600;">
@@ -1319,9 +1333,9 @@ async function showOrderDetails(orderId) {
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="flex: 1; padding-right: 30px;">
-                            <strong style="color: #1e40af; font-size: 1rem;">${item.nombre || 'Producto'}</strong>
+                            <strong style="color: #1e40af; font-size: 1rem;">${productName}</strong>
                             <div style="font-size: 0.9rem; color: #6b7280; margin-top: 4px;">
-                                Cantidad: <strong>${item.cantidad || 1}</strong> • Precio unitario: <strong>$${item.precio || 0}</strong>
+                                Cantidad: <strong>${productQuantity}</strong> • Precio unitario: <strong>$${productPrice}</strong>
                             </div>
                             ${item.comentarios ? `
                                 <div style="margin-top: 6px; padding: 6px; background: #fef3c7; border-radius: 4px; font-size: 0.85rem; color: #92400e; border-left: 3px solid #f59e0b;">
@@ -1330,7 +1344,7 @@ async function showOrderDetails(orderId) {
                             ` : ''}
                         </div>
                         <div style="font-weight: 700; color: #1e40af; font-size: 1.2rem;">
-                            $${(item.precio || 0) * (item.cantidad || 1)}
+                            $${productPrice * productQuantity}
                         </div>
                     </div>
                 </div>
