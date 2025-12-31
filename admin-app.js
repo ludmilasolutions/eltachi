@@ -2137,3 +2137,488 @@ async function generateReport() {
         
         const reportSummary = document.getElementById('reportSummary');
         if (reportSummary) {
+            reportSummary.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                    <div class="card">
+                        <h4 style="color: #6b7280; font-size: 0.9rem; margin-bottom: 5px;">Total Pedidos</h4>
+                        <div style="font-size: 2rem; font-weight: 800; color: #1e40af;">${totalOrders}</div>
+                    </div>
+                    
+                    <div class="card">
+                        <h4 style="color: #6b7280; font-size: 0.9rem; margin-bottom: 5px;">Ventas Totales</h4>
+                        <div style="font-size: 2rem; font-weight: 800; color: #10b981;">$${totalSales}</div>
+                    </div>
+                    
+                    <div class="card">
+                        <h4 style="color: #6b7280; font-size: 0.9rem; margin-bottom: 5px;">Ticket Promedio</h4>
+                        <div style="font-size: 2rem; font-weight: 800; color: #f59e0b;">$${avgOrderValue.toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h4 style="margin-bottom: 15px;">Distribución por Estado</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                        ${Object.entries(statusCount).map(([status, count]) => `
+                            <div style="text-align: center; padding: 15px; background: #f8fafc; border-radius: 8px;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #1e40af;">${count}</div>
+                                <div style="font-size: 0.9rem; color: #6b7280; margin-top: 5px;">${status}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        updateSalesChart(filteredOrders);
+        
+        showNotification(`Reporte generado para ${period === 'custom' ? 'período personalizado' : period}`, 'success');
+        
+    } catch (error) {
+        console.error('Error generando reporte:', error);
+        showNotification('Error al generar el reporte', 'error');
+    }
+}
+
+function updateSalesChart(orders) {
+    const ctx = document.getElementById('salesChart');
+    if (!ctx) return;
+    
+    if (window.salesChartInstance) {
+        window.salesChartInstance.destroy();
+    }
+    
+    const salesByDay = {};
+    orders.forEach(order => {
+        if (!order.fecha) return;
+        
+        const orderDate = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
+        const dateStr = orderDate.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short'
+        });
+        
+        if (!salesByDay[dateStr]) {
+            salesByDay[dateStr] = 0;
+        }
+        salesByDay[dateStr] += order.total || 0;
+    });
+    
+    const labels = Object.keys(salesByDay);
+    const data = Object.values(salesByDay);
+    
+    window.salesChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Ventas por día',
+                data: data,
+                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                borderColor: '#3b82f6',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value;
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+// FUNCIONES UTILITARIAS ADICIONALES
+async function forceRefreshOrders() {
+    try {
+        showLoading(true);
+        
+        await loadOrders();
+        applyOrderFilter(adminState.currentFilter);
+        updateDashboard();
+        
+        showNotification('✅ Pedidos actualizados manualmente', 'success');
+        
+    } catch (error) {
+        console.error('Error forzando actualización:', error);
+        showNotification('Error al actualizar', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function debugRealtimeUpdates() {
+    console.log('🔍 DEBUG - Estado del sistema:');
+    console.log('- Pedidos cargados:', adminState.orders.length);
+    console.log('- Pedidos filtrados:', adminState.filteredOrders.length);
+    console.log('- Pestaña actual:', adminState.currentTab);
+    console.log('- Filtro actual:', adminState.currentFilter);
+    console.log('- Último pedido ID:', adminState.lastOrderId);
+    console.log('- Realtime habilitado:', adminState.realtimeEnabled);
+    console.log('- Suscripciones activas:', {
+        orders: ordersUnsubscribe ? 'ACTIVA' : 'INACTIVA',
+        products: productsUnsubscribe ? 'ACTIVA' : 'INACTIVA',
+        categories: categoriesUnsubscribe ? 'ACTIVA' : 'INACTIVA',
+        settings: settingsUnsubscribe ? 'ACTIVA' : 'INACTIVA'
+    });
+    
+    // Verificar conexión
+    db.collection('orders').limit(1).get()
+        .then(snap => {
+            console.log('✅ Conexión a Firestore: OK');
+            if (!snap.empty) {
+                console.log('📡 Último pedido en DB:', snap.docs[0].id);
+            }
+        })
+        .catch(err => console.error('❌ Error conexión Firestore:', err));
+}
+
+// EVENT LISTENERS
+function setupAdminEventListeners() {
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', () => {
+            if (confirm('¿Estás seguro de cerrar sesión?')) {
+                stopRealtimeUpdates();
+                auth.signOut();
+            }
+        });
+    }
+    
+    document.querySelectorAll('.nav-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const tab = button.dataset.tab;
+            
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            button.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            const tabElement = document.getElementById(`${tab}Tab`);
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
+            
+            adminState.currentTab = tab;
+            
+            if (tab === 'orders') {
+                updateOrdersTable();
+            } else if (tab === 'products') {
+                updateProductsGrid();
+            } else if (tab === 'dashboard') {
+                updateDashboard();
+            }
+        });
+    });
+    
+    const orderFilter = document.getElementById('orderFilter');
+    if (orderFilter) {
+        orderFilter.addEventListener('change', function() {
+            applyOrderFilter(this.value);
+        });
+    }
+    
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', clearOrderHistory);
+    }
+    
+    const clearAllBtn = document.getElementById('clearAllOrdersBtn');
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', clearAllOrders);
+    }
+    
+    const addProductButton = document.getElementById('addProductButton');
+    if (addProductButton) {
+        addProductButton.addEventListener('click', () => {
+            showNewProductForm();
+        });
+    }
+    
+    const cancelProductFormButton = document.getElementById('cancelProductFormButton');
+    if (cancelProductFormButton) {
+        cancelProductFormButton.addEventListener('click', hideProductForm);
+    }
+    
+    const addCategoryButton = document.getElementById('addCategoryButton');
+    if (addCategoryButton) {
+        addCategoryButton.addEventListener('click', addCategory);
+    }
+    
+    const cancelEditButton = document.getElementById('cancelEditCategoryButton');
+    if (cancelEditButton) {
+        cancelEditButton.addEventListener('click', cancelEditCategory);
+    }
+    
+    const storeToggle = document.getElementById('storeToggle');
+    if (storeToggle) {
+        storeToggle.addEventListener('change', function() {
+            toggleStoreStatus(this);
+        });
+    }
+    
+    const saveSettingsButton = document.getElementById('saveSettingsButton');
+    if (saveSettingsButton) {
+        saveSettingsButton.addEventListener('click', saveSettings);
+    }
+    
+    const reportPeriod = document.getElementById('reportPeriod');
+    if (reportPeriod) {
+        reportPeriod.addEventListener('change', function() {
+            const customRange = document.getElementById('customDateRange');
+            if (customRange) {
+                customRange.style.display = this.value === 'custom' ? 'block' : 'none';
+            }
+        });
+    }
+    
+    const generateReportButton = document.getElementById('generateReportButton');
+    if (generateReportButton) {
+        generateReportButton.addEventListener('click', generateReport);
+    }
+    
+    const closeModalButton = document.getElementById('closeModalButton');
+    if (closeModalButton) {
+        closeModalButton.addEventListener('click', () => {
+            document.getElementById('orderModal').style.display = 'none';
+        });
+    }
+    
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            document.getElementById('orderModal').style.display = 'none';
+        });
+    }
+    
+    const orderModal = document.getElementById('orderModal');
+    if (orderModal) {
+        orderModal.addEventListener('click', (e) => {
+            if (e.target === orderModal) {
+                orderModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Botón de actualización manual
+    const refreshButton = document.createElement('button');
+    refreshButton.className = 'button-secondary';
+    refreshButton.style.cssText = 'margin-left: 10px; padding: 8px 12px; display: flex; align-items: center; gap: 6px;';
+    refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i> Actualizar';
+    refreshButton.onclick = forceRefreshOrders;
+    
+    const filterControls = document.querySelector('.filter-controls');
+    if (filterControls) {
+        filterControls.querySelector('.filter-left')?.appendChild(refreshButton);
+    }
+    
+    // Botón de debug (solo en desarrollo)
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        const debugButton = document.createElement('button');
+        debugButton.className = 'button-secondary';
+        debugButton.style.cssText = 'margin-left: 10px; padding: 8px 12px; background: #6b7280; display: flex; align-items: center; gap: 6px;';
+        debugButton.innerHTML = '<i class="fas fa-bug"></i> Debug';
+        debugButton.onclick = debugRealtimeUpdates;
+        filterControls?.querySelector('.filter-left')?.appendChild(debugButton);
+    }
+}
+
+function setupLoginEvents() {
+    const loginButton = document.getElementById('loginButton');
+    const passwordInput = document.getElementById('passwordInput');
+    
+    if (loginButton) {
+        loginButton.addEventListener('click', handleLogin);
+    }
+    
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+    }
+}
+
+async function handleLogin() {
+    const email = document.getElementById('emailInput').value;
+    const password = document.getElementById('passwordInput').value;
+    const errorElement = document.getElementById('loginError');
+    
+    if (!email || !password) {
+        showError('Por favor completa todos los campos', errorElement);
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        await auth.signInWithEmailAndPassword(email, password);
+        hideError(errorElement);
+    } catch (error) {
+        console.error('Login error:', error);
+        showError('Error al iniciar sesión. Verifica tus credenciales.', errorElement);
+    } finally {
+        showLoading(false);
+    }
+}
+
+function showAdminPanel() {
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('adminContainer').style.display = 'block';
+}
+
+function showLoginScreen() {
+    document.getElementById('loginContainer').style.display = 'block';
+    document.getElementById('adminContainer').style.display = 'none';
+}
+
+// INICIALIZACIÓN PRINCIPAL
+async function initAdminApp() {
+    try {
+        console.log('🚀 Inicializando Panel Admin...');
+        
+        // Verificar conexión a Firebase
+        if (!firebase.apps.length) {
+            showNotification('Error: Firebase no está inicializado', 'error');
+            return;
+        }
+        
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                adminState.currentUser = user;
+                showAdminPanel();
+                
+                // Actualizar avatar de usuario
+                const userAvatar = document.getElementById('userAvatar');
+                if (userAvatar) {
+                    const initials = user.email ? user.email.substring(0, 2).toUpperCase() : 'AD';
+                    userAvatar.innerHTML = initials;
+                    userAvatar.style.background = 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)';
+                }
+                
+                // Cargar datos iniciales
+                await loadAllData();
+                
+                // Configurar eventos
+                setupAdminEventListeners();
+                
+                // Iniciar actualizaciones en tiempo real
+                setTimeout(() => {
+                    startRealtimeUpdates();
+                }, 1000);
+                
+                // Mostrar notificación de conexión
+                showNotification('✅ Panel admin conectado - Actualizaciones en tiempo real activadas', 'success');
+                
+            } else {
+                showLoginScreen();
+                stopRealtimeUpdates();
+            }
+        });
+        
+        setupLoginEvents();
+        
+        console.log('✅ Panel Admin inicializado');
+        
+    } catch (error) {
+        console.error('❌ Error inicializando admin:', error);
+        showNotification('Error inicializando el sistema', 'error');
+    }
+}
+
+// AGREGAR ESTILOS DE ANIMACIÓN
+document.addEventListener('DOMContentLoaded', function() {
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes highlightRow {
+            0% { background-color: #f0f9ff; }
+            100% { background-color: transparent; }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Agregar elementos de audio si no existen
+    if (!document.getElementById('notificationSound')) {
+        const notificationSound = document.createElement('audio');
+        notificationSound.id = 'notificationSound';
+        notificationSound.preload = 'auto';
+        notificationSound.style.display = 'none';
+        notificationSound.innerHTML = `
+            <source src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" type="audio/mpeg">
+        `;
+        document.body.appendChild(notificationSound);
+    }
+    
+    if (!document.getElementById('newOrderSound')) {
+        const newOrderSound = document.createElement('audio');
+        newOrderSound.id = 'newOrderSound';
+        newOrderSound.preload = 'auto';
+        newOrderSound.style.display = 'none';
+        newOrderSound.innerHTML = `
+            <source src="https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3" type="audio/mpeg">
+        `;
+        document.body.appendChild(newOrderSound);
+    }
+});
+
+// INICIALIZAR LA APLICACIÓN
+document.addEventListener('DOMContentLoaded', initAdminApp);
+
+// EXPORTAR FUNCIONES GLOBALES
+window.updateOrderStatus = updateOrderStatus;
+window.updateOrderTime = updateOrderTime;
+window.showOrderDetails = showOrderDetails;
+window.openWhatsAppAdmin = openWhatsAppAdmin;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
+window.editCategory = editCategory;
+window.deleteCategory = deleteCategory;
+window.toggleStoreStatus = toggleStoreStatus;
+window.addCategory = addCategory;
+window.cancelEditCategory = cancelEditCategory;
+window.applyOrderFilter = applyOrderFilter;
+window.clearOrderHistory = clearOrderHistory;
+window.clearAllOrders = clearAllOrders;
+window.forceRefreshOrders = forceRefreshOrders;
+window.debugRealtimeUpdates = debugRealtimeUpdates;
+window.toggleRealtimeUpdates = toggleRealtimeUpdates;
+window.showNotification = showNotification;
