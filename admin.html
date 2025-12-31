@@ -13,6 +13,9 @@
     <!-- Chart.js para gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         /* RESET Y VARIABLES */
         * {
@@ -361,12 +364,13 @@
             overflow: hidden;
             box-shadow: var(--sombra);
             margin-bottom: 30px;
+            overflow-x: auto;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 800px;
+            min-width: 1000px;
         }
         
         thead {
@@ -409,7 +413,7 @@
         }
         
         .button-whatsapp {
-            background: #25d366;
+            background: #25D366;
             color: var(--blanco);
         }
         
@@ -709,11 +713,7 @@
             }
             
             .table-container {
-                overflow-x: auto;
-            }
-            
-            table {
-                min-width: 1000px;
+                font-size: 0.85rem;
             }
         }
         
@@ -786,6 +786,88 @@
         
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        
+        /* Estilos adicionales para la gestión de pedidos mejorada */
+        .status-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding: 6px 30px 6px 12px;
+            border-radius: 20px;
+            border: none;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 12px;
+            min-width: 140px;
+        }
+        
+        .status-select.recibido {
+            background-color: #3b82f6;
+        }
+        
+        .status-select.preparacion {
+            background-color: #f59e0b;
+        }
+        
+        .status-select.listo {
+            background-color: #10b981;
+        }
+        
+        .status-select.entregado {
+            background-color: #6b7280;
+        }
+        
+        .time-input {
+            width: 50px;
+            padding: 4px 6px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .time-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .badge-urgente {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border: 1px solid #fcd34d;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        /* Tooltip para comentarios */
+        [title] {
+            position: relative;
+        }
+        
+        [title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            max-width: 300px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -1273,9 +1355,6 @@
     
     <!-- ARCHIVO JS DEL PANEL -->
     <script src="admin-app.js"></script>
-    
-    <!-- FONT AWESOME -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     
     <!-- SCRIPT ADICIONAL -->
     <script>
