@@ -8,12 +8,12 @@
     <meta name="theme-color" content="#3B82F6">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/manifest.json?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="logo.png">
+    <!-- Favicon con versión -->
+    <link rel="icon" type="image/png" href="logo.png?v=2">
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -21,7 +21,14 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Meta tags para evitar caché -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <style>
+        /* AGREGAR ESTO AL INICIO DE TU CSS */
+        /* VERSIÓN DEL CSS: 2.0 - FECHA: 2024 */
         :root {
             --azul-electrico: #3B82F6;
             --azul-oscuro: #1E40AF;
@@ -1355,7 +1362,7 @@
             <div class="header-top">
                 <div class="logo">
                     <div class="logo-icon">
-                        <img src="logo.png" alt="EL TACHI">
+                        <img src="logo.png?v=2" alt="EL TACHI">
                     </div>
                     <div class="logo-text">
                         <div class="store-name">EL TACHI</div>
@@ -1599,10 +1606,43 @@
         <span id="toastMessage">Producto agregado al carrito</span>
     </div>
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <!-- SCRIPT DE CACHÉ Y VERSIÓN -->
+    <script>
+        // VERSIÓN DE LA APLICACIÓN - Cambia este número cada vez que hagas cambios
+        const APP_VERSION = '2.0';
+        
+        // Forzar recarga si la versión es diferente
+        const storedVersion = localStorage.getItem('app_version');
+        if (storedVersion !== APP_VERSION) {
+            console.log('Nueva versión detectada. Limpiando caché...');
+            localStorage.setItem('app_version', APP_VERSION);
+            
+            // Limpiar caché del service worker si existe
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                });
+            }
+            
+            // Limpiar localStorage específico de la app
+            localStorage.removeItem('eltachi_cart');
+            
+            // Recargar la página para aplicar cambios
+            window.location.reload();
+        }
+        
+        // Agregar parámetro de versión a todos los scripts
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('App versión', APP_VERSION, 'cargada');
+        });
+    </script>
+    
+    <!-- Firebase SDK con versión -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js?v=2"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js?v=2"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js?v=2"></script>
     
     <script>
         // Configuración de Firebase
@@ -2418,69 +2458,87 @@
             initApp();
         }
         
-        // Service Worker para PWA
+        // Service Worker simplificado sin caché
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registrado:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('ServiceWorker error:', error);
+            navigator.serviceWorker.register('/sw-nocache.js?v=2')
+                .then(registration => {
+                    console.log('ServiceWorker registrado sin caché:', registration.scope);
+                    
+                    // Forzar actualización del service worker
+                    registration.update();
+                    
+                    // Escuchar cambios
+                    registration.addEventListener('updatefound', () => {
+                        console.log('Nuevo Service Worker encontrado');
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('Nuevo Service Worker instalado. Recargando...');
+                                window.location.reload();
+                            }
+                        });
                     });
-            });
+                })
+                .catch(error => {
+                    console.log('ServiceWorker error:', error);
+                });
         }
         
-        // PWA Installation
+        // PWA Installation - Deshabilitado temporalmente para desarrollo
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             
-            // Mostrar botón de instalación después de 10 segundos
-            setTimeout(() => {
-                if (deferredPrompt) {
-                    const installBtn = document.createElement('button');
-                    installBtn.innerHTML = '<i class="fas fa-download"></i> Instalar App';
-                    installBtn.style.cssText = `
-                        position: fixed;
-                        bottom: 5rem;
-                        right: 1rem;
-                        background: var(--amarillo);
-                        color: var(--gris-oscuro);
-                        border: 2px solid var(--azul-electrico);
-                        border-radius: 10px;
-                        padding: 0.75rem 1.25rem;
-                        font-weight: 600;
-                        font-size: 0.9rem;
-                        cursor: pointer;
-                        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-                        z-index: 1000;
-                        display: flex;
-                        align-items: center;
-                        gap: 0.5rem;
-                    `;
-                    installBtn.onclick = () => {
-                        deferredPrompt.prompt();
-                        deferredPrompt.userChoice.then((choiceResult) => {
-                            if (choiceResult.outcome === 'accepted') {
-                                console.log('App instalada');
+            // Mostrar botón de instalación después de 30 segundos (solo en producción)
+            if (!window.location.hostname.includes('localhost')) {
+                setTimeout(() => {
+                    if (deferredPrompt) {
+                        const installBtn = document.createElement('button');
+                        installBtn.innerHTML = '<i class="fas fa-download"></i> Instalar App';
+                        installBtn.style.cssText = `
+                            position: fixed;
+                            bottom: 5rem;
+                            right: 1rem;
+                            background: var(--amarillo);
+                            color: var(--gris-oscuro);
+                            border: 2px solid var(--azul-electrico);
+                            border-radius: 10px;
+                            padding: 0.75rem 1.25rem;
+                            font-weight: 600;
+                            font-size: 0.9rem;
+                            cursor: pointer;
+                            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+                            z-index: 1000;
+                            display: flex;
+                            align-items: center;
+                            gap: 0.5rem;
+                        `;
+                        installBtn.onclick = () => {
+                            deferredPrompt.prompt();
+                            deferredPrompt.userChoice.then((choiceResult) => {
+                                if (choiceResult.outcome === 'accepted') {
+                                    console.log('App instalada');
+                                }
+                                deferredPrompt = null;
+                                installBtn.remove();
+                            });
+                        };
+                        document.body.appendChild(installBtn);
+                        
+                        // Remover después de 30 segundos
+                        setTimeout(() => {
+                            if (installBtn.parentNode) {
+                                installBtn.remove();
                             }
-                            deferredPrompt = null;
-                            installBtn.remove();
-                        });
-                    };
-                    document.body.appendChild(installBtn);
-                    
-                    // Remover después de 30 segundos
-                    setTimeout(() => {
-                        if (installBtn.parentNode) {
-                            installBtn.remove();
-                        }
-                    }, 30000);
-                }
-            }, 10000);
+                        }, 30000);
+                    }
+                }, 30000);
+            }
         });
+        
+        // Debug: mostrar versión actual
+        console.log('App EL TACHI versión:', APP_VERSION);
     </script>
 </body>
 </html>
