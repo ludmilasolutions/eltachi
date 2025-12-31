@@ -8,17 +8,12 @@
     <meta name="theme-color" content="#3B82F6">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json?v=3">
+    <link rel="manifest" href="/manifest.json?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="EL TACHI">
     
-    <!-- Apple Touch Icon -->
-    <link rel="apple-touch-icon" href="logo.png?v=2">
-    
-    <!-- Favicon -->
+    <!-- Favicon con versión -->
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="shortcut icon" href="logo.png?v=2">
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -32,7 +27,8 @@
     <meta http-equiv="Expires" content="0">
     
     <style>
-        /* VERSIÓN DEL CSS: 3.0 - FECHA: 2024 */
+        /* AGREGAR ESTO AL INICIO DE TU CSS */
+        /* VERSIÓN DEL CSS: 2.0 - FECHA: 2024 */
         :root {
             --azul-electrico: #3B82F6;
             --azul-oscuro: #1E40AF;
@@ -70,7 +66,6 @@
             font-weight: 400;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            overscroll-behavior: none;
         }
         
         /* APP CONTAINER */
@@ -84,7 +79,7 @@
             box-shadow: 0 0 40px rgba(59, 130, 246, 0.05);
         }
         
-        /* HEADER */
+        /* HEADER - Azul eléctrico */
         .header {
             background: var(--gradiente-azul);
             padding: 0.75rem 1rem 0.75rem;
@@ -240,6 +235,10 @@
             font-weight: 500;
         }
         
+        .delivery-info i {
+            font-size: 0.9rem;
+        }
+        
         /* CATEGORÍAS */
         .categories-container {
             padding: 1rem 1rem 0.5rem;
@@ -289,7 +288,7 @@
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
         
-        /* PRODUCTOS */
+        /* PRODUCTOS - Sin espacio para foto */
         .products-container {
             padding: 0.5rem 1rem 5rem;
             background: linear-gradient(180deg, var(--gris-claro) 0%, var(--blanco) 50px);
@@ -317,6 +316,7 @@
             border-color: var(--azul-electrico);
         }
         
+        /* BADGE DEL PRODUCTO */
         .product-badge {
             position: absolute;
             top: 12px;
@@ -471,7 +471,7 @@
             border-color: var(--azul-electrico);
         }
         
-        /* BOTÓN FLOTANTE */
+        /* BOTÓN FLOTANTE - Azul eléctrico con amarillo */
         .cart-button-floating {
             position: fixed;
             bottom: 1.5rem;
@@ -497,6 +497,10 @@
             transform: translateY(-3px) scale(1.05);
             box-shadow: 0 12px 40px rgba(245, 158, 11, 0.5);
             background: var(--amarillo-oscuro);
+        }
+        
+        .cart-button-floating:active {
+            transform: translateY(-1px);
         }
         
         /* CARRITO */
@@ -1348,38 +1352,6 @@
         .floating {
             animation: float 3s ease-in-out infinite;
         }
-        
-        /* INSTALL PROMPT */
-        .install-prompt {
-            position: fixed;
-            bottom: 5rem;
-            right: 1rem;
-            background: var(--amarillo);
-            color: var(--gris-oscuro);
-            border: 2px solid var(--azul-electrico);
-            border-radius: 10px;
-            padding: 0.75rem 1.25rem;
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            animation: slideInRight 0.3s ease-out;
-        }
-        
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        .install-prompt:hover {
-            background: var(--amarillo-oscuro);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-        }
     </style>
 </head>
 <body>
@@ -1423,7 +1395,7 @@
             </div>
         </div>
         
-        <!-- PRODUCTOS -->
+        <!-- PRODUCTOS - Sin espacio para fotos -->
         <div class="products-container">
             <div class="products-grid" id="productsGrid">
                 <div class="loading">
@@ -1439,12 +1411,6 @@
         <i class="fas fa-shopping-cart"></i>
         <span class="cart-count" id="cartCountFloating">0</span>
     </button>
-    
-    <!-- INSTALL PROMPT -->
-    <div class="install-prompt" id="installPrompt" style="display: none;">
-        <i class="fas fa-download"></i>
-        Instalar App
-    </div>
     
     <!-- CARRITO -->
     <div class="cart-overlay" id="cartOverlay">
@@ -1640,9 +1606,10 @@
         <span id="toastMessage">Producto agregado al carrito</span>
     </div>
     
+    <!-- SCRIPT DE CACHÉ Y VERSIÓN -->
     <script>
-        // VERSIÓN DE LA APLICACIÓN
-        const APP_VERSION = '3.0';
+        // VERSIÓN DE LA APLICACIÓN - Cambia este número cada vez que hagas cambios
+        const APP_VERSION = '2.0';
         
         // Forzar recarga si la versión es diferente
         const storedVersion = localStorage.getItem('app_version');
@@ -1650,7 +1617,7 @@
             console.log('Nueva versión detectada. Limpiando caché...');
             localStorage.setItem('app_version', APP_VERSION);
             
-            // Limpiar caché del service worker
+            // Limpiar caché del service worker si existe
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
                     for(let registration of registrations) {
@@ -1659,13 +1626,25 @@
                 });
             }
             
-            // Limpiar localStorage
+            // Limpiar localStorage específico de la app
             localStorage.removeItem('eltachi_cart');
             
-            // Recargar la página
+            // Recargar la página para aplicar cambios
             window.location.reload();
         }
         
+        // Agregar parámetro de versión a todos los scripts
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('App versión', APP_VERSION, 'cargada');
+        });
+    </script>
+    
+    <!-- Firebase SDK con versión -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js?v=2"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js?v=2"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js?v=2"></script>
+    
+    <script>
         // Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
@@ -1709,12 +1688,8 @@
             statusDot: document.getElementById('statusDot'),
             deliveryInfo: document.getElementById('deliveryInfo'),
             toast: document.getElementById('toast'),
-            toastMessage: document.getElementById('toastMessage'),
-            installPrompt: document.getElementById('installPrompt')
+            toastMessage: document.getElementById('toastMessage')
         };
-        
-        // PWA Installation
-        let deferredPrompt;
         
         // Toast Notification
         function showToast(message, type = 'success') {
@@ -1747,6 +1722,7 @@
                     updateStoreStatus();
                     updateDeliveryInfo();
                 } else {
+                    // Configuración por defecto
                     appState.settings = {
                         abierto: true,
                         precio_envio: 300,
@@ -1847,6 +1823,7 @@
         function renderProducts() {
             const container = elements.productsGrid;
             
+            // Filtrar productos por categoría
             let filteredProducts = appState.products;
             if (appState.currentCategory !== 'all') {
                 filteredProducts = appState.products.filter(
@@ -1871,6 +1848,7 @@
                 const cartItem = appState.cart.find(item => item.id === product.id);
                 const quantity = cartItem ? cartItem.quantity : 0;
                 
+                // Determinar badge según propiedades del producto
                 let badges = '';
                 if (product.nuevo) {
                     badges += '<span class="badge nuevo">NUEVO</span>';
@@ -1925,7 +1903,7 @@
                 container.appendChild(card);
             });
             
-            // Agregar event listeners
+            // Agregar event listeners a los botones
             container.querySelectorAll('.add-to-cart-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const productId = e.target.dataset.productId;
@@ -2000,6 +1978,7 @@
             saveCart();
             renderProducts();
             
+            // Feedback visual
             elements.cartButton.style.transform = 'scale(1.1)';
             setTimeout(() => {
                 elements.cartButton.style.transform = 'scale(1)';
@@ -2043,6 +2022,7 @@
             
             elements.cartTotal.textContent = `$${getCartTotal()}`;
             
+            // Actualizar botón de checkout
             elements.checkoutBtn.disabled = totalItems === 0;
             
             renderCartItems();
@@ -2132,6 +2112,7 @@
             const modal = elements.checkoutModal;
             modal.style.display = 'flex';
             
+            // Resetear formulario
             document.getElementById('customerName').value = '';
             document.getElementById('customerPhone').value = '';
             document.getElementById('customerAddress').value = '';
@@ -2143,6 +2124,7 @@
         }
         
         function setCheckoutStep(step) {
+            // Actualizar pasos
             document.querySelectorAll('.step').forEach(stepEl => {
                 stepEl.classList.remove('active');
                 if (parseInt(stepEl.dataset.step) === step) {
@@ -2150,6 +2132,7 @@
                 }
             });
             
+            // Mostrar sección correspondiente
             document.querySelectorAll('.checkout-section').forEach(section => {
                 section.classList.remove('active');
             });
@@ -2159,6 +2142,7 @@
         }
         
         function goToConfirm() {
+            // Validar datos
             const customerName = document.getElementById('customerName').value.trim();
             const customerPhone = document.getElementById('customerPhone').value.trim();
             const deliveryType = document.querySelector('input[name="deliveryType"]:checked');
@@ -2181,6 +2165,7 @@
                 }
             }
             
+            // Actualizar resumen
             document.getElementById('confirmCustomerName').textContent = customerName;
             document.getElementById('confirmCustomerPhone').textContent = customerPhone;
             document.getElementById('confirmDeliveryType').textContent = 
@@ -2223,6 +2208,7 @@
                 subtotal += item.total;
             });
             
+            // Calcular envío
             const deliveryType = document.querySelector('input[name="deliveryType"]:checked');
             let deliveryCost = 0;
             
@@ -2241,17 +2227,20 @@
             container.innerHTML = html;
             totalElement.textContent = `$${total}`;
             
+            // Actualizar en la pantalla final
             document.getElementById('orderTotalDisplay').textContent = `$${total}`;
         }
         
         async function confirmOrder() {
             try {
+                // Obtener datos
                 const customerName = document.getElementById('customerName').value.trim();
                 const customerPhone = document.getElementById('customerPhone').value.trim();
                 const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
                 const customerAddress = document.getElementById('customerAddress').value.trim();
                 const orderComments = document.getElementById('orderComments').value.trim();
                 
+                // Calcular total
                 let subtotal = getCartTotal();
                 let deliveryCost = 0;
                 
@@ -2261,8 +2250,10 @@
                 
                 const total = subtotal + deliveryCost;
                 
+                // Generar ID de pedido
                 const orderId = `TACHI-${Date.now().toString().slice(-6)}`;
                 
+                // Crear pedido en Firestore
                 const orderData = {
                     id_pedido: orderId,
                     fecha: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2281,10 +2272,12 @@
                 
                 await db.collection('orders').doc(orderId).set(orderData);
                 
+                // Actualizar pantalla final
                 document.getElementById('orderIdDisplay').textContent = orderId;
                 document.getElementById('orderTimeDisplay').textContent = 
                     `${appState.settings?.tiempo_base_estimado || 30} minutos`;
                 
+                // Guardar datos para WhatsApp
                 window.lastOrderData = {
                     id: orderId,
                     phone: customerPhone,
@@ -2338,6 +2331,7 @@
             const whatsappNumber = appState.settings?.telefono_whatsapp || '5491122334455';
             window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
             
+            // Limpiar carrito
             clearCart();
         }
         
@@ -2368,30 +2362,6 @@
                 <i class="fas fa-clock"></i>
                 <span>${appState.settings.tiempo_base_estimado || 30} min • Envío $${appState.settings.precio_envio || 0}</span>
             `;
-        }
-        
-        // PWA Installation Handler
-        function showInstallPrompt() {
-            if (deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
-                elements.installPrompt.style.display = 'flex';
-                
-                elements.installPrompt.onclick = () => {
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') {
-                            console.log('Usuario instaló la PWA');
-                            elements.installPrompt.style.display = 'none';
-                        }
-                        deferredPrompt = null;
-                    });
-                };
-                
-                setTimeout(() => {
-                    if (elements.installPrompt.style.display === 'flex') {
-                        elements.installPrompt.style.display = 'none';
-                    }
-                }, 10000);
-            }
         }
         
         // EVENT LISTENERS
@@ -2461,60 +2431,11 @@
                     elements.checkoutModal.style.display = 'none';
                 }
             });
-            
-            // PWA Installation Event
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                
-                // Mostrar el botón de instalación después de 5 segundos
-                setTimeout(() => {
-                    showInstallPrompt();
-                }, 5000);
-            });
-            
-            // Detectar si ya está instalada
-            window.addEventListener('appinstalled', () => {
-                console.log('PWA instalada');
-                elements.installPrompt.style.display = 'none';
-                deferredPrompt = null;
-            });
-        }
-        
-        // Service Worker Registration
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('sw.js?v=3')
-                        .then(registration => {
-                            console.log('Service Worker registrado:', registration.scope);
-                            
-                            // Forzar actualización
-                            registration.update();
-                            
-                            registration.addEventListener('updatefound', () => {
-                                const newWorker = registration.installing;
-                                newWorker.addEventListener('statechange', () => {
-                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                        console.log('Nuevo Service Worker instalado. Recargando...');
-                                        window.location.reload();
-                                    }
-                                });
-                            });
-                        })
-                        .catch(error => {
-                            console.log('Error registrando Service Worker:', error);
-                        });
-                });
-            }
         }
         
         // INICIALIZAR APP
         async function initApp() {
             console.log('🚀 Inicializando EL TACHI...');
-            
-            // Registrar Service Worker
-            registerServiceWorker();
             
             // Cargar datos
             await loadSettings();
@@ -2530,12 +2451,94 @@
             console.log('✅ App lista para usar');
         }
         
-        // Inicializar
+        // Inicializar cuando el DOM esté listo
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initApp);
         } else {
             initApp();
         }
+        
+        // Service Worker simplificado sin caché
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw-nocache.js?v=2')
+                .then(registration => {
+                    console.log('ServiceWorker registrado sin caché:', registration.scope);
+                    
+                    // Forzar actualización del service worker
+                    registration.update();
+                    
+                    // Escuchar cambios
+                    registration.addEventListener('updatefound', () => {
+                        console.log('Nuevo Service Worker encontrado');
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('Nuevo Service Worker instalado. Recargando...');
+                                window.location.reload();
+                            }
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.log('ServiceWorker error:', error);
+                });
+        }
+        
+        // PWA Installation - Deshabilitado temporalmente para desarrollo
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Mostrar botón de instalación después de 30 segundos (solo en producción)
+            if (!window.location.hostname.includes('localhost')) {
+                setTimeout(() => {
+                    if (deferredPrompt) {
+                        const installBtn = document.createElement('button');
+                        installBtn.innerHTML = '<i class="fas fa-download"></i> Instalar App';
+                        installBtn.style.cssText = `
+                            position: fixed;
+                            bottom: 5rem;
+                            right: 1rem;
+                            background: var(--amarillo);
+                            color: var(--gris-oscuro);
+                            border: 2px solid var(--azul-electrico);
+                            border-radius: 10px;
+                            padding: 0.75rem 1.25rem;
+                            font-weight: 600;
+                            font-size: 0.9rem;
+                            cursor: pointer;
+                            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+                            z-index: 1000;
+                            display: flex;
+                            align-items: center;
+                            gap: 0.5rem;
+                        `;
+                        installBtn.onclick = () => {
+                            deferredPrompt.prompt();
+                            deferredPrompt.userChoice.then((choiceResult) => {
+                                if (choiceResult.outcome === 'accepted') {
+                                    console.log('App instalada');
+                                }
+                                deferredPrompt = null;
+                                installBtn.remove();
+                            });
+                        };
+                        document.body.appendChild(installBtn);
+                        
+                        // Remover después de 30 segundos
+                        setTimeout(() => {
+                            if (installBtn.parentNode) {
+                                installBtn.remove();
+                            }
+                        }, 30000);
+                    }
+                }, 30000);
+            }
+        });
+        
+        // Debug: mostrar versión actual
+        console.log('App EL TACHI versión:', APP_VERSION);
     </script>
 </body>
 </html>
