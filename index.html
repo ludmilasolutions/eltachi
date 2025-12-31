@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EL TACHI - Pedidos Online</title>
     <meta name="description" content="Pedí online en EL TACHI Rotisería. Hamburguesas, asado, empanadas y más. Envío a domicilio y retiro en local.">
-    <meta name="theme-color" content="#1e40af">
+    <meta name="theme-color" content="#2563EB">
     
     <!-- Manifest PWA -->
     <link rel="manifest" href="manifest.json">
@@ -14,28 +14,28 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍔</text></svg>">
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         :root {
-            --azul-primario: #1e40af;
-            --azul-secundario: #3b82f6;
-            --amarillo-primario: #f59e0b;
-            --amarillo-secundario: #fbbf24;
-            --verde: #10b981;
-            --rojo: #ef4444;
-            --gris-oscuro: #111827;
-            --gris-medio: #6b7280;
-            --gris-claro: #f3f4f6;
-            --gris-border: #e5e7eb;
-            --blanco: #ffffff;
-            --sombra: 0 10px 40px rgba(0, 0, 0, 0.1);
-            --sombra-botones: 0 4px 20px rgba(30, 64, 175, 0.2);
-            --gradiente-azul: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            --gradiente-amarillo: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            --azul-primario: #2563EB;
+            --azul-secundario: #3B82F6;
+            --azul-electrico: #3B82F6;
+            --azul-oscuro: #1E40AF;
+            --naranja: #F97316;
+            --verde: #10B981;
+            --gris-oscuro: #1F2937;
+            --gris-medio: #6B7280;
+            --gris-claro: #F3F4F6;
+            --gris-border: #E5E7EB;
+            --blanco: #FFFFFF;
+            --sombra: 0 2px 10px rgba(0, 0, 0, 0.05);
+            --sombra-elevada: 0 10px 25px rgba(0, 0, 0, 0.1);
+            --gradiente-azul: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+            --gradiente-hover: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
         }
         
         * {
@@ -47,13 +47,15 @@
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--gris-claro);
+            background: var(--blanco);
             color: var(--gris-oscuro);
-            line-height: 1.6;
-            min-height: 100vh;
+            line-height: 1.5;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
-        /* APP CONTAINER */
+        /* APP CONTAINER - Minimalista */
         .app-container {
             max-width: 500px;
             margin: 0 auto;
@@ -61,25 +63,27 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            box-shadow: var(--sombra);
+            position: relative;
+            overflow-x: hidden;
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.05);
         }
         
-        /* HEADER */
+        /* HEADER - Estilo premium */
         .header {
-            background: var(--gradiente-azul);
-            color: var(--blanco);
-            padding: 1rem 1rem 1.5rem;
+            background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
+            padding: 0.75rem 1rem 0.75rem;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 4px 20px rgba(30, 64, 175, 0.3);
+            box-shadow: 0 4px 20px rgba(30, 64, 175, 0.2);
+            color: white;
         }
         
         .header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
         }
         
         .logo {
@@ -89,97 +93,135 @@
         }
         
         .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: var(--amarillo-primario);
+            width: 42px;
+            height: 42px;
+            background: var(--blanco);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--azul-primario);
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .logo-text {
+            display: flex;
+            flex-direction: column;
         }
         
         .store-name {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 800;
-            line-height: 1;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: white;
         }
         
-        .cart-button {
+        .store-subtitle {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+        
+        .cart-button-header {
             background: rgba(255, 255, 255, 0.15);
-            border: none;
-            border-radius: 12px;
-            width: 50px;
-            height: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            width: 44px;
+            height: 44px;
             color: white;
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             cursor: pointer;
             position: relative;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
         }
         
-        .cart-button:hover {
+        .cart-button-header:hover {
             background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
         }
         
         .cart-count {
             position: absolute;
-            top: -5px;
-            right: -5px;
-            background: var(--rojo);
-            color: white;
-            font-size: 0.75rem;
-            font-weight: 600;
-            width: 20px;
+            top: -6px;
+            right: -6px;
+            background: white;
+            color: var(--azul-primario);
+            font-size: 0.7rem;
+            font-weight: 700;
+            min-width: 20px;
             height: 20px;
-            border-radius: 50%;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
+            border: 2px solid var(--azul-primario);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
         
-        .status-bar {
+        /* INFO BAR */
+        .info-bar {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            font-size: 0.875rem;
-            margin-top: 0.5rem;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            font-size: 0.85rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.6rem 1rem;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .status-indicator {
-            display: inline-flex;
+        .status {
+            display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.375rem 0.75rem;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 50px;
-            font-weight: 600;
         }
         
         .status-dot {
             width: 8px;
             height: 8px;
-            background: var(--verde);
+            background: #10B981;
             border-radius: 50%;
-            animation: pulse 2s infinite;
+            box-shadow: 0 0 8px #10B981;
         }
         
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.05); }
+        .status-text {
+            font-weight: 500;
+            color: white;
         }
         
-        /* CATEGORÍAS */
+        .delivery-time {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .delivery-time i {
+            font-size: 0.9rem;
+        }
+        
+        /* CATEGORÍAS - Estilo minimalista */
         .categories-container {
             padding: 1rem;
             background: var(--blanco);
-            border-bottom: 1px solid var(--gris-border);
             overflow-x: auto;
             white-space: nowrap;
             scrollbar-width: none;
+            border-bottom: 1px solid var(--gris-border);
         }
         
         .categories-container::-webkit-scrollbar {
@@ -192,135 +234,141 @@
         }
         
         .category-tab {
-            padding: 0.75rem 1.25rem;
-            background: var(--gris-claro);
-            border: none;
-            border-radius: 50px;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
+            padding: 0.65rem 1.25rem;
+            background: var(--blanco);
+            border: 1px solid var(--gris-border);
+            border-radius: 8px;
+            font-weight: 500;
             color: var(--gris-medio);
             cursor: pointer;
             transition: all 0.2s;
             white-space: nowrap;
+            font-size: 0.9rem;
+        }
+        
+        .category-tab:hover {
+            border-color: var(--azul-primario);
+            color: var(--azul-primario);
         }
         
         .category-tab.active {
-            background: var(--gradiente-azul);
+            background: var(--azul-primario);
+            border-color: var(--azul-primario);
             color: var(--blanco);
-            box-shadow: 0 4px 15px rgba(30, 64, 175, 0.2);
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
         
-        /* PRODUCTOS */
+        /* PRODUCTOS - Diseño premium SIN FOTOS */
         .products-container {
             flex: 1;
-            padding: 1rem;
             overflow-y: auto;
+            padding-bottom: 80px;
+            background: linear-gradient(180deg, var(--gris-claro) 0%, var(--blanco) 100px);
         }
         
-        .products-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-        
-        .product-card {
-            background: var(--blanco);
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid var(--gris-border);
-            transition: all 0.3s;
-        }
-        
-        .product-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--sombra);
-        }
-        
-        .product-image {
-            height: 180px;
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        .products-list {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 4rem;
-            color: var(--gris-medio);
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0 1rem;
         }
         
-        .product-content {
+        .product-item {
             padding: 1.25rem;
+            border-radius: 12px;
+            background: var(--blanco);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: block;
+            border: 1px solid var(--gris-border);
+            box-shadow: var(--sombra);
+            margin-bottom: 0.5rem;
+        }
+        
+        .product-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.1);
+            border-color: var(--azul-primario);
+        }
+        
+        .product-info {
+            width: 100%;
         }
         
         .product-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
+            gap: 0.5rem;
         }
         
         .product-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.125rem;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--gris-oscuro);
+            font-size: 1rem;
+            line-height: 1.4;
             flex: 1;
         }
         
         .product-price {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--azul-primario);
-            margin-left: 1rem;
+            font-size: 1.2rem;
+            white-space: nowrap;
         }
         
         .product-description {
             color: var(--gris-medio);
-            font-size: 0.9375rem;
-            margin-bottom: 1rem;
+            font-size: 0.85rem;
             line-height: 1.5;
+            margin-bottom: 0.75rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         
-        .product-includes {
-            background: var(--gris-claro);
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin-bottom: 1.25rem;
+        .product-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
         }
         
-        .includes-label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--gris-oscuro);
-            margin-bottom: 0.25rem;
-        }
-        
-        .includes-items {
-            font-size: 0.875rem;
-            color: var(--gris-medio);
+        .product-tag {
+            background: rgba(37, 99, 235, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--azul-primario);
+            font-weight: 500;
         }
         
         .product-actions {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
             gap: 0.75rem;
         }
         
         .quantity-controls {
             display: flex;
             align-items: center;
-            background: var(--gris-claro);
-            border-radius: 50px;
-            padding: 0.5rem;
+            background: var(--blanco);
+            border: 1px solid var(--gris-border);
+            border-radius: 6px;
+            overflow: hidden;
         }
         
         .quantity-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
+            width: 32px;
+            height: 32px;
             border: none;
             background: var(--blanco);
-            color: var(--azul-primario);
-            font-size: 1.125rem;
-            font-weight: 600;
+            color: var(--gris-oscuro);
+            font-size: 1rem;
+            font-weight: 500;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -330,35 +378,113 @@
         
         .quantity-btn:hover {
             background: var(--gris-claro);
+            color: var(--azul-primario);
         }
         
         .quantity-display {
-            min-width: 40px;
+            width: 36px;
             text-align: center;
             font-weight: 600;
-            font-size: 1.125rem;
+            font-size: 0.9rem;
+            color: var(--gris-oscuro);
+            border-left: 1px solid var(--griz-border);
+            border-right: 1px solid var(--griz-border);
         }
         
         .add-to-cart-btn {
-            flex: 1;
-            padding: 0.875rem;
-            background: var(--gradiente-amarillo);
-            border: none;
-            border-radius: 50px;
+            padding: 0.5rem 1rem;
+            background: var(--blanco);
+            border: 1px solid var(--azul-primario);
+            border-radius: 6px;
             color: var(--azul-primario);
-            font-family: 'Poppins', sans-serif;
-            font-weight: 700;
-            font-size: 0.9375rem;
+            font-weight: 600;
+            font-size: 0.85rem;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
         }
         
         .add-to-cart-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            background: var(--azul-primario);
+            color: var(--blanco);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
         
-        /* CARRITO */
+        .add-to-cart-btn.added {
+            background: var(--azul-primario);
+            color: var(--blanco);
+        }
+        
+        /* BOTÓN DEL CARRITO EN LA PARTE INFERIOR - Moderno */
+        .cart-button-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--gradiente-azul);
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 900;
+            box-shadow: 0 -4px 20px rgba(37, 99, 235, 0.3);
+            transition: all 0.3s;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .cart-bottom-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+        
+        .cart-bottom-icon {
+            position: relative;
+        }
+        
+        .cart-bottom-icon i {
+            font-size: 1.5rem;
+        }
+        
+        .cart-bottom-info {
+            flex: 1;
+        }
+        
+        .cart-bottom-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .cart-bottom-total {
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+        
+        .cart-bottom-button {
+            padding: 0.75rem 1.5rem;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            color: var(--azul-primario);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        .cart-bottom-button:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* CARRITO - Diseño premium azul */
         .cart-overlay {
             position: fixed;
             top: 0;
@@ -369,15 +495,23 @@
             z-index: 1000;
             display: none;
             align-items: flex-end;
+            backdrop-filter: blur(5px);
         }
         
         .cart-panel {
             background: var(--blanco);
             border-radius: 24px 24px 0 0;
             width: 100%;
-            max-height: 80vh;
+            max-height: 85vh;
             display: flex;
             flex-direction: column;
+            animation: slideUp 0.3s ease-out;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
         }
         
         .cart-header {
@@ -386,19 +520,21 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
+            color: white;
+            border-radius: 24px 24px 0 0;
         }
         
         .cart-title {
-            font-family: 'Poppins', sans-serif;
             font-size: 1.5rem;
             font-weight: 700;
         }
         
         .close-cart {
-            background: none;
+            background: rgba(255, 255, 255, 0.2);
             border: none;
-            font-size: 1.5rem;
-            color: var(--gris-medio);
+            font-size: 1.25rem;
+            color: white;
             cursor: pointer;
             width: 40px;
             height: 40px;
@@ -406,25 +542,35 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.2s;
         }
         
         .close-cart:hover {
-            background: var(--gris-claro);
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
         }
         
         .cart-items {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 1.5rem;
+            background: var(--gris-claro);
         }
         
         .cart-item {
             display: flex;
-            padding: 1rem;
-            border: 1px solid var(--gris-border);
+            padding: 1.25rem;
+            border: none;
             border-radius: 12px;
             margin-bottom: 0.75rem;
             background: var(--blanco);
+            box-shadow: var(--sombra);
+            transition: all 0.2s;
+        }
+        
+        .cart-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
         }
         
         .cart-item-content {
@@ -434,35 +580,41 @@
         .cart-item-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 0.5rem;
+            align-items: flex-start;
+            margin-bottom: 0.8rem;
         }
         
         .cart-item-name {
             font-weight: 600;
             color: var(--gris-oscuro);
+            font-size: 1.1rem;
         }
         
         .cart-item-price {
             font-weight: 700;
             color: var(--azul-primario);
+            font-size: 1.2rem;
         }
         
         .cart-item-actions {
             display: flex;
             align-items: center;
             gap: 1rem;
-            margin-top: 0.75rem;
+            margin-top: 1rem;
         }
         
         .cart-item-quantity {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.8rem;
+            background: var(--gris-claro);
+            padding: 0.5rem;
+            border-radius: 50px;
         }
         
         .cart-quantity-btn {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             border: 2px solid var(--gris-border);
             background: var(--blanco);
@@ -472,56 +624,68 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
         }
         
         .cart-quantity-btn:hover {
             border-color: var(--azul-primario);
-            color: var(--azul-primario);
+            background: var(--azul-primario);
+            color: white;
         }
         
         .cart-item-quantity-display {
-            font-weight: 600;
+            font-weight: 700;
             min-width: 30px;
             text-align: center;
+            font-size: 1.1rem;
         }
         
         .remove-item {
             background: none;
             border: none;
-            color: var(--rojo);
-            font-size: 1.125rem;
+            color: var(--gris-medio);
+            font-size: 1.2rem;
             cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.2s;
         }
         
         .remove-item:hover {
-            background: #fee2e2;
+            color: var(--azul-primario);
+            background: rgba(37, 99, 235, 0.1);
         }
         
         .cart-footer {
             padding: 1.5rem;
             border-top: 1px solid var(--gris-border);
             background: var(--blanco);
+            border-radius: 0 0 24px 24px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
         }
         
         .cart-total {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+            border-radius: 12px;
+            border: 1px solid var(--gris-border);
         }
         
         .total-label {
-            font-size: 1.125rem;
-            font-weight: 600;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--gris-oscuro);
         }
         
         .total-amount {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.75rem;
+            font-size: 1.8rem;
             font-weight: 800;
             color: var(--azul-primario);
+            text-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
         }
         
         .checkout-btn {
@@ -531,19 +695,20 @@
             border: none;
             border-radius: 12px;
             color: var(--blanco);
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.125rem;
             font-weight: 700;
+            font-size: 1.1rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
         }
         
         .checkout-btn:hover {
+            background: var(--gradiente-hover);
             transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(30, 64, 175, 0.3);
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
         }
         
-        /* CHECKOUT MODAL */
+        /* CHECKOUT MODAL - Premium azul */
         .checkout-modal {
             position: fixed;
             top: 0;
@@ -556,6 +721,7 @@
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            backdrop-filter: blur(5px);
         }
         
         .checkout-content {
@@ -565,39 +731,45 @@
             max-width: 500px;
             max-height: 90vh;
             overflow-y: auto;
-            animation: slideUp 0.3s ease;
-        }
-        
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            animation: slideUp 0.3s ease-out;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
         }
         
         .checkout-header {
-            padding: 1.5rem;
+            padding: 1.75rem;
             border-bottom: 1px solid var(--gris-border);
-            text-align: center;
+            position: sticky;
+            top: 0;
+            background: var(--blanco);
+            border-radius: 20px 20px 0 0;
+            z-index: 10;
         }
         
         .checkout-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--azul-primario);
-            margin-bottom: 0.5rem;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--gris-oscuro);
+            text-align: center;
+            margin-bottom: 1.5rem;
         }
         
         .checkout-steps {
             display: flex;
             justify-content: center;
-            gap: 1rem;
-            margin-top: 1rem;
+            gap: 1.5rem;
+            position: relative;
+        }
+        
+        .checkout-steps::before {
+            content: '';
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 2px;
+            background: var(--gris-border);
+            z-index: 1;
         }
         
         .step {
@@ -605,11 +777,13 @@
             flex-direction: column;
             align-items: center;
             gap: 0.5rem;
+            position: relative;
+            z-index: 2;
         }
         
         .step-circle {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             background: var(--gris-claro);
             color: var(--gris-medio);
@@ -617,21 +791,31 @@
             align-items: center;
             justify-content: center;
             font-weight: 600;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
+            border: 2px solid var(--blanco);
+            transition: all 0.3s;
         }
         
         .step.active .step-circle {
             background: var(--azul-primario);
             color: white;
+            transform: scale(1.1);
         }
         
         .step-label {
             font-size: 0.75rem;
             color: var(--gris-medio);
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .step.active .step-label {
+            color: var(--azul-primario);
+            font-weight: 600;
         }
         
         .checkout-body {
-            padding: 1.5rem;
+            padding: 1.75rem;
         }
         
         .checkout-section {
@@ -640,12 +824,12 @@
         
         .checkout-section.active {
             display: block;
-            animation: fadeIn 0.3s ease;
+            animation: fadeIn 0.3s ease-out;
         }
         
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         .form-group {
@@ -657,22 +841,31 @@
             margin-bottom: 0.5rem;
             font-weight: 600;
             color: var(--gris-oscuro);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .form-label i {
+            color: var(--azul-primario);
         }
         
         .form-input {
             width: 100%;
             padding: 0.875rem 1rem;
-            border: 2px solid var(--gris-border);
-            border-radius: 12px;
+            border: 1px solid var(--gris-border);
+            border-radius: 10px;
             font-family: 'Inter', sans-serif;
-            font-size: 1rem;
+            font-size: 0.95rem;
             transition: all 0.2s;
+            background: var(--blanco);
         }
         
         .form-input:focus {
             border-color: var(--azul-primario);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         
         .form-textarea {
@@ -682,7 +875,7 @@
         
         .radio-group {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             margin-bottom: 1rem;
         }
         
@@ -697,37 +890,78 @@
         .radio-label {
             display: block;
             padding: 1rem;
-            border: 2px solid var(--gris-border);
-            border-radius: 12px;
+            border: 1px solid var(--gris-border);
+            border-radius: 10px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
+            font-weight: 500;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .radio-label i {
+            font-size: 1.25rem;
+            color: var(--gris-medio);
         }
         
         .radio-input:checked + .radio-label {
             border-color: var(--azul-primario);
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(37, 99, 235, 0.05);
             color: var(--azul-primario);
             font-weight: 600;
         }
         
+        .radio-input:checked + .radio-label i {
+            color: var(--azul-primario);
+        }
+        
         .order-summary {
-            background: var(--gris-claro);
+            background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
+            border: 1px solid var(--gris-border);
         }
         
         .summary-title {
-            font-weight: 600;
+            font-weight: 700;
             margin-bottom: 1rem;
             color: var(--gris-oscuro);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .summary-title i {
+            color: var(--azul-primario);
         }
         
         .summary-item {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px dashed var(--gris-border);
+        }
+        
+        .summary-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .summary-item-name {
+            color: var(--gris-medio);
+        }
+        
+        .summary-item-price {
+            font-weight: 600;
+            color: var(--gris-oscuro);
         }
         
         .summary-total {
@@ -736,31 +970,38 @@
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 2px solid var(--gris-border);
-            font-weight: 700;
-            font-size: 1.125rem;
+            font-weight: 800;
+            color: var(--gris-oscuro);
+            font-size: 1.2rem;
         }
         
         .checkout-actions {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             margin-top: 2rem;
         }
         
         .btn-secondary {
             flex: 1;
             padding: 0.875rem;
-            background: var(--gris-claro);
-            border: none;
-            border-radius: 12px;
+            background: var(--blanco);
+            border: 1px solid var(--gris-border);
+            border-radius: 10px;
             color: var(--gris-oscuro);
-            font-family: 'Poppins', sans-serif;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
         
         .btn-secondary:hover {
-            background: #e5e7eb;
+            background: var(--gris-claro);
+            border-color: var(--gris-medio);
+            transform: translateY(-1px);
         }
         
         .btn-primary {
@@ -768,17 +1009,22 @@
             padding: 0.875rem;
             background: var(--gradiente-azul);
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             color: var(--blanco);
-            font-family: 'Poppins', sans-serif;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
         
         .btn-primary:hover {
+            background: var(--gradiente-hover);
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
         }
         
         .btn-success {
@@ -786,54 +1032,95 @@
             padding: 0.875rem;
             background: var(--verde);
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             color: var(--blanco);
-            font-family: 'Poppins', sans-serif;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
         
         .btn-success:hover {
-            background: #0da271;
+            background: #0DA271;
             transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
         
         /* CONFIRMACIÓN FINAL */
         .confirmation {
             text-align: center;
-            padding: 2rem;
+            padding: 2rem 1.5rem;
         }
         
         .confirmation-icon {
             font-size: 4rem;
             color: var(--verde);
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            animation: bounce 1s infinite alternate;
+        }
+        
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-10px); }
         }
         
         .confirmation-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--azul-primario);
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--gris-oscuro);
             margin-bottom: 1rem;
         }
         
+        .confirmation-message {
+            color: var(--gris-medio);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+        
         .confirmation-details {
-            background: var(--gris-claro);
+            background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
             border-radius: 12px;
             padding: 1.5rem;
-            margin: 1.5rem 0;
+            margin: 2rem 0;
             text-align: left;
+            border: 1px solid var(--gris-border);
         }
         
         .confirmation-info {
             margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px dashed var(--gris-border);
+        }
+        
+        .confirmation-info:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
         }
         
         .confirmation-label {
             font-weight: 600;
+            color: var(--gris-medio);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .confirmation-label i {
+            color: var(--azul-primario);
+        }
+        
+        .confirmation-value {
             color: var(--gris-oscuro);
+            font-size: 1.1rem;
+            font-weight: 600;
         }
         
         .whatsapp-btn {
@@ -843,8 +1130,6 @@
             border: none;
             border-radius: 12px;
             color: var(--blanco);
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.125rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
@@ -852,27 +1137,29 @@
             justify-content: center;
             gap: 0.75rem;
             margin-top: 1.5rem;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            font-size: 1.05rem;
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);
         }
         
         .whatsapp-btn:hover {
             background: #128C7E;
             transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
         }
         
-        /* LOADING */
+        /* LOADING STATES */
         .loading {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 3rem;
-            text-align: center;
         }
         
         .loading-spinner {
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             border: 3px solid var(--gris-border);
             border-top-color: var(--azul-primario);
             border-radius: 50%;
@@ -884,30 +1171,23 @@
             to { transform: rotate(360deg); }
         }
         
-        /* HELP BUTTON */
-        .help-button {
-            position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: var(--azul-primario);
-            color: white;
-            border: none;
-            font-size: 1.25rem;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);
-            z-index: 900;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
+        /* EMPTY STATES */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--gris-medio);
         }
         
-        .help-button:hover {
-            transform: scale(1.1);
-            background: var(--azul-secundario);
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--gris-border);
+        }
+        
+        .empty-state h3 {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gris-oscuro);
         }
         
         /* RESPONSIVE */
@@ -916,17 +1196,30 @@
                 max-width: 100%;
             }
             
-            .product-image {
-                height: 160px;
-                font-size: 3rem;
+            .product-item {
+                padding: 1rem;
             }
             
             .checkout-content {
                 max-height: 95vh;
+                margin: 0;
             }
             
             .radio-group {
                 flex-direction: column;
+            }
+            
+            .cart-button-bottom {
+                padding: 0.875rem 1.25rem;
+            }
+            
+            .cart-bottom-button {
+                padding: 0.6rem 1rem;
+                min-width: 100px;
+            }
+            
+            .confirmation-icon {
+                font-size: 3.5rem;
             }
         }
         
@@ -937,6 +1230,10 @@
         
         .text-center {
             text-align: center;
+        }
+        
+        .text-muted {
+            color: var(--gris-medio);
         }
         
         .mt-1 { margin-top: 0.5rem; }
@@ -954,45 +1251,65 @@
         <header class="header">
             <div class="header-top">
                 <div class="logo">
-                    <div class="logo-icon">🍔</div>
-                    <div class="store-name">EL TACHI</div>
+                    <div class="logo-icon">
+                        <img src="logo.png" alt="EL TACHI" onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\"fas fa-utensils\"></i>';">
+                    </div>
+                    <div class="logo-text">
+                        <div class="store-name">EL TACHI</div>
+                        <div class="store-subtitle">Rotisería & Comidas</div>
+                    </div>
                 </div>
-                <button class="cart-button" id="cartButton">
+                <button class="cart-button-header" id="cartButton">
                     <i class="fas fa-shopping-cart"></i>
                     <span class="cart-count" id="cartCount">0</span>
                 </button>
             </div>
-            <div class="status-bar">
-                <div class="status-indicator">
-                    <span class="status-dot" id="statusDot"></span>
-                    <span id="statusText">Cargando...</span>
+            <div class="info-bar">
+                <div class="status">
+                    <span class="status-dot"></span>
+                    <span class="status-text" id="statusText">Abierto</span>
                 </div>
-                <div id="deliveryInfo">Cargando...</div>
+                <div class="delivery-time" id="deliveryInfo">
+                    <i class="fas fa-clock"></i>
+                    <span>30-45 min</span>
+                </div>
             </div>
         </header>
         
         <!-- CATEGORÍAS -->
         <div class="categories-container">
             <div class="category-tabs" id="categoryTabs">
-                <div class="loading">Cargando categorías...</div>
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                </div>
             </div>
         </div>
         
         <!-- PRODUCTOS -->
         <div class="products-container">
-            <div class="products-grid" id="productsGrid">
+            <div class="products-list" id="productsList">
                 <div class="loading">
                     <div class="loading-spinner"></div>
-                    <p>Cargando productos...</p>
+                    <p class="text-muted mt-2">Cargando productos...</p>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- BOTÓN DE AYUDA -->
-    <button class="help-button" id="helpButton" title="Ayuda">
-        <i class="fas fa-question"></i>
-    </button>
+    <!-- BOTÓN DEL CARRITO EN LA PARTE INFERIOR -->
+    <div class="cart-button-bottom" id="cartButtonBottom">
+        <div class="cart-bottom-content">
+            <div class="cart-bottom-icon">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count" id="cartCountBottom">0</span>
+            </div>
+            <div class="cart-bottom-info">
+                <div class="cart-bottom-title">Tu carrito</div>
+                <div class="cart-bottom-total" id="cartTotalBottom">$0</div>
+            </div>
+        </div>
+        <button class="cart-bottom-button" id="openCartBottom">Ver carrito</button>
+    </div>
     
     <!-- CARRITO -->
     <div class="cart-overlay" id="cartOverlay">
@@ -1004,8 +1321,10 @@
                 </button>
             </div>
             <div class="cart-items" id="cartItems">
-                <div class="text-center mt-3">
-                    <p>El carrito está vacío</p>
+                <div class="empty-state">
+                    <i class="fas fa-shopping-basket"></i>
+                    <h3>Carrito vacío</h3>
+                    <p>Agrega productos para continuar</p>
                 </div>
             </div>
             <div class="cart-footer">
@@ -1043,29 +1362,29 @@
                 <!-- DATOS DEL CLIENTE -->
                 <div class="checkout-section active" id="sectionCustomer">
                     <div class="form-group">
-                        <label class="form-label">Nombre completo *</label>
+                        <label class="form-label"><i class="fas fa-user"></i> Nombre completo *</label>
                         <input type="text" class="form-input" id="customerName" placeholder="Tu nombre" required>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Teléfono *</label>
+                        <label class="form-label"><i class="fas fa-phone"></i> Teléfono *</label>
                         <input type="tel" class="form-input" id="customerPhone" placeholder="11 2345-6789" required>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Tipo de pedido *</label>
+                        <label class="form-label"><i class="fas fa-truck"></i> Tipo de pedido *</label>
                         <div class="radio-group">
                             <div class="radio-option">
                                 <input type="radio" id="deliveryPickup" name="deliveryType" value="retiro" class="radio-input" checked>
                                 <label for="deliveryPickup" class="radio-label">
-                                    <i class="fas fa-store"></i><br>
+                                    <i class="fas fa-store"></i>
                                     Retiro en local
                                 </label>
                             </div>
                             <div class="radio-option">
                                 <input type="radio" id="deliveryHome" name="deliveryType" value="envío" class="radio-input">
                                 <label for="deliveryHome" class="radio-label">
-                                    <i class="fas fa-motorcycle"></i><br>
+                                    <i class="fas fa-motorcycle"></i>
                                     Envío a domicilio
                                 </label>
                             </div>
@@ -1073,26 +1392,30 @@
                     </div>
                     
                     <div class="form-group" id="addressField" style="display: none;">
-                        <label class="form-label">Dirección completa *</label>
+                        <label class="form-label"><i class="fas fa-map-marker-alt"></i> Dirección completa *</label>
                         <textarea class="form-input form-textarea" id="customerAddress" placeholder="Calle, número, piso, departamento, barrio..."></textarea>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Comentarios o modificaciones</label>
+                        <label class="form-label"><i class="fas fa-edit"></i> Comentarios o modificaciones</label>
                         <textarea class="form-input form-textarea" id="orderComments" placeholder="Ej: Sin cebolla, poca mayonesa, sin picante..."></textarea>
-                        <small class="text-muted">Los comentarios se enviarán junto con tu pedido</small>
+                        <small class="text-muted mt-1">Los comentarios se enviarán junto con tu pedido</small>
                     </div>
                     
                     <div class="checkout-actions">
-                        <button class="btn-secondary" id="cancelCheckout">Cancelar</button>
-                        <button class="btn-primary" id="nextToConfirm">Siguiente →</button>
+                        <button class="btn-secondary" id="cancelCheckout">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                        <button class="btn-primary" id="nextToConfirm">
+                            Siguiente <i class="fas fa-arrow-right"></i>
+                        </button>
                     </div>
                 </div>
                 
                 <!-- CONFIRMACIÓN -->
                 <div class="checkout-section" id="sectionConfirm">
                     <div class="order-summary">
-                        <h4 class="summary-title">Resumen del Pedido</h4>
+                        <h4 class="summary-title"><i class="fas fa-receipt"></i> Resumen del Pedido</h4>
                         <div id="orderSummaryItems">
                             <!-- Los items se cargan dinámicamente -->
                         </div>
@@ -1104,30 +1427,34 @@
                     
                     <div class="confirmation-details">
                         <div class="confirmation-info">
-                            <div class="confirmation-label">Cliente:</div>
-                            <div id="confirmCustomerName"></div>
+                            <div class="confirmation-label"><i class="fas fa-user"></i> Cliente:</div>
+                            <div id="confirmCustomerName" class="confirmation-value"></div>
                         </div>
                         <div class="confirmation-info">
-                            <div class="confirmation-label">Teléfono:</div>
-                            <div id="confirmCustomerPhone"></div>
+                            <div class="confirmation-label"><i class="fas fa-phone"></i> Teléfono:</div>
+                            <div id="confirmCustomerPhone" class="confirmation-value"></div>
                         </div>
                         <div class="confirmation-info">
-                            <div class="confirmation-label">Tipo:</div>
-                            <div id="confirmDeliveryType"></div>
+                            <div class="confirmation-label"><i class="fas fa-truck"></i> Tipo:</div>
+                            <div id="confirmDeliveryType" class="confirmation-value"></div>
                         </div>
                         <div class="confirmation-info" id="confirmAddressSection" style="display: none;">
-                            <div class="confirmation-label">Dirección:</div>
-                            <div id="confirmCustomerAddress"></div>
+                            <div class="confirmation-label"><i class="fas fa-map-marker-alt"></i> Dirección:</div>
+                            <div id="confirmCustomerAddress" class="confirmation-value"></div>
                         </div>
                         <div class="confirmation-info" id="confirmCommentsSection" style="display: none;">
-                            <div class="confirmation-label">Comentarios:</div>
-                            <div id="confirmOrderComments"></div>
+                            <div class="confirmation-label"><i class="fas fa-edit"></i> Comentarios:</div>
+                            <div id="confirmOrderComments" class="confirmation-value"></div>
                         </div>
                     </div>
                     
                     <div class="checkout-actions">
-                        <button class="btn-secondary" id="backToCustomer">← Atrás</button>
-                        <button class="btn-success" id="confirmOrder">Confirmar Pedido</button>
+                        <button class="btn-secondary" id="backToCustomer">
+                            <i class="fas fa-arrow-left"></i> Atrás
+                        </button>
+                        <button class="btn-success" id="confirmOrder">
+                            <i class="fas fa-check"></i> Confirmar Pedido
+                        </button>
                     </div>
                 </div>
                 
@@ -1138,24 +1465,22 @@
                             <i class="fas fa-check-circle"></i>
                         </div>
                         <h3 class="confirmation-title">¡Pedido Confirmado!</h3>
-                        <p>Tu pedido ha sido registrado exitosamente</p>
+                        <p class="confirmation-message">Tu pedido ha sido registrado exitosamente. Recibirás una confirmación por WhatsApp.</p>
                         
                         <div class="confirmation-details">
                             <div class="confirmation-info">
-                                <div class="confirmation-label">Número de pedido:</div>
-                                <div id="orderIdDisplay" class="confirmation-value"></div>
+                                <div class="confirmation-label"><i class="fas fa-hashtag"></i> Número de pedido:</div>
+                                <div id="orderIdDisplay" class="confirmation-value">#0001</div>
                             </div>
                             <div class="confirmation-info">
-                                <div class="confirmation-label">Tiempo estimado:</div>
-                                <div id="orderTimeDisplay" class="confirmation-value"></div>
+                                <div class="confirmation-label"><i class="fas fa-clock"></i> Tiempo estimado:</div>
+                                <div id="orderTimeDisplay" class="confirmation-value">30-45 minutos</div>
                             </div>
                             <div class="confirmation-info">
-                                <div class="confirmation-label">Total:</div>
-                                <div id="orderTotalDisplay" class="confirmation-value"></div>
+                                <div class="confirmation-label"><i class="fas fa-dollar-sign"></i> Total:</div>
+                                <div id="orderTotalDisplay" class="confirmation-value">$0</div>
                             </div>
                         </div>
-                        
-                        <p class="mt-2">Recibirás una confirmación por WhatsApp</p>
                         
                         <button class="whatsapp-btn" id="whatsappButton">
                             <i class="fab fa-whatsapp"></i>
@@ -1163,7 +1488,7 @@
                         </button>
                         
                         <button class="btn-secondary mt-2" id="newOrderBtn">
-                            Hacer otro pedido
+                            <i class="fas fa-plus"></i> Hacer otro pedido
                         </button>
                     </div>
                 </div>
@@ -1171,36 +1496,12 @@
         </div>
     </div>
 
-    <!-- MODAL DE AYUDA -->
-    <div class="checkout-modal" id="helpModal" style="display: none;">
-        <div class="checkout-content" style="max-width: 400px;">
-            <div class="checkout-header">
-                <h2 class="checkout-title">
-                    <i class="fas fa-question-circle"></i> Ayuda
-                </h2>
-            </div>
-            <div class="checkout-body">
-                <div id="helpContent">
-                    <div class="loading">
-                        <div class="loading-spinner"></div>
-                        <p>Cargando ayuda...</p>
-                    </div>
-                </div>
-                <div class="form-actions mt-3">
-                    <button class="btn-secondary" id="closeHelp">
-                        Cerrar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- FIREBASE SDK - ¡ORDEN CORRECTO! -->
+    <!-- FIREBASE SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
-    <!-- ARCHIVOS JS - ORDEN CORRECTO -->
+    <!-- ARCHIVOS JS -->
     <script src="firebase-config.js"></script>
     <script src="app.js"></script>
     
@@ -1211,34 +1512,28 @@
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('service-worker.js')
                     .then(function(registration) {
-                        console.log('✅ ServiceWorker registrado:', registration.scope);
+                        console.log('ServiceWorker registrado:', registration.scope);
                     })
                     .catch(function(error) {
-                        console.log('❌ ServiceWorker error:', error);
+                        console.log('ServiceWorker error:', error);
                     });
             });
         }
         
-        // Instalación PWA - VERSIÓN CORREGIDA
+        // Instalación PWA
         let deferredPrompt;
         
         window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('🚀 beforeinstallprompt fired');
-            
-            // Prevenir que Chrome muestre el banner automático
             e.preventDefault();
             deferredPrompt = e;
             
-            // Mostrar notificación después de 30 segundos
             setTimeout(() => {
-                if (deferredPrompt && confirm('¿Quieres instalar EL TACHI en tu dispositivo para un acceso más rápido?')) {
-                    // Mostrar el prompt de instalación
+                if (deferredPrompt) {
                     deferredPrompt.prompt();
                     
-                    // Esperar a que el usuario responda
                     deferredPrompt.userChoice.then((choiceResult) => {
                         if (choiceResult.outcome === 'accepted') {
-                            console.log('✅ App instalada');
+                            console.log('App instalada');
                         }
                         deferredPrompt = null;
                     });
@@ -1246,72 +1541,52 @@
             }, 30000);
         });
         
-        // Botón para instalar manualmente
-        window.installPWA = function() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('✅ App instalada');
-                    }
-                    deferredPrompt = null;
-                });
+        // Mostrar/ocultar campo de dirección
+        document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const addressField = document.getElementById('addressField');
+                if (this.value === 'envío') {
+                    addressField.style.display = 'block';
+                } else {
+                    addressField.style.display = 'none';
+                }
+            });
+        });
+        
+        // Botón del carrito en la parte inferior
+        document.getElementById('openCartBottom').addEventListener('click', function() {
+            document.getElementById('cartOverlay').style.display = 'flex';
+        });
+        
+        // Actualizar contadores y totales del carrito
+        function updateCartDisplay(cartData) {
+            const itemCount = cartData.items.reduce((total, item) => total + item.quantity, 0);
+            const totalAmount = cartData.total;
+            
+            // Actualizar todos los contadores
+            document.getElementById('cartCount').textContent = itemCount;
+            document.getElementById('cartCountBottom').textContent = itemCount;
+            
+            // Actualizar totales
+            document.getElementById('cartTotal').textContent = `$${totalAmount}`;
+            document.getElementById('cartTotalBottom').textContent = `$${totalAmount}`;
+            
+            // Mostrar/ocultar barra inferior basado en si hay items
+            const cartButtonBottom = document.getElementById('cartButtonBottom');
+            if (itemCount > 0) {
+                cartButtonBottom.style.display = 'flex';
             } else {
-                alert('La aplicación ya está instalada o tu navegador no soporta instalación.');
+                cartButtonBottom.style.display = 'none';
             }
-        };
+        }
         
-        // Configurar ayuda básica (sin Gemini por ahora)
-        document.getElementById('helpButton').addEventListener('click', function() {
-            const helpModal = document.getElementById('helpModal');
-            const helpContent = document.getElementById('helpContent');
-            
-            // Mostrar modal
-            helpModal.style.display = 'flex';
-            
-            // Contenido de ayuda básica
-            helpContent.innerHTML = `
-                <div class="confirmation">
-                    <div class="confirmation-icon">
-                        <i class="fas fa-info-circle"></i>
-                    </div>
-                    <h3 class="confirmation-title">Ayuda</h3>
-                    <p>Para hacer tu pedido:</p>
-                    <ol style="text-align: left; margin: 1rem 0; padding-left: 1.5rem;">
-                        <li>Selecciona una categoría</li>
-                        <li>Elige los productos que quieras</li>
-                        <li>Ajusta las cantidades si es necesario</li>
-                        <li>Revisa tu carrito</li>
-                        <li>Completa tus datos</li>
-                        <li>Confirma el pedido</li>
-                    </ol>
-                    <p><strong>Horarios de atención:</strong><br>Lunes a Domingo: 11:00 - 23:00</p>
-                    <p><strong>Envío a domicilio:</strong> $300</p>
-                    <p><strong>Tiempo estimado:</strong> 30-45 minutos</p>
-                </div>
-            `;
-        });
-        
-        // Cerrar modal de ayuda
-        document.getElementById('closeHelp').addEventListener('click', function() {
-            document.getElementById('helpModal').style.display = 'none';
-        });
-        
-        // Cerrar modal al hacer clic fuera
-        document.getElementById('helpModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.style.display = 'none';
-            }
-        });
-        
-        // Cerrar checkout modal al hacer clic fuera
+        // Cerrar modales al hacer clic fuera
         document.getElementById('checkoutModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 this.style.display = 'none';
             }
         });
         
-        // Cerrar cart overlay al hacer clic fuera
         document.getElementById('cartOverlay').addEventListener('click', function(e) {
             if (e.target === this) {
                 this.style.display = 'none';
@@ -1321,13 +1596,9 @@
         // Cerrar con tecla Escape
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                const helpModal = document.getElementById('helpModal');
                 const checkoutModal = document.getElementById('checkoutModal');
                 const cartOverlay = document.getElementById('cartOverlay');
                 
-                if (helpModal.style.display === 'flex') {
-                    helpModal.style.display = 'none';
-                }
                 if (checkoutModal.style.display === 'flex') {
                     checkoutModal.style.display = 'none';
                 }
@@ -1337,14 +1608,86 @@
             }
         });
         
-        // Prevenir zoom en inputs en mobile
+        // Evitar zoom en inputs en mobile
         document.addEventListener('touchstart', function(e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 e.target.style.fontSize = '16px';
             }
         });
         
-        console.log('✅ Index.html cargado correctamente');
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('App cargada correctamente');
+            
+            // Configurar estado inicial
+            document.getElementById('statusText').textContent = 'Abierto';
+            document.getElementById('deliveryInfo').innerHTML = '<i class="fas fa-clock"></i><span>30-45 min</span>';
+            
+            // Ocultar barra inferior del carrito inicialmente
+            document.getElementById('cartButtonBottom').style.display = 'none';
+            
+            // Simular carga de productos (esto se reemplazará con Firebase)
+            setTimeout(() => {
+                const categoryTabs = document.getElementById('categoryTabs');
+                if (categoryTabs) {
+                    categoryTabs.innerHTML = `
+                        <button class="category-tab active" data-id="all">Todos</button>
+                        <button class="category-tab" data-id="burgers">Hamburguesas</button>
+                        <button class="category-tab" data-id="asado">Asado</button>
+                        <button class="category-tab" data-id="empanadas">Empanadas</button>
+                        <button class="category-tab" data-id="bebidas">Bebidas</button>
+                        <button class="category-tab" data-id="postres">Postres</button>
+                    `;
+                }
+                
+                // Simular productos de ejemplo
+                const productsList = document.getElementById('productsList');
+                if (productsList) {
+                    productsList.innerHTML = `
+                        <div class="product-item" data-id="1">
+                            <div class="product-info">
+                                <div class="product-header">
+                                    <h3 class="product-title">Hamburguesa Clásica</h3>
+                                    <div class="product-price">$1200</div>
+                                </div>
+                                <p class="product-description">Carne de 150g, lechuga, tomate, cebolla y salsa especial</p>
+                                <div class="product-details">
+                                    <span class="product-tag">Popular</span>
+                                </div>
+                                <div class="product-actions">
+                                    <div class="quantity-controls">
+                                        <button class="quantity-btn minus">-</button>
+                                        <div class="quantity-display">0</div>
+                                        <button class="quantity-btn plus">+</button>
+                                    </div>
+                                    <button class="add-to-cart-btn">Agregar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="product-item" data-id="2">
+                            <div class="product-info">
+                                <div class="product-header">
+                                    <h3 class="product-title">Asado Completo</h3>
+                                    <div class="product-price">$2500</div>
+                                </div>
+                                <p class="product-description">Tira de asado, chorizo, morcilla y provoleta</p>
+                                <div class="product-details">
+                                    <span class="product-tag">Especial</span>
+                                </div>
+                                <div class="product-actions">
+                                    <div class="quantity-controls">
+                                        <button class="quantity-btn minus">-</button>
+                                        <div class="quantity-display">0</div>
+                                        <button class="quantity-btn plus">+</button>
+                                    </div>
+                                    <button class="add-to-cart-btn">Agregar</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }, 1000);
+        });
     </script>
 </body>
 </html>
