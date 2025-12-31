@@ -34,6 +34,7 @@
             --amarillo-claro: #fef3c7;
             --verde: #10b981;
             --rojo: #ef4444;
+            --rojo-oscuro: #7f1d1d;
             --gris-oscuro: #111827;
             --gris-medio: #6b7280;
             --gris-claro: #f3f4f6;
@@ -116,6 +117,10 @@
             cursor: pointer;
             margin-top: 16px;
             transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         
         .login-button:hover {
@@ -203,6 +208,9 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         
         .logout-button:hover {
@@ -340,21 +348,25 @@
         .status-recibido {
             background: var(--azul-claro);
             color: var(--azul-primario);
+            border: 1px solid #93c5fd;
         }
         
         .status-preparacion {
             background: var(--amarillo-claro);
             color: var(--amarillo-primario);
+            border: 1px solid #fcd34d;
         }
         
         .status-listo {
             background: #dcfce7;
             color: var(--verde);
+            border: 1px solid #6ee7b7;
         }
         
         .status-entregado {
-            background: #f3f4f6;
+            background: var(--gris-claro);
             color: var(--gris-medio);
+            border: 1px solid #d1d5db;
         }
         
         /* TABLAS */
@@ -364,13 +376,12 @@
             overflow: hidden;
             box-shadow: var(--sombra);
             margin-bottom: 30px;
-            overflow-x: auto;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1000px;
+            min-width: 800px;
         }
         
         thead {
@@ -473,6 +484,106 @@
         
         .button-secondary:hover {
             background: var(--gris-border);
+        }
+        
+        /* BOTONES DE PELIGRO */
+        .button-danger {
+            background: var(--rojo);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .button-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+        
+        .button-danger-extreme {
+            background: var(--rojo-oscuro);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .button-danger-extreme:hover {
+            background: #991b1b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(127, 29, 29, 0.2);
+        }
+        
+        /* CONTROLES DE FILTRO */
+        .filter-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+        
+        .filter-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .filter-label {
+            font-weight: 600;
+            color: #4b5563;
+            white-space: nowrap;
+        }
+        
+        .filter-select {
+            padding: 10px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            color: #1f2937;
+            font-weight: 500;
+            cursor: pointer;
+            min-width: 180px;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--azul-primario);
+        }
+        
+        .filter-counter {
+            padding: 6px 12px;
+            background: var(--azul-primario);
+            color: white;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        
+        .cleanup-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
         
         /* FORMULARIOS */
@@ -602,6 +713,67 @@
             border: 1px solid var(--gris-border);
         }
         
+        /* SELECT DE ESTADO MEJORADO */
+        .status-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding: 8px 30px 8px 12px;
+            border: none;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 160px;
+            font-size: 0.9rem;
+            background-color: var(--azul-primario);
+            color: white;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 12px;
+        }
+        
+        .status-select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        
+        /* INPUT DE TIEMPO */
+        .time-input {
+            width: 50px;
+            padding: 6px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        
+        .time-input:focus {
+            outline: none;
+            border-color: var(--azul-primario);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        
+        /* BOTONES DE TABLA MEJORADOS */
+        .button-view {
+            background: var(--azul-primario);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .button-view:hover {
+            background: #1e3a8a;
+            transform: translateY(-1px);
+        }
+        
         /* MODAL */
         .modal-overlay {
             position: fixed;
@@ -670,6 +842,40 @@
             background: var(--gris-claro);
         }
         
+        /* TOOLTIPS */
+        [title] {
+            position: relative;
+        }
+        
+        [title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            max-width: 300px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 5px;
+        }
+        
+        /* ANIMACIONES DE NOTIFICACION */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
         /* RESPONSIVE */
         @media (max-width: 1024px) {
             .admin-content {
@@ -713,7 +919,32 @@
             }
             
             .table-container {
-                font-size: 0.85rem;
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 1000px;
+            }
+            
+            .filter-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .filter-left {
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+            
+            .filter-select {
+                width: 100%;
+            }
+            
+            .cleanup-controls {
+                width: 100%;
+                justify-content: flex-start;
+                flex-wrap: wrap;
             }
         }
         
@@ -737,6 +968,10 @@
                 flex-direction: column;
                 gap: 10px;
                 align-items: center;
+            }
+            
+            .modal-content {
+                padding: 20px;
             }
         }
         
@@ -787,88 +1022,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        
-        /* Estilos adicionales para la gestión de pedidos mejorada */
-        .status-select {
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            padding: 6px 30px 6px 12px;
-            border-radius: 20px;
-            border: none;
-            font-weight: 600;
-            color: white;
-            cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-            background-size: 12px;
-            min-width: 140px;
-        }
-        
-        .status-select.recibido {
-            background-color: #3b82f6;
-        }
-        
-        .status-select.preparacion {
-            background-color: #f59e0b;
-        }
-        
-        .status-select.listo {
-            background-color: #10b981;
-        }
-        
-        .status-select.entregado {
-            background-color: #6b7280;
-        }
-        
-        .time-input {
-            width: 50px;
-            padding: 4px 6px;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            text-align: center;
-        }
-        
-        .time-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-        }
-        
-        .badge-urgente {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            border: 1px solid #fcd34d;
-            display: inline-block;
-            margin-left: 5px;
-        }
-        
-        /* Tooltip para comentarios */
-        [title] {
-            position: relative;
-        }
-        
-        [title]:hover::after {
-            content: attr(title);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1f2937;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            white-space: pre-wrap;
-            max-width: 300px;
-            z-index: 1000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            margin-bottom: 5px;
-        }
     </style>
 </head>
 <body>
@@ -892,9 +1045,6 @@
         </div>
         
         <div class="login-links">
-            <a href="register.html" class="login-link">
-                <i class="fas fa-user-plus"></i> Crear cuenta nueva
-            </a>
             <a href="index.html" class="login-link">
                 <i class="fas fa-store"></i> Volver a la tienda
             </a>
@@ -1024,12 +1174,44 @@
                 </div>
             </div>
             
-            <!-- PEDIDOS -->
+            <!-- PEDIDOS (CON FILTROS MEJORADOS) -->
             <div class="tab-content" id="ordersTab">
                 <h2 class="section-title">
                     <i class="fas fa-shopping-cart"></i> Gestión de Pedidos
                 </h2>
                 
+                <!-- CONTROLES DE FILTRO Y LIMPIEZA -->
+                <div class="filter-controls">
+                    <div class="filter-left">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label class="filter-label">Filtrar por:</label>
+                            <select class="filter-select" id="orderFilter">
+                                <option value="hoy">Hoy</option>
+                                <option value="ayer">Ayer</option>
+                                <option value="semana">Esta semana</option>
+                                <option value="mes">Este mes</option>
+                                <option value="pendientes">Pendientes</option>
+                                <option value="completados">Completados</option>
+                                <option value="todos">Todos los pedidos</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-counter" id="filterCounter">
+                            0 pedidos
+                        </div>
+                    </div>
+                    
+                    <div class="cleanup-controls">
+                        <button class="button-danger" id="clearHistoryBtn" title="Elimina pedidos antiguos completados">
+                            <i class="fas fa-broom"></i> Limpiar Historial
+                        </button>
+                        <button class="button-danger-extreme" id="clearAllOrdersBtn" title="PELIGRO: Elimina TODOS los pedidos">
+                            <i class="fas fa-skull-crossbones"></i> Limpiar TODO
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- TABLA DE PEDIDOS -->
                 <div class="table-container">
                     <table id="ordersTable">
                         <thead>
@@ -1076,7 +1258,7 @@
                     </div>
                 </div>
                 
-                <!-- FORMULARIO DE PRODUCTO -->
+                <!-- FORMULARIO DE PRODUCTO (OCULTO INICIALMENTE) -->
                 <div class="card hidden" id="productForm">
                     <div class="modal-header">
                         <h3 class="modal-title" id="productFormTitle">Nuevo Producto</h3>
@@ -1361,55 +1543,78 @@
         // Inicializar cuando el DOM esté listo
         document.addEventListener('DOMContentLoaded', function() {
             console.log('✅ Panel Admin cargado');
+            
+            // Configurar eventos básicos
+            setupBasicEventListeners();
         });
         
-        // Manejar el botón de cerrar modal
-        document.getElementById('closeModalButton')?.addEventListener('click', function() {
-            document.getElementById('orderModal').style.display = 'none';
-        });
-        
-        document.getElementById('closeModalBtn')?.addEventListener('click', function() {
-            document.getElementById('orderModal').style.display = 'none';
-        });
-        
-        // Cerrar modal al hacer clic fuera
-        document.getElementById('orderModal')?.addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.style.display = 'none';
+        // Configurar event listeners básicos
+        function setupBasicEventListeners() {
+            // Manejar el botón de cerrar modal
+            document.getElementById('closeModalButton')?.addEventListener('click', function() {
+                document.getElementById('orderModal').style.display = 'none';
+            });
+            
+            document.getElementById('closeModalBtn')?.addEventListener('click', function() {
+                document.getElementById('orderModal').style.display = 'none';
+            });
+            
+            // Cerrar modal al hacer clic fuera
+            const orderModal = document.getElementById('orderModal');
+            if (orderModal) {
+                orderModal.addEventListener('click', function(e) {
+                    if (e.target === orderModal) {
+                        orderModal.style.display = 'none';
+                    }
+                });
             }
-        });
-        
-        // Cerrar formulario de producto
-        document.getElementById('cancelProductFormButton')?.addEventListener('click', function() {
-            document.getElementById('productForm').classList.add('hidden');
-        });
-        
-        document.getElementById('cancelProductButton')?.addEventListener('click', function() {
-            document.getElementById('productForm').classList.add('hidden');
-        });
-        
-        // Cancelar edición de categoría
-        document.getElementById('cancelEditCategoryButton')?.addEventListener('click', function() {
-            // Esta función deberá ser implementada en admin-app.js
-            if (window.cancelEditCategory) {
-                window.cancelEditCategory();
+            
+            // Cerrar formulario de producto
+            document.getElementById('cancelProductFormButton')?.addEventListener('click', function() {
+                document.getElementById('productForm').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelProductButton')?.addEventListener('click', function() {
+                document.getElementById('productForm').classList.add('hidden');
+            });
+            
+            // Cancelar edición de categoría
+            document.getElementById('cancelEditCategoryButton')?.addEventListener('click', function() {
+                if (window.cancelEditCategory) {
+                    window.cancelEditCategory();
+                }
+            });
+            
+            // Mostrar/ocultar fechas personalizadas en reportes
+            const reportPeriod = document.getElementById('reportPeriod');
+            if (reportPeriod) {
+                reportPeriod.addEventListener('change', function() {
+                    const customRange = document.getElementById('customDateRange');
+                    if (this.value === 'custom') {
+                        customRange.classList.remove('hidden');
+                    } else {
+                        customRange.classList.add('hidden');
+                    }
+                });
             }
-        });
+            
+            // Exportar a CSV (placeholder)
+            document.getElementById('exportCSVButton')?.addEventListener('click', function() {
+                alert('Función de exportación a CSV será implementada en la próxima versión.');
+            });
+            
+            // Prevenir envío de formularios por defecto
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                });
+            });
+        }
         
-        // Mostrar/ocultar fechas personalizadas en reportes
-        document.getElementById('reportPeriod')?.addEventListener('change', function() {
-            const customRange = document.getElementById('customDateRange');
-            if (this.value === 'custom') {
-                customRange.classList.remove('hidden');
-            } else {
-                customRange.classList.add('hidden');
-            }
-        });
-        
-        // Exportar a CSV (placeholder)
-        document.getElementById('exportCSVButton')?.addEventListener('click', function() {
-            alert('Función de exportación a CSV será implementada en la próxima versión.');
-        });
+        // Mostrar notificación (función auxiliar)
+        window.showAlert = function(message, type = 'info') {
+            alert(message);
+        };
     </script>
 </body>
 </html>
