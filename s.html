@@ -1101,50 +1101,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     
     <script>
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
-            authDomain: "eltachi.firebaseapp.com",
-            projectId: "eltachi",
-            storageBucket: "eltachi.firebasestorage.app",
-            messagingSenderId: "231676602106",
-            appId: "1:231676602106:web:fde347e9caa00760b34b43"
-        };
-        
-        // Inicializar Firebase
-        let db = null;
-        
-        try {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-                console.log("✅ Firebase inicializado");
-            }
-            
-            db = firebase.firestore();
-            
-            // Configurar para desarrollo local si es necesario
-            if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-                db.settings({
-                    host: "localhost:8080",
-                    ssl: false
-                });
-                console.log("🔄 Modo desarrollo: usando Firestore emulator");
-            }
-            
-            // Actualizar estado de conexión
-            updateConnectionStatus(true);
-        } catch (error) {
-            console.error("❌ Error inicializando Firebase:", error);
-            updateConnectionStatus(false);
-        }
-        
-        // Variables globales
-        let bebidasData = null;
-        let comidasData = null;
-        let allCategories = [];
-        let allProducts = [];
-        
-        // Elementos del DOM
+        // Elementos del DOM - DEBEN DECLARARSE PRIMERO
         const bebidasJsonTextarea = document.getElementById('bebidasJson');
         const comidasJsonTextarea = document.getElementById('comidasJson');
         const validateBtn = document.getElementById('validateBtn');
@@ -1164,8 +1121,29 @@
         const togglePreview = document.getElementById('togglePreview');
         const closeResults = document.getElementById('closeResults');
         
-        // Funciones de utilidad
+        // Variables globales
+        let bebidasData = null;
+        let comidasData = null;
+        let allCategories = [];
+        let allProducts = [];
+        
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
+            authDomain: "eltachi.firebaseapp.com",
+            projectId: "eltachi",
+            storageBucket: "eltachi.firebasestorage.app",
+            messagingSenderId: "231676602106",
+            appId: "1:231676602106:web:fde347e9caa00760b34b43"
+        };
+        
+        // Inicializar Firebase
+        let db = null;
+        
+        // Funciones de utilidad - AHORA DESPUÉS de declarar los elementos del DOM
         function updateConnectionStatus(connected) {
+            if (!statusDot || !statusText) return;
+            
             if (connected) {
                 statusDot.className = 'status-dot status-connected';
                 statusText.textContent = '✅ Conectado a Firebase';
@@ -1535,22 +1513,58 @@
             }
         });
         
-        // Inicializar contadores
-        updateCounts();
-        
-        // Probar conexión a Firebase
-        setTimeout(async () => {
-            if (db) {
-                try {
-                    await db.collection('settings').doc('config').get();
-                    updateConnectionStatus(true);
-                } catch (error) {
-                    updateConnectionStatus(false);
+        // Inicializar Firebase y la aplicación
+        function initApp() {
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                    console.log("✅ Firebase inicializado correctamente");
                 }
+                
+                db = firebase.firestore();
+                
+                // Configurar para desarrollo local si es necesario
+                if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+                    db.settings({
+                        host: "localhost:8080",
+                        ssl: false
+                    });
+                    console.log("🔄 Modo desarrollo: usando Firestore emulator");
+                }
+                
+                // Actualizar estado de conexión
+                updateConnectionStatus(true);
+                console.log("✅ Firestore inicializado");
+                
+            } catch (error) {
+                console.error("❌ Error inicializando Firebase:", error);
+                updateConnectionStatus(false);
             }
-        }, 1000);
+            
+            // Inicializar contadores
+            updateCounts();
+            
+            // Probar conexión a Firebase
+            setTimeout(async () => {
+                if (db) {
+                    try {
+                        await db.collection('settings').doc('config').get();
+                        updateConnectionStatus(true);
+                    } catch (error) {
+                        updateConnectionStatus(false);
+                    }
+                }
+            }, 1000);
+            
+            console.log('✅ Subidor automático de productos cargado correctamente');
+        }
         
-        console.log('✅ Subidor automático de productos cargado correctamente');
+        // Inicializar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
     </script>
 </body>
 </html>
