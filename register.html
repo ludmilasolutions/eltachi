@@ -8,9 +8,12 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* ESTILOS SIMILARES AL PANEL ADMIN */
         * {
             margin: 0;
             padding: 0;
@@ -46,7 +49,7 @@
         }
         
         .register-container {
-            max-width: 500px;
+            max-width: 450px;
             width: 100%;
             background: var(--blanco);
             padding: 40px;
@@ -56,21 +59,21 @@
         }
         
         .register-logo {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             background: var(--gradiente-amarillo);
             border-radius: 50%;
             margin: 0 auto 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 48px;
+            font-size: 36px;
             font-weight: 800;
             color: var(--azul-primario);
         }
         
         .register-title {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 800;
             margin-bottom: 8px;
             color: var(--azul-primario);
@@ -79,8 +82,7 @@
         .register-subtitle {
             color: var(--gris-medio);
             margin-bottom: 32px;
-            font-size: 1rem;
-            line-height: 1.5;
+            font-size: 0.95rem;
         }
         
         .register-form {
@@ -88,7 +90,7 @@
         }
         
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
         
         .form-label {
@@ -96,15 +98,16 @@
             margin-bottom: 8px;
             font-weight: 600;
             color: var(--gris-oscuro);
+            font-size: 0.95rem;
         }
         
         .form-input {
             width: 100%;
-            padding: 16px;
+            padding: 14px 16px;
             border: 2px solid var(--gris-border);
             border-radius: 12px;
             font-size: 16px;
-            transition: all 0.3s;
+            transition: border-color 0.3s;
         }
         
         .form-input:focus {
@@ -114,28 +117,9 @@
         }
         
         .password-requirements {
-            font-size: 0.875rem;
+            font-size: 0.85rem;
             color: var(--gris-medio);
-            margin-top: 8px;
-        }
-        
-        .requirement {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-        
-        .requirement i {
-            font-size: 0.75rem;
-        }
-        
-        .requirement.valid {
-            color: var(--verde);
-        }
-        
-        .requirement.invalid {
-            color: var(--gris-medio);
+            margin-top: 6px;
         }
         
         .register-button {
@@ -150,24 +134,43 @@
             cursor: pointer;
             margin-top: 16px;
             transition: transform 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
         }
         
-        .register-button:hover:not(:disabled) {
+        .register-button:hover {
             transform: translateY(-2px);
         }
         
         .register-button:disabled {
-            opacity: 0.5;
+            opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
+        }
+        
+        .register-links {
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 0.9rem;
+        }
+        
+        .register-link {
+            color: var(--azul-primario);
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .register-link:hover {
+            text-decoration: underline;
         }
         
         .register-error {
             color: var(--rojo);
-            margin-top: 16px;
+            margin-top: 12px;
             font-size: 14px;
             display: none;
             padding: 12px;
@@ -179,99 +182,37 @@
         
         .register-success {
             color: var(--verde);
-            margin-top: 16px;
+            margin-top: 12px;
             font-size: 14px;
             display: none;
             padding: 12px;
-            background: #dcfce7;
+            background: #d1fae5;
             border-radius: 8px;
             border-left: 4px solid var(--verde);
             text-align: left;
         }
         
-        .register-links {
-            margin-top: 32px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        .password-strength {
+            margin-top: 6px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--gris-border);
+            overflow: hidden;
         }
         
-        .register-link {
-            color: var(--azul-primario);
-            text-decoration: none;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 12px;
-            border-radius: 8px;
-            transition: all 0.2s;
+        .strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
         }
         
-        .register-link:hover {
-            background: var(--gris-claro);
-        }
-        
-        .password-toggle {
-            position: relative;
-        }
-        
-        .password-toggle-btn {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--gris-medio);
-            cursor: pointer;
-            font-size: 1.125rem;
-        }
-        
-        /* LOADING */
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
+        @media (max-width: 480px) {
             .register-container {
                 padding: 30px 20px;
             }
             
-            .register-logo {
-                width: 80px;
-                height: 80px;
-                font-size: 36px;
-            }
-            
             .register-title {
-                font-size: 28px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            body {
-                padding: 10px;
-            }
-            
-            .register-container {
-                padding: 24px 16px;
-            }
-            
-            .register-links {
-                flex-direction: column;
+                font-size: 24px;
             }
         }
     </style>
@@ -281,425 +222,238 @@
         <div class="register-logo">
             <i class="fas fa-utensils"></i>
         </div>
+        <h1 class="register-title">EL TACHI</h1>
+        <p class="register-subtitle">Registro de Administrador</p>
         
-        <h1 class="register-title">Crear Cuenta Admin</h1>
-        <p class="register-subtitle">
-            Crea una cuenta de administrador para gestionar EL TACHI.<br>
-            Solo el dueño o personal autorizado debería crear cuentas.
-        </p>
-        
-        <div class="register-form">
-            <div class="form-group">
-                <label class="form-label">Nombre completo</label>
-                <input type="text" class="form-input" id="fullName" placeholder="Tu nombre y apellido">
-            </div>
-            
+        <form class="register-form" id="registerForm">
             <div class="form-group">
                 <label class="form-label">Correo electrónico *</label>
-                <input type="email" class="form-input" id="email" placeholder="ejemplo@email.com" required>
+                <input type="email" class="form-input" id="emailInput" placeholder="ejemplo@email.com" required>
             </div>
             
             <div class="form-group">
                 <label class="form-label">Contraseña *</label>
-                <div class="password-toggle">
-                    <input type="password" class="form-input" id="password" placeholder="Mínimo 6 caracteres" required>
-                    <button type="button" class="password-toggle-btn" id="togglePassword">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
+                <input type="password" class="form-input" id="passwordInput" placeholder="Mínimo 8 caracteres" required>
                 <div class="password-requirements">
-                    <div class="requirement invalid" id="reqLength">
-                        <i class="fas fa-circle"></i>
-                        <span>Mínimo 6 caracteres</span>
-                    </div>
-                    <div class="requirement invalid" id="reqUppercase">
-                        <i class="fas fa-circle"></i>
-                        <span>Al menos una mayúscula</span>
-                    </div>
-                    <div class="requirement invalid" id="reqNumber">
-                        <i class="fas fa-circle"></i>
-                        <span>Al menos un número</span>
-                    </div>
+                    La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.
+                </div>
+                <div class="password-strength">
+                    <div class="strength-bar" id="passwordStrength"></div>
                 </div>
             </div>
             
             <div class="form-group">
-                <label class="form-label">Confirmar contraseña *</label>
-                <div class="password-toggle">
-                    <input type="password" class="form-input" id="confirmPassword" placeholder="Repite tu contraseña" required>
-                    <button type="button" class="password-toggle-btn" id="toggleConfirmPassword">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-                <div class="password-requirements">
-                    <div class="requirement invalid" id="reqMatch">
-                        <i class="fas fa-circle"></i>
-                        <span>Las contraseñas coinciden</span>
-                    </div>
-                </div>
+                <label class="form-label">Confirmar Contraseña *</label>
+                <input type="password" class="form-input" id="confirmPasswordInput" placeholder="Repite tu contraseña" required>
             </div>
             
-            <div class="form-group">
-                <label class="form-label">
-                    <input type="checkbox" id="termsCheckbox">
-                    Acepto que soy el dueño o personal autorizado de EL TACHI
-                </label>
-            </div>
-            
-            <button class="register-button" id="registerButton" disabled>
-                <span id="buttonText">Crear Cuenta</span>
-                <div class="loading-spinner" id="loadingSpinner" style="display: none;"></div>
+            <button type="submit" class="register-button" id="registerButton">
+                <i class="fas fa-user-plus"></i> Crear Cuenta Administrador
             </button>
             
             <div class="register-error" id="registerError">
-                <strong>Error:</strong> <span id="errorMessage"></span>
+                Error al crear la cuenta. Verifica los datos e intenta nuevamente.
             </div>
             
             <div class="register-success" id="registerSuccess">
-                <strong>¡Éxito!</strong> Cuenta creada correctamente. Redirigiendo al panel de administración...
+                ¡Cuenta creada exitosamente! Redirigiendo al panel de administración...
             </div>
-        </div>
+        </form>
         
         <div class="register-links">
             <a href="admin.html" class="register-link">
-                <i class="fas fa-sign-in-alt"></i>
-                Ya tengo una cuenta - Iniciar Sesión
+                <i class="fas fa-sign-in-alt"></i> ¿Ya tienes cuenta? Inicia Sesión
             </a>
             <a href="index.html" class="register-link">
-                <i class="fas fa-store"></i>
-                Volver a la tienda
+                <i class="fas fa-store"></i> Volver a la tienda
             </a>
         </div>
     </div>
 
-    <!-- FIREBASE CONFIG -->
+    <!-- Firebase Config -->
     <script src="firebase-config.js"></script>
     
-    <!-- FONT AWESOME -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    
+    <!-- Script de registro -->
     <script>
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
-            authDomain: "eltachi.firebaseapp.com",
-            projectId: "eltachi",
-            storageBucket: "eltachi.firebasestorage.app",
-            messagingSenderId: "231676602106",
-            appId: "1:231676602106:web:fde347e9caa00760b34b43"
-        };
-
-        // Inicializar Firebase
-        try {
-            firebase.initializeApp(firebaseConfig);
-            console.log("✅ Firebase inicializado para registro");
-        } catch (error) {
-            console.error("❌ Error inicializando Firebase:", error);
-        }
-
-        const auth = firebase.auth();
-        
-        // Variables de estado
-        let passwordValid = false;
-        let passwordsMatch = false;
-        let termsAccepted = false;
-
         // Inicializar cuando el DOM esté listo
         document.addEventListener('DOMContentLoaded', function() {
             console.log('✅ Página de registro cargada');
             
-            // Configurar event listeners
-            setupEventListeners();
+            // Elementos del DOM
+            const registerForm = document.getElementById('registerForm');
+            const emailInput = document.getElementById('emailInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+            const registerButton = document.getElementById('registerButton');
+            const registerError = document.getElementById('registerError');
+            const registerSuccess = document.getElementById('registerSuccess');
+            const passwordStrength = document.getElementById('passwordStrength');
             
-            // Verificar si ya hay un usuario logueado
-            checkCurrentUser();
-        });
-
-        // Configurar event listeners
-        function setupEventListeners() {
-            // Toggle de visibilidad de contraseña
-            document.getElementById('togglePassword').addEventListener('click', function() {
-                const passwordInput = document.getElementById('password');
-                const icon = this.querySelector('i');
+            // Verificar fortaleza de contraseña
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                let strength = 0;
                 
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    icon.classList.remove('fa-eye');
-                    icon.classList.add('fa-eye-slash');
+                // Longitud
+                if (password.length >= 8) strength += 25;
+                
+                // Contiene mayúsculas y minúsculas
+                if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
+                
+                // Contiene números
+                if (/[0-9]/.test(password)) strength += 25;
+                
+                // Contiene caracteres especiales
+                if (/[^A-Za-z0-9]/.test(password)) strength += 25;
+                
+                // Actualizar barra de fortaleza
+                passwordStrength.style.width = strength + '%';
+                
+                // Cambiar color según fortaleza
+                if (strength < 50) {
+                    passwordStrength.style.backgroundColor = '#ef4444'; // Rojo
+                } else if (strength < 75) {
+                    passwordStrength.style.backgroundColor = '#f59e0b'; // Amarillo
                 } else {
-                    passwordInput.type = 'password';
-                    icon.classList.remove('fa-eye-slash');
-                    icon.classList.add('fa-eye');
+                    passwordStrength.style.backgroundColor = '#10b981'; // Verde
                 }
             });
             
-            document.getElementById('toggleConfirmPassword').addEventListener('click', function() {
-                const confirmInput = document.getElementById('confirmPassword');
-                const icon = this.querySelector('i');
+            // Manejar envío del formulario
+            registerForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
                 
-                if (confirmInput.type === 'password') {
-                    confirmInput.type = 'text';
-                    icon.classList.remove('fa-eye');
-                    icon.classList.add('fa-eye-slash');
-                } else {
-                    confirmInput.type = 'password';
-                    icon.classList.remove('fa-eye-slash');
-                    icon.classList.add('fa-eye');
-                }
-            });
-            
-            // Validación en tiempo real
-            document.getElementById('password').addEventListener('input', validatePassword);
-            document.getElementById('confirmPassword').addEventListener('input', validatePasswordMatch);
-            document.getElementById('termsCheckbox').addEventListener('change', validateForm);
-            
-            // Botón de registro
-            document.getElementById('registerButton').addEventListener('click', handleRegister);
-            
-            // Permitir Enter para enviar
-            document.getElementById('confirmPassword').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    handleRegister();
-                }
-            });
-        }
-
-        // Verificar si ya hay usuario logueado
-        function checkCurrentUser() {
-            auth.onAuthStateChanged(function(user) {
-                if (user) {
-                    // Si ya está logueado, redirigir al panel
-                    window.location.href = 'admin.html';
-                }
-            });
-        }
-
-        // Validar fortaleza de contraseña
-        function validatePassword() {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            // Verificar longitud
-            const lengthValid = password.length >= 6;
-            updateRequirement('reqLength', lengthValid);
-            
-            // Verificar mayúscula
-            const hasUppercase = /[A-Z]/.test(password);
-            updateRequirement('reqUppercase', hasUppercase);
-            
-            // Verificar número
-            const hasNumber = /[0-9]/.test(password);
-            updateRequirement('reqNumber', hasNumber);
-            
-            // La contraseña es válida si cumple todos los requisitos
-            passwordValid = lengthValid && hasUppercase && hasNumber;
-            
-            // Validar coincidencia de contraseñas
-            if (confirmPassword) {
-                validatePasswordMatch();
-            }
-            
-            validateForm();
-        }
-
-        // Validar que las contraseñas coincidan
-        function validatePasswordMatch() {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            passwordsMatch = password === confirmPassword && password !== '';
-            updateRequirement('reqMatch', passwordsMatch);
-            
-            validateForm();
-        }
-
-        // Actualizar indicador de requisito
-        function updateRequirement(elementId, isValid) {
-            const element = document.getElementById(elementId);
-            const icon = element.querySelector('i');
-            
-            if (isValid) {
-                element.classList.remove('invalid');
-                element.classList.add('valid');
-                icon.classList.remove('fa-circle');
-                icon.classList.add('fa-check-circle');
-            } else {
-                element.classList.remove('valid');
-                element.classList.add('invalid');
-                icon.classList.remove('fa-check-circle');
-                icon.classList.add('fa-circle');
-            }
-        }
-
-        // Validar formulario completo
-        function validateForm() {
-            const email = document.getElementById('email').value;
-            termsAccepted = document.getElementById('termsCheckbox').checked;
-            
-            const formValid = email && passwordValid && passwordsMatch && termsAccepted;
-            
-            document.getElementById('registerButton').disabled = !formValid;
-        }
-
-        // Manejar registro
-        async function handleRegister() {
-            const fullName = document.getElementById('fullName').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            // Validaciones finales
-            if (!email || !password) {
-                showError('Por favor completa todos los campos obligatorios');
-                return;
-            }
-            
-            if (!termsAccepted) {
-                showError('Debes aceptar los términos para crear una cuenta');
-                return;
-            }
-            
-            // Mostrar loading
-            showLoading(true);
-            
-            try {
-                // Crear usuario en Firebase Authentication
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                const user = userCredential.user;
+                // Obtener valores
+                const email = emailInput.value.trim();
+                const password = passwordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
                 
-                console.log('✅ Usuario creado:', user.uid);
+                // Validaciones
+                if (!email || !password || !confirmPassword) {
+                    showError('Por favor completa todos los campos');
+                    return;
+                }
                 
-                // Actualizar perfil con nombre
-                if (fullName) {
-                    await user.updateProfile({
-                        displayName: fullName
+                if (!isValidEmail(email)) {
+                    showError('Por favor ingresa un correo electrónico válido');
+                    return;
+                }
+                
+                if (password.length < 8) {
+                    showError('La contraseña debe tener al menos 8 caracteres');
+                    return;
+                }
+                
+                if (password !== confirmPassword) {
+                    showError('Las contraseñas no coinciden');
+                    return;
+                }
+                
+                // Validar fortaleza de contraseña
+                if (!isStrongPassword(password)) {
+                    showError('La contraseña debe contener al menos una letra mayúscula, una minúscula y un número');
+                    return;
+                }
+                
+                try {
+                    // Deshabilitar botón durante el registro
+                    registerButton.disabled = true;
+                    registerButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando cuenta...';
+                    
+                    // Ocultar errores previos
+                    hideError();
+                    
+                    // Crear usuario en Firebase Auth
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const user = userCredential.user;
+                    
+                    // Guardar información adicional en Firestore
+                    await saveAdminUser(user.uid, email);
+                    
+                    // Mostrar éxito
+                    showSuccess('Cuenta creada exitosamente. Serás redirigido al panel de administración.');
+                    
+                    // Redirigir después de 2 segundos
+                    setTimeout(() => {
+                        window.location.href = 'admin.html';
+                    }, 2000);
+                    
+                } catch (error) {
+                    console.error('Error en registro:', error);
+                    
+                    // Mostrar mensaje de error específico
+                    let errorMessage = 'Error al crear la cuenta. ';
+                    
+                    switch(error.code) {
+                        case 'auth/email-already-in-use':
+                            errorMessage += 'El correo electrónico ya está en uso.';
+                            break;
+                        case 'auth/invalid-email':
+                            errorMessage += 'El correo electrónico no es válido.';
+                            break;
+                        case 'auth/operation-not-allowed':
+                            errorMessage += 'La creación de cuentas está deshabilitada temporalmente.';
+                            break;
+                        case 'auth/weak-password':
+                            errorMessage += 'La contraseña es demasiado débil.';
+                            break;
+                        default:
+                            errorMessage += 'Por favor intenta nuevamente.';
+                    }
+                    
+                    showError(errorMessage);
+                    
+                    // Rehabilitar botón
+                    registerButton.disabled = false;
+                    registerButton.innerHTML = '<i class="fas fa-user-plus"></i> Crear Cuenta Administrador';
+                }
+            });
+            
+            // Función para guardar usuario administrador en Firestore
+            async function saveAdminUser(uid, email) {
+                try {
+                    await db.collection('admins').doc(uid).set({
+                        email: email,
+                        uid: uid,
+                        fecha_creacion: firebase.firestore.FieldValue.serverTimestamp(),
+                        rol: 'admin',
+                        activo: true
                     });
+                    console.log('✅ Usuario administrador guardado en Firestore');
+                } catch (error) {
+                    console.error('Error guardando usuario en Firestore:', error);
+                    throw error;
                 }
-                
-                // Guardar información adicional en Firestore (si es necesario)
-                await saveUserToFirestore(user.uid, email, fullName);
-                
-                // Mostrar éxito
-                showSuccess();
-                
-                // Redirigir después de 2 segundos
-                setTimeout(() => {
-                    window.location.href = 'admin.html';
-                }, 2000);
-                
-            } catch (error) {
-                console.error('❌ Error en registro:', error);
-                handleRegistrationError(error);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Guardar usuario en Firestore
-        async function saveUserToFirestore(uid, email, fullName) {
-            try {
-                // Necesitamos inicializar Firestore
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-                
-                const db = firebase.firestore();
-                
-                // Crear documento de usuario
-                await db.collection('admin_users').doc(uid).set({
-                    uid: uid,
-                    email: email,
-                    fullName: fullName || '',
-                    role: 'admin',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                console.log('✅ Usuario guardado en Firestore');
-                
-            } catch (error) {
-                console.error('Error guardando usuario en Firestore:', error);
-                // No mostramos error al usuario porque el registro en Auth fue exitoso
-            }
-        }
-
-        // Manejar errores de registro
-        function handleRegistrationError(error) {
-            let errorMessage = 'Error al crear la cuenta. ';
-            
-            switch(error.code) {
-                case 'auth/email-already-in-use':
-                    errorMessage += 'Este correo ya está registrado.';
-                    break;
-                case 'auth/invalid-email':
-                    errorMessage += 'El correo electrónico no es válido.';
-                    break;
-                case 'auth/operation-not-allowed':
-                    errorMessage += 'El registro con email/contraseña no está habilitado.';
-                    break;
-                case 'auth/weak-password':
-                    errorMessage += 'La contraseña es demasiado débil.';
-                    break;
-                default:
-                    errorMessage += error.message;
             }
             
-            showError(errorMessage);
-        }
-
-        // Mostrar loading
-        function showLoading(show) {
-            const button = document.getElementById('registerButton');
-            const buttonText = document.getElementById('buttonText');
-            const spinner = document.getElementById('loadingSpinner');
-            
-            if (show) {
-                button.disabled = true;
-                buttonText.textContent = 'Creando cuenta...';
-                spinner.style.display = 'inline-block';
-            } else {
-                button.disabled = !(passwordValid && passwordsMatch && termsAccepted);
-                buttonText.textContent = 'Crear Cuenta';
-                spinner.style.display = 'none';
+            // Funciones auxiliares
+            function isValidEmail(email) {
+                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return re.test(email);
             }
-        }
-
-        // Mostrar error
-        function showError(message) {
-            const errorElement = document.getElementById('registerError');
-            const errorMessageElement = document.getElementById('errorMessage');
             
-            errorMessageElement.textContent = message;
-            errorElement.style.display = 'block';
+            function isStrongPassword(password) {
+                // Al menos 8 caracteres, una mayúscula, una minúscula y un número
+                const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+                return re.test(password);
+            }
             
-            // Ocultar mensaje de éxito si está visible
-            document.getElementById('registerSuccess').style.display = 'none';
+            function showError(message) {
+                registerError.textContent = message;
+                registerError.style.display = 'block';
+                registerSuccess.style.display = 'none';
+            }
             
-            // Scroll al error
-            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        // Mostrar éxito
-        function showSuccess() {
-            const successElement = document.getElementById('registerSuccess');
+            function hideError() {
+                registerError.style.display = 'none';
+            }
             
-            successElement.style.display = 'block';
-            
-            // Ocultar error si está visible
-            document.getElementById('registerError').style.display = 'none';
-            
-            // Scroll al éxito
-            successElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
-            // Ocultar formulario
-            document.querySelector('.register-form').style.opacity = '0.5';
-            document.querySelector('.register-form').style.pointerEvents = 'none';
-        }
-
-        // Validar email
-        function isValidEmail(email) {
-            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return re.test(email);
-        }
+            function showSuccess(message) {
+                registerSuccess.textContent = message;
+                registerSuccess.style.display = 'block';
+                registerError.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>
