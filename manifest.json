@@ -1,21 +1,93 @@
 {
   "name": "EL TACHI - Pedidos Online",
   "short_name": "EL TACHI",
-  "description": "Pedí online en EL TACHI Rotisería",
-  "start_url": "/?v=2",
+  "description": "Pedí online en EL TACHI Rotisería. Envío a domicilio y retiro en local.",
+  "start_url": "/index.html?v=3",
   "display": "standalone",
   "background_color": "#3B82F6",
   "theme_color": "#3B82F6",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "es-AR",
+  "categories": ["food", "shopping"],
   "icons": [
     {
       "src": "logo.png?v=2",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "logo.png?v=2",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "screenshot2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Hacer pedido",
+      "short_name": "Pedir",
+      "description": "Realizar un nuevo pedido",
+      "url": "/index.html?v=3",
+      "icons": [{ "src": "logo.png?v=2", "sizes": "96x96" }]
+    },
+    {
+      "name": "Ver carrito",
+      "short_name": "Carrito",
+      "description": "Ver mi carrito actual",
+      "url": "/index.html?v=3#cart",
+      "icons": [{ "src": "cart-icon.png", "sizes": "96x96" }]
     }
   ]
 }
