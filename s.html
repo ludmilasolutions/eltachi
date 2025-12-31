@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subidor Automático de Productos - EL TACHI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(90deg, #1e40af 0%, #f59e0b 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .logo {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .instructions {
+            background-color: #f0f9ff;
+            border-left: 4px solid #1e40af;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        .instructions h3 {
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .json-section {
+            margin-bottom: 40px;
+        }
+        
+        .json-section h2 {
+            color: #1e40af;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .json-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .json-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .json-box {
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .json-header {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .json-header h3 {
+            color: #374151;
+        }
+        
+        .json-count {
+            background-color: #1e40af;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .json-textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: none;
+            resize: vertical;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 40px;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background-color: #1e40af;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #1e3a8a;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background-color: #f59e0b;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #d97706;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #dc2626;
+            transform: translateY(-2px);
+        }
+        
+        .results {
+            margin-top: 40px;
+            padding: 25px;
+            border-radius: 10px;
+            background-color: #f8fafc;
+            display: none;
+        }
+        
+        .results.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .results-header h3 {
+            color: #1e40af;
+        }
+        
+        .results-content {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .result-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: white;
+            border-radius: 8px;
+            border-left: 4px solid #1e40af;
+        }
+        
+        .result-item.success {
+            border-left-color: #10b981;
+        }
+        
+        .result-item.error {
+            border-left-color: #ef4444;
+        }
+        
+        .result-item.warning {
+            border-left-color: #f59e0b;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .status-success {
+            background-color: #10b981;
+        }
+        
+        .status-error {
+            background-color: #ef4444;
+        }
+        
+        .status-warning {
+            background-color: #f59e0b;
+        }
+        
+        .status-info {
+            background-color: #1e40af;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #1e40af;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .stat-box {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .preview-section {
+            margin-top: 40px;
+            padding: 25px;
+            border-radius: 10px;
+            background-color: #f8fafc;
+        }
+        
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .preview-header h3 {
+            color: #1e40af;
+        }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .product-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .product-name {
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 5px;
+        }
+        
+        .product-price {
+            color: #f59e0b;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .product-category {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 14px;
+            border-top: 1px solid #e5e7eb;
+            margin-top: 30px;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            background-color: #f0f9ff;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .status-connected {
+            background-color: #10b981;
+        }
+        
+        .status-disconnected {
+            background-color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">🍔</div>
+            <h1>Subidor Automático de Productos</h1>
+            <p>EL TACHI Rotisería - Carga masiva de productos a Firebase</p>
+        </header>
+        
+        <div class="content">
+            <div class="instructions">
+                <h3>📋 Instrucciones de Uso</h3>
+                <ol>
+                    <li><strong>Conexión:</strong> Asegúrate de estar conectado a Internet y tener acceso a Firebase.</li>
+                    <li><strong>Datos:</strong> Pega los JSON de productos en las áreas correspondientes (bebidas y comidas).</li>
+                    <li><strong>Validación:</strong> Haz clic en "Validar JSON" para comprobar que el formato es correcto.</li>
+                    <li><strong>Carga:</strong> Haz clic en "Subir a Firebase" para cargar todos los productos a la base de datos.</li>
+                    <li><strong>Verificación:</strong> Revisa los resultados y el resumen de la operación.</li>
+                </ol>
+            </div>
+            
+            <div class="connection-status" id="connectionStatus">
+                <div class="status-dot status-disconnected" id="statusDot"></div>
+                <span id="statusText">Conectando a Firebase...</span>
+            </div>
+            
+            <div class="json-container">
+                <div class="json-section">
+                    <h2>🥤 Bebidas</h2>
+                    <div class="json-box">
+                        <div class="json-header">
+                            <h3>JSON de Bebidas</h3>
+                            <div class="json-count" id="bebidasCount">0 categorías</div>
+                        </div>
+                        <textarea class="json-textarea" id="bebidasJson" placeholder="Pega aquí el JSON de bebidas...">{
+  "categorias": [
+    {
+      "categoria": "🥤 Gaseosas – Retornables",
+      "productos": [
+        {
+          "nombre": "Coca x 2L",
+          "precio": 3000
+        },
+        {
+          "nombre": "Fanta x 2L",
+          "precio": 3000
+        },
+        {
+          "nombre": "Sprite x 2L",
+          "precio": 3000
+        }
+      ]
+    },
+    {
+      "categoria": "Gaseosas – Descartables",
+      "productos": [
+        {
+          "nombre": "Coca x 1,5L",
+          "precio": 3500
+        },
+        {
+          "nombre": "Sprite x 1,5L",
+          "precio": 3500
+        },
+        {
+          "nombre": "Fanta x 1,5L",
+          "precio": 3500
+        },
+        {
+          "nombre": "Coca x 2,5L",
+          "precio": 4500
+        },
+        {
+          "nombre": "Coca x 500cc",
+          "precio": 1500
+        },
+        {
+          "nombre": "Sprite x 500cc",
+          "precio": 1500
+        },
+        {
+          "nombre": "Fanta x 500cc",
+          "precio": 1500
+        },
+        {
+          "nombre": "Coca lata",
+          "precio": 1400
+        },
+        {
+          "nombre": "Sprite lata",
+          "precio": 1400
+        },
+        {
+          "nombre": "Fanta lata",
+          "precio": 1400
+        },
+        {
+          "nombre": "Coca vidrio chica",
+          "precio": 1000
+        }
+      ]
+    },
+    {
+      "categoria": "Otras gaseosas",
+      "productos": [
+        {
+          "nombre": "Cunnington",
+          "precio": 1500
+        },
+        {
+          "nombre": "Pritty x 3L",
+          "precio": 2800
+        },
+        {
+          "nombre": "Doble Cola x 3L",
+          "precio": 2100
+        },
+        {
+          "nombre": "Secco x 3L",
+          "precio": 1700
+        }
+      ]
+    },
+    {
+      "categoria": "🍺 Cervezas – Latas",
+      "productos": [
+        {
+          "nombre": "Lata Schneider",
+          "precio": 1700
+        },
+        {
+          "nombre": "Lata Quilmes",
+          "precio": 1600
+        },
+        {
+          "nombre": "Lata Brahma",
+          "precio": 1600
+        },
+        {
+          "nombre": "Lata Santa Fe",
+          "precio": 1700
+        },
+        {
+          "nombre": "Lata 1890",
+          "precio": 1500
+        },
+        {
+          "nombre": "Lata 361",
+          "precio": 1300
+        },
+        {
+          "nombre": "Lata Isenbeck",
+          "precio": 1400
+        },
+        {
+          "nombre": "Lata Schneider 710cc",
+          "precio": 3000
+        }
+      ]
+    },
+    {
+      "categoria": "Cervezas – Botellas",
+      "productos": [
+        {
+          "nombre": "Quilmes 1L",
+          "precio": 2900
+        },
+        {
+          "nombre": "Brahma 1L",
+          "precio": 2900
+        },
+        {
+          "nombre": "Iguana 1L",
+          "precio": 2400
+        },
+        {
+          "nombre": "361 descartable",
+          "precio": 2000
+        }
+      ]
+    },
+    {
+      "categoria": "🍷 Vinos caja",
+      "productos": [
+        {
+          "nombre": "Termidor Blanco",
+          "precio": 1600
+        },
+        {
+          "nombre": "Termidor Tinto",
+          "precio": 1900
+        },
+        {
+          "nombre": "Toro Tinto",
+          "precio": 2300
+        }
+      ]
+    },
+    {
+      "categoria": "Otros",
+      "productos": [
+        {
+          "nombre": "Casoni",
+          "precio": 1100
+        },
+        {
+          "nombre": "Soda",
+          "precio": 1300
+        },
+        {
+          "nombre": "Baggio Fresh",
+          "precio": 1300
+        },
+        {
+          "nombre": "Saborizada 500cc",
+          "precio": 650
+        },
+        {
+          "nombre": "Agua 500cc",
+          "precio": 650
+        },
+        {
+          "nombre": "Agua x 2L",
+          "precio": 1100
+        },
+        {
+          "nombre": "Agua x 1,5L",
+          "precio": 1000
+        }
+      ]
+    },
+    {
+      "categoria": "🧃 Jugos",
+      "productos": [
+        {
+          "nombre": "Baggio x 1L",
+          "precio": 1700
+        },
+        {
+          "nombre": "Baggio chico",
+          "precio": 500
+        },
+        {
+          "nombre": "Cepita",
+          "precio": 3200
+        },
+        {
+          "nombre": "Gatorade x 500cc",
+          "precio": 1400
+        }
+      ]
+    },
+    {
+      "categoria": "⚡ Energizantes y otros",
+      "productos": [
+        {
+          "nombre": "Speed chico",
+          "precio": 1800
+        },
+        {
+          "nombre": "Speed grande",
+          "precio": 2500
+        }
+      ]
+    }
+  ]
+}</textarea>
+                    </div>
+                </div>
+                
+                <div class="json-section">
+                    <h2>🍕 Comidas</h2>
+                    <div class="json-box">
+                        <div class="json-header">
+                            <h3>JSON de Comidas</h3>
+                            <div class="json-count" id="comidasCount">0 categorías</div>
+                        </div>
+                        <textarea class="json-textarea" id="comidasJson" placeholder="Pega aquí el JSON de comidas...">{
+  "categorias": [
+    {
+      "categoria": "🍕 Pizzas",
+      "productos": [
+        {
+          "nombre": "Pizza 1/2 Muzzarella",
+          "precio": 3500,
+          "desc": "Salsa de tomate, queso muzzarella y aceitunas"
+        },
+        {
+          "nombre": "Pizza 1/2 Doble Muzza",
+          "precio": 4000,
+          "desc": "Salsa de tomate, doble muzzarella y aceitunas"
+        },
+        {
+          "nombre": "Pizza 1/2 Muzza con Jamón",
+          "precio": 4000,
+          "desc": "Salsa de tomate, queso muzzarella y jamón"
+        },
+        {
+          "nombre": "Pizza 1/2 Especial",
+          "precio": 4500,
+          "desc": "Jamón, muzzarella, huevo, morrón"
+        },
+        {
+          "nombre": "Pizza 1/2 Viena",
+          "precio": 4500,
+          "desc": "Muzzarella, salchicha y huevo revuelto"
+        },
+        {
+          "nombre": "Pizza 1/2 Napolitana",
+          "precio": 4500,
+          "desc": "Muzzarella, tomate, ajo"
+        },
+        {
+          "nombre": "Pizza 1/2 Dante",
+          "precio": 5000,
+          "desc": "Salsa de tomate, queso muzzarella y toppings especiales"
+        },
+        {
+          "nombre": "Pizza 1/2 Va como Piña",
+          "precio": 5000,
+          "desc": "Muzzarella, huevo frito y papas fritas"
+        },
+        {
+          "nombre": "Pizza 1/2 Roquefort",
+          "precio": 5000,
+          "desc": "Muzzarella y queso roquefort"
+        },
+        {
+          "nombre": "Pizza 1/2 Salame",
+          "precio": 4500,
+          "desc": "Muzzarella y salame"
+        },
+        {
+          "nombre": "Pizza Muzzarella",
+          "precio": 7000,
+          "desc": "Salsa de tomate, queso muzzarella y aceitunas"
+        },
+        {
+          "nombre": "Pizza Doble Muzza",
+          "precio": 7500,
+          "desc": "Salsa de tomate, doble muzzarella y aceitunas"
+        },
+        {
+          "nombre": "Pizza Muzza con Jamón",
+          "precio": 7500,
+          "desc": "Salsa de tomate, queso muzzarella y jamón"
+        },
+        {
+          "nombre": "Pizza Especial",
+          "precio": 8000,
+          "desc": "Jamón, muzzarella, huevo, morrón"
+        },
+        {
+          "nombre": "Pizza Viena",
+          "precio": 8500,
+          "desc": "Muzzarella, salchicha y huevo revuelto"
+        },
+        {
+          "nombre": "Pizza Napolitana",
+          "precio": 8000,
+          "desc": "Muzzarella, tomate, ajo"
+        },
+        {
+          "nombre": "Pizza Dante",
+          "precio": 9000,
+          "desc": "Salsa de tomate, queso muzzarella y toppings especiales"
+        },
+        {
+          "nombre": "Pizza Va como Piña",
+          "precio": 9000,
+          "desc": "Muzzarella, huevo frito y papas fritas"
+        },
+        {
+          "nombre": "Pizza Roquefort",
+          "precio": 9000,
+          "desc": "Muzzarella y queso roquefort"
+        },
+        {
+          "nombre": "Pizza Salame",
+          "precio": 8500,
+          "desc": "Muzzarella y salame"
+        }
+      ]
+    },
+    {
+      "categoria": "🥪 Carlitos",
+      "productos": [
+        {
+          "nombre": "Carlito Común",
+          "precio": 6500,
+          "desc": "Jamón, queso y ketchup"
+        },
+        {
+          "nombre": "Carlito Especial",
+          "precio": 7500,
+          "desc": "Jamón, queso, ketchup, huevo rallado, morrón"
+        },
+        {
+          "nombre": "Adicional Papas Fritas",
+          "precio": 1500
+        }
+      ]
+    },
+    {
+      "categoria": "🍟 Papas Fritas",
+      "productos": [
+        {
+          "nombre": "Bandeja Mediana",
+          "precio": 4000
+        },
+        {
+          "nombre": "Bandeja Grande",
+          "precio": 5500
+        },
+        {
+          "nombre": "Aderezo adicional",
+          "precio": 1000
+        }
+      ]
+    },
+    {
+      "categoria": "🍔 Hamburguesas o Bifes Chorizos (con papas)",
+      "productos": [
+        {
+          "nombre": "Hamburguesa Común",
+          "precio": 6500,
+          "desc": "Pan, carne, lechuga, tomate y aderezo"
+        },
+        {
+          "nombre": "Hamburguesa Especial",
+          "precio": 7500,
+          "desc": "Pan, carne, jamón, queso, huevo, lechuga, tomate y aderezo"
+        }
+      ]
+    },
+    {
+      "categoria": "🥪 Torpedos (con papas)",
+      "productos": [
+        {
+          "nombre": "Torpedo Especial Hamburguesa (2)",
+          "precio": 10900
+        },
+        {
+          "nombre": "Torpedo Especial Hamburguesa (3)",
+          "precio": 12000
+        },
+        {
+          "nombre": "Torpedo Primavera",
+          "precio": 7500
+        },
+        {
+          "nombre": "Torpedo Vegetariano",
+          "precio": 7500
+        },
+        {
+          "nombre": "Torpedo Especial Suprema",
+          "precio": 11000
+        },
+        {
+          "nombre": "Torpedo Especial Milanesa",
+          "precio": 12500
+        }
+      ]
+    },
+    {
+      "categoria": "🍔 Familiares (con papas)",
+      "productos": [
+        {
+          "nombre": "Familiar Especial Suprema",
+          "precio": 6500
+        },
+        {
+          "nombre": "Familiar Especial Milanesa",
+          "precio": 7500
+        },
+        {
+          "nombre": "Familiar Común Suprema",
+          "precio": 6000
+        },
+        {
+          "nombre": "Familiar Común Milanesa",
+          "precio": 6500
+        }
+      ]
+    },
+    {
+      "categoria": "🥟 Empanadas",
+      "productos": [
+        {
+          "nombre": "Docena de Empanadas",
+          "precio": 13000
+        },
+        {
+          "nombre": "1/2 Docena de Empanadas",
+          "precio": 6500
+        },
+        {
+          "nombre": "Empanada de Carne",
+          "precio": 1100
+        },
+        {
+          "nombre": "Empanada de Pollo",
+          "precio": 1100
+        },
+        {
+          "nombre": "Empanada de J y Q",
+          "precio": 1100
+        },
+        {
+          "nombre": "Empanada de Verdura",
+          "precio": 1100
+        }
+      ]
+    },
+    {
+      "categoria": "🍽️ Pizzanesa para 3 Personas",
+      "productos": [
+        {
+          "nombre": "Pizzanesa Carne Especial (3)",
+          "precio": 24000
+        },
+        {
+          "nombre": "Pizzanesa Carne Napolitana (3)",
+          "precio": 24000
+        },
+        {
+          "nombre": "Pizzanesa Carne Salame (3)",
+          "precio": 24000
+        },
+        {
+          "nombre": "Pizzanesa Carne Muzzarella (3)",
+          "precio": 22000
+        },
+        {
+          "nombre": "Pizzanesa Carne Roquefort (3)",
+          "precio": 25000
+        },
+        {
+          "nombre": "Pizzanesa Carne Bomba (3)",
+          "precio": 25000
+        },
+        {
+          "nombre": "Pizzanesa Pollo Especial (3)",
+          "precio": 23000
+        },
+        {
+          "nombre": "Pizzanesa Pollo Napolitana (3)",
+          "precio": 23000
+        },
+        {
+          "nombre": "Pizzanesa Pollo Salame (3)",
+          "precio": 23000
+        },
+        {
+          "nombre": "Pizzanesa Pollo Muzzarella (3)",
+          "precio": 21000
+        },
+        {
+          "nombre": "Pizzanesa Pollo Roquefort (3)",
+          "precio": 24000
+        },
+        {
+          "nombre": "Pizzanesa Pollo Bomba (3)",
+          "precio": 24000
+        }
+      ]
+    },
+    {
+      "categoria": "🍽️ Pizzanesa para 2 Personas",
+      "productos": [
+        {
+          "nombre": "Pizzanesa Carne Especial (2 Personas)",
+          "precio": 16500
+        },
+        {
+          "nombre": "Pizzanesa Carne Napolitana (2 Personas)",
+          "precio": 16500
+        },
+        {
+          "nombre": "Pizzanesa Carne Salame (2 Personas)",
+          "precio": 16500
+        },
+        {
+          "nombre": "Pizzanesa Carne Muzzarella (2 Personas)",
+          "precio": 15000
+        },
+        {
+          "nombre": "Pizzanesa Carne Roquefort (2 Personas)",
+          "precio": 17000
+        },
+        {
+          "nombre": "Pizzanesa Carne Bomba (2 Personas)",
+          "precio": 17000
+        },
+        {
+          "nombre": "Pizzanesa Pollo Especial (2 Personas)",
+          "precio": 15500
+        },
+        {
+          "nombre": "Pizzanesa Pollo Napolitana (2 Personas)",
+          "precio": 15500
+        },
+        {
+          "nombre": "Pizzanesa Pollo Salame (2 Personas)",
+          "precio": 15500
+        },
+        {
+          "nombre": "Pizzanesa Pollo Muzzarella (2 Personas)",
+          "precio": 14000
+        },
+        {
+          "nombre": "Pizzanesa Pollo Roquefort (2 Personas)",
+          "precio": 16500
+        },
+        {
+          "nombre": "Pizzanesa Pollo Bomba (2 Personas)",
+          "precio": 16500
+        }
+      ]
+    },
+    {
+      "categoria": "🍳 Otros",
+      "productos": [
+        {
+          "nombre": "Tortilla de Papas",
+          "precio": 7000
+        },
+        {
+          "nombre": "Milanesa con Papas",
+          "precio": 5000
+        },
+        {
+          "nombre": "Suprema con Papas",
+          "precio": 5000
+        }
+      ]
+    }
+  ]
+}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="btn btn-secondary" id="validateBtn">
+                    <span>✅</span> Validar JSON
+                </button>
+                <button class="btn btn-primary" id="uploadBtn">
+                    <span>⬆️</span> Subir a Firebase
+                </button>
+                <button class="btn btn-danger" id="clearBtn">
+                    <span>🗑️</span> Limpiar Campos
+                </button>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Procesando datos, por favor espera...</p>
+            </div>
+            
+            <div class="results" id="results">
+                <div class="results-header">
+                    <h3>📊 Resultados de la Operación</h3>
+                    <button class="btn btn-secondary" id="closeResults">
+                        <span>✖️</span> Cerrar
+                    </button>
+                </div>
+                <div class="results-content" id="resultsContent">
+                    <!-- Los resultados se mostrarán aquí -->
+                </div>
+                <div class="stats" id="stats">
+                    <!-- Estadísticas se mostrarán aquí -->
+                </div>
+            </div>
+            
+            <div class="preview-section" id="previewSection" style="display: none;">
+                <div class="preview-header">
+                    <h3>👁️ Vista Previa de Productos</h3>
+                    <button class="btn btn-secondary" id="togglePreview">
+                        <span>👁️</span> Ocultar Vista Previa
+                    </button>
+                </div>
+                <div class="preview-grid" id="previewGrid">
+                    <!-- Vista previa de productos se mostrará aquí -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>EL TACHI Rotisería - Subidor Automático de Productos v1.0</p>
+            <p>⚠️ Esta herramienta es solo para uso administrativo. Los cambios realizados afectarán la base de datos en producción.</p>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    
+    <script>
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
+            authDomain: "eltachi.firebaseapp.com",
+            projectId: "eltachi",
+            storageBucket: "eltachi.firebasestorage.app",
+            messagingSenderId: "231676602106",
+            appId: "1:231676602106:web:fde347e9caa00760b34b43"
+        };
+        
+        // Inicializar Firebase
+        let db = null;
+        
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log("✅ Firebase inicializado");
+            }
+            
+            db = firebase.firestore();
+            
+            // Configurar para desarrollo local si es necesario
+            if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+                db.settings({
+                    host: "localhost:8080",
+                    ssl: false
+                });
+                console.log("🔄 Modo desarrollo: usando Firestore emulator");
+            }
+            
+            // Actualizar estado de conexión
+            updateConnectionStatus(true);
+        } catch (error) {
+            console.error("❌ Error inicializando Firebase:", error);
+            updateConnectionStatus(false);
+        }
+        
+        // Variables globales
+        let bebidasData = null;
+        let comidasData = null;
+        let allCategories = [];
+        let allProducts = [];
+        
+        // Elementos del DOM
+        const bebidasJsonTextarea = document.getElementById('bebidasJson');
+        const comidasJsonTextarea = document.getElementById('comidasJson');
+        const validateBtn = document.getElementById('validateBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const resultsContent = document.getElementById('resultsContent');
+        const stats = document.getElementById('stats');
+        const bebidasCount = document.getElementById('bebidasCount');
+        const comidasCount = document.getElementById('comidasCount');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const previewSection = document.getElementById('previewSection');
+        const previewGrid = document.getElementById('previewGrid');
+        const togglePreview = document.getElementById('togglePreview');
+        const closeResults = document.getElementById('closeResults');
+        
+        // Funciones de utilidad
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                statusDot.className = 'status-dot status-connected';
+                statusText.textContent = '✅ Conectado a Firebase';
+                connectionStatus.style.backgroundColor = '#f0f9ff';
+            } else {
+                statusDot.className = 'status-dot status-disconnected';
+                statusText.textContent = '❌ No conectado a Firebase';
+                connectionStatus.style.backgroundColor = '#fef2f2';
+            }
+        }
+        
+        function showLoading() {
+            loading.classList.add('active');
+        }
+        
+        function hideLoading() {
+            loading.classList.remove('active');
+        }
+        
+        function showResults() {
+            results.classList.add('active');
+        }
+        
+        function hideResults() {
+            results.classList.remove('active');
+        }
+        
+        function addResult(message, type = 'info') {
+            const resultItem = document.createElement('div');
+            resultItem.className = `result-item ${type}`;
+            
+            const statusIndicator = document.createElement('span');
+            statusIndicator.className = `status-indicator status-${type}`;
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            
+            resultItem.appendChild(statusIndicator);
+            resultItem.appendChild(messageSpan);
+            resultsContent.appendChild(resultItem);
+            
+            // Auto scroll al último resultado
+            resultsContent.scrollTop = resultsContent.scrollHeight;
+        }
+        
+        function clearResults() {
+            resultsContent.innerHTML = '';
+            stats.innerHTML = '';
+        }
+        
+        function updateCounts() {
+            if (bebidasData && bebidasData.categorias) {
+                bebidasCount.textContent = `${bebidasData.categorias.length} categorías`;
+            }
+            
+            if (comidasData && comidasData.categorias) {
+                comidasCount.textContent = `${comidasData.categorias.length} categorías`;
+            }
+        }
+        
+        function parseJsonData() {
+            clearResults();
+            
+            try {
+                // Parsear JSON de bebidas
+                if (bebidasJsonTextarea.value.trim()) {
+                    bebidasData = JSON.parse(bebidasJsonTextarea.value);
+                    addResult(`✅ JSON de bebidas parseado correctamente: ${bebidasData.categorias.length} categorías encontradas`, 'success');
+                } else {
+                    bebidasData = null;
+                    addResult('ℹ️ No hay datos de bebidas para procesar', 'warning');
+                }
+                
+                // Parsear JSON de comidas
+                if (comidasJsonTextarea.value.trim()) {
+                    comidasData = JSON.parse(comidasJsonTextarea.value);
+                    addResult(`✅ JSON de comidas parseado correctamente: ${comidasData.categorias.length} categorías encontradas`, 'success');
+                } else {
+                    comidasData = null;
+                    addResult('ℹ️ No hay datos de comidas para procesar', 'warning');
+                }
+                
+                updateCounts();
+                showResults();
+                generatePreview();
+                
+            } catch (error) {
+                addResult(`❌ Error parseando JSON: ${error.message}`, 'error');
+                showResults();
+            }
+        }
+        
+        function generatePreview() {
+            // Limpiar vista previa
+            previewGrid.innerHTML = '';
+            
+            // Combinar todos los productos para vista previa
+            allProducts = [];
+            allCategories = [];
+            
+            // Procesar bebidas
+            if (bebidasData && bebidasData.categorias) {
+                bebidasData.categorias.forEach((categoriaObj, index) => {
+                    const categoriaId = `bebida-${index}`;
+                    allCategories.push({
+                        id: categoriaId,
+                        nombre: categoriaObj.categoria,
+                        orden: index + 1
+                    });
+                    
+                    categoriaObj.productos.forEach(producto => {
+                        allProducts.push({
+                            nombre: producto.nombre,
+                            precio: producto.precio,
+                            descripcion: producto.desc || '',
+                            categoria: categoriaId,
+                            disponible: true
+                        });
+                    });
+                });
+            }
+            
+            // Procesar comidas
+            if (comidasData && comidasData.categorias) {
+                const offset = bebidasData ? bebidasData.categorias.length : 0;
+                
+                comidasData.categorias.forEach((categoriaObj, index) => {
+                    const categoriaId = `comida-${index}`;
+                    allCategories.push({
+                        id: categoriaId,
+                        nombre: categoriaObj.categoria,
+                        orden: offset + index + 1
+                    });
+                    
+                    categoriaObj.productos.forEach(producto => {
+                        allProducts.push({
+                            nombre: producto.nombre,
+                            precio: producto.precio,
+                            descripcion: producto.desc || '',
+                            categoria: categoriaId,
+                            disponible: true
+                        });
+                    });
+                });
+            }
+            
+            // Mostrar vista previa de algunos productos
+            const sampleProducts = allProducts.slice(0, 12);
+            
+            sampleProducts.forEach(producto => {
+                const categoria = allCategories.find(c => c.id === producto.categoria);
+                const categoriaNombre = categoria ? categoria.nombre : 'Sin categoría';
+                
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
+                productCard.innerHTML = `
+                    <div class="product-name">${producto.nombre}</div>
+                    <div class="product-price">$${producto.precio}</div>
+                    <div class="product-category">${categoriaNombre}</div>
+                    ${producto.descripcion ? `<p style="margin-top: 10px; font-size: 13px; color: #6b7280;">${producto.descripcion}</p>` : ''}
+                `;
+                
+                previewGrid.appendChild(productCard);
+            });
+            
+            previewSection.style.display = 'block';
+        }
+        
+        async function uploadToFirebase() {
+            if (!db) {
+                addResult('❌ No hay conexión a Firebase. Verifica la configuración.', 'error');
+                showResults();
+                return;
+            }
+            
+            if (!bebidasData && !comidasData) {
+                addResult('❌ No hay datos para subir. Primero valida los JSON.', 'error');
+                showResults();
+                return;
+            }
+            
+            showLoading();
+            clearResults();
+            addResult('🚀 Iniciando subida de datos a Firebase...', 'info');
+            
+            try {
+                let categoriesCreated = 0;
+                let productsCreated = 0;
+                let categoriesSkipped = 0;
+                let productsSkipped = 0;
+                
+                // 1. Primero crear todas las categorías
+                addResult('📂 Creando categorías en Firebase...', 'info');
+                
+                for (const categoria of allCategories) {
+                    try {
+                        // Verificar si la categoría ya existe por nombre
+                        const existingCategoryQuery = await db.collection('categories')
+                            .where('nombre', '==', categoria.nombre)
+                            .limit(1)
+                            .get();
+                        
+                        if (!existingCategoryQuery.empty) {
+                            addResult(`ℹ️ Categoría "${categoria.nombre}" ya existe, saltando...`, 'warning');
+                            categoriesSkipped++;
+                            // Usar el ID existente para los productos
+                            categoria.firebaseId = existingCategoryQuery.docs[0].id;
+                        } else {
+                            // Crear nueva categoría
+                            const docRef = await db.collection('categories').add({
+                                nombre: categoria.nombre,
+                                orden: categoria.orden
+                            });
+                            
+                            categoria.firebaseId = docRef.id;
+                            categoriesCreated++;
+                            addResult(`✅ Categoría creada: "${categoria.nombre}"`, 'success');
+                        }
+                    } catch (error) {
+                        addResult(`❌ Error creando categoría "${categoria.nombre}": ${error.message}`, 'error');
+                    }
+                }
+                
+                // 2. Crear todos los productos
+                addResult('🍔 Creando productos en Firebase...', 'info');
+                
+                for (const producto of allProducts) {
+                    try {
+                        // Buscar la categoría correspondiente
+                        const categoria = allCategories.find(c => c.id === producto.categoria);
+                        if (!categoria || !categoria.firebaseId) {
+                            addResult(`❌ No se pudo encontrar categoría para producto "${producto.nombre}"`, 'error');
+                            productsSkipped++;
+                            continue;
+                        }
+                        
+                        // Verificar si el producto ya existe
+                        const existingProductQuery = await db.collection('products')
+                            .where('nombre', '==', producto.nombre)
+                            .where('categoria', '==', categoria.firebaseId)
+                            .limit(1)
+                            .get();
+                        
+                        if (!existingProductQuery.empty) {
+                            addResult(`ℹ️ Producto "${producto.nombre}" ya existe en esta categoría, actualizando...`, 'warning');
+                            
+                            // Actualizar producto existente
+                            await db.collection('products').doc(existingProductQuery.docs[0].id).update({
+                                precio: producto.precio,
+                                descripcion: producto.descripcion,
+                                disponible: producto.disponible,
+                                fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            
+                            productsSkipped++;
+                        } else {
+                            // Crear nuevo producto
+                            await db.collection('products').add({
+                                nombre: producto.nombre,
+                                precio: producto.precio,
+                                descripcion: producto.descripcion,
+                                categoria: categoria.firebaseId,
+                                disponible: producto.disponible,
+                                fecha_creacion: firebase.firestore.FieldValue.serverTimestamp(),
+                                fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            
+                            productsCreated++;
+                            addResult(`✅ Producto creado: "${producto.nombre}"`, 'success');
+                        }
+                    } catch (error) {
+                        addResult(`❌ Error creando producto "${producto.nombre}": ${error.message}`, 'error');
+                    }
+                }
+                
+                // Mostrar estadísticas finales
+                addResult('🎉 ¡Proceso completado!', 'success');
+                
+                // Crear estadísticas
+                stats.innerHTML = `
+                    <div class="stat-box">
+                        <div class="stat-value">${allCategories.length}</div>
+                        <div class="stat-label">Categorías procesadas</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${categoriesCreated}</div>
+                        <div class="stat-label">Categorías creadas</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${categoriesSkipped}</div>
+                        <div class="stat-label">Categorías existentes</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${allProducts.length}</div>
+                        <div class="stat-label">Productos procesados</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${productsCreated}</div>
+                        <div class="stat-label">Productos creados</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${productsSkipped}</div>
+                        <div class="stat-label">Productos actualizados</div>
+                    </div>
+                `;
+                
+                showResults();
+                
+            } catch (error) {
+                addResult(`❌ Error general en el proceso: ${error.message}`, 'error');
+                showResults();
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function clearFields() {
+            bebidasJsonTextarea.value = '';
+            comidasJsonTextarea.value = '';
+            bebidasData = null;
+            comidasData = null;
+            updateCounts();
+            previewSection.style.display = 'none';
+            hideResults();
+            
+            addResult('🧹 Campos limpiados correctamente', 'success');
+            showResults();
+        }
+        
+        // Event Listeners
+        validateBtn.addEventListener('click', parseJsonData);
+        
+        uploadBtn.addEventListener('click', uploadToFirebase);
+        
+        clearBtn.addEventListener('click', clearFields);
+        
+        togglePreview.addEventListener('click', function() {
+            if (previewSection.style.display === 'none') {
+                previewSection.style.display = 'block';
+                togglePreview.innerHTML = '<span>👁️</span> Ocultar Vista Previa';
+            } else {
+                previewSection.style.display = 'none';
+                togglePreview.innerHTML = '<span>👁️</span> Mostrar Vista Previa';
+            }
+        });
+        
+        closeResults.addEventListener('click', hideResults);
+        
+        // Validar JSON automáticamente al cambiar el contenido
+        bebidasJsonTextarea.addEventListener('input', function() {
+            try {
+                if (this.value.trim()) {
+                    JSON.parse(this.value);
+                }
+            } catch (error) {
+                // No hacer nada si hay error, se validará al hacer clic en el botón
+            }
+        });
+        
+        comidasJsonTextarea.addEventListener('input', function() {
+            try {
+                if (this.value.trim()) {
+                    JSON.parse(this.value);
+                }
+            } catch (error) {
+                // No hacer nada si hay error, se validará al hacer clic en el botón
+            }
+        });
+        
+        // Inicializar contadores
+        updateCounts();
+        
+        // Probar conexión a Firebase
+        setTimeout(async () => {
+            if (db) {
+                try {
+                    await db.collection('settings').doc('config').get();
+                    updateConnectionStatus(true);
+                } catch (error) {
+                    updateConnectionStatus(false);
+                }
+            }
+        }, 1000);
+        
+        console.log('✅ Subidor automático de productos cargado correctamente');
+    </script>
+</body>
+</html>
