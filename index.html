@@ -26,7 +26,7 @@
     <meta http-equiv="Expires" content="0">
     
     <style>
-        /* VERSIÓN DEL CSS MEJORADA: 3.0 - FECHA: 2024 */
+        /* VERSIÓN DEL CSS MEJORADA: 4.0 - FECHA: 2024 */
         :root {
             --azul-electrico: #3B82F6;
             --azul-oscuro: #1E40AF;
@@ -932,7 +932,7 @@
             box-shadow: none;
         }
         
-        /* CHECKOUT MODAL MEJORADO */
+        /* CHECKOUT MODAL MEJORADO - CORREGIDO SCROLL */
         .checkout-modal {
             position: fixed;
             top: 0;
@@ -946,6 +946,7 @@
             justify-content: center;
             padding: 1rem;
             backdrop-filter: blur(10px);
+            overflow: hidden;
         }
         
         .checkout-content {
@@ -953,11 +954,12 @@
             border-radius: 28px;
             width: 100%;
             max-width: 500px;
-            max-height: 95vh;
-            overflow-y: auto;
+            max-height: 90vh;
+            overflow: hidden;
             animation: slideUp 0.3s ease-out;
             box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         
         .checkout-header {
@@ -967,6 +969,7 @@
             border-radius: 28px 28px 0 0;
             position: relative;
             overflow: hidden;
+            flex-shrink: 0;
         }
         
         .checkout-header::before {
@@ -1081,12 +1084,17 @@
             font-weight: 800;
         }
         
+        /* CHECKOUT BODY CON SCROLL CORREGIDO */
         .checkout-body {
+            flex: 1;
+            overflow-y: auto;
             padding: 2rem 1.75rem;
+            max-height: calc(90vh - 200px);
         }
         
         .checkout-section {
             display: none;
+            min-height: 100%;
         }
         
         .checkout-section.active {
@@ -1613,6 +1621,39 @@
             background: var(--azul-oscuro);
         }
         
+        /* BOTÓN DE INSTALACIÓN PWA */
+        .install-btn {
+            position: fixed;
+            bottom: 5rem;
+            right: 1rem;
+            background: var(--amarillo);
+            color: var(--gris-oscuro);
+            border: 2px solid var(--azul-electrico);
+            border-radius: 12px;
+            padding: 0.85rem 1.5rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: slideInRight 0.5s ease-out;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .install-btn:hover {
+            background: var(--amarillo-oscuro);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(245, 158, 11, 0.5);
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
         /* RESPONSIVE MEJORADO */
         @media (max-width: 480px) {
             .app-container {
@@ -1634,6 +1675,10 @@
             .checkout-content {
                 margin: 0.5rem;
                 max-height: calc(100vh - 1rem);
+            }
+            
+            .checkout-body {
+                max-height: calc(100vh - 250px);
             }
             
             .cart-button-floating {
@@ -1675,6 +1720,13 @@
             
             .radio-group {
                 flex-direction: column;
+            }
+            
+            .install-btn {
+                bottom: 4.5rem;
+                right: 0.75rem;
+                padding: 0.75rem 1.25rem;
+                font-size: 0.85rem;
             }
         }
         
@@ -1721,7 +1773,7 @@
             <div class="header-top">
                 <div class="logo">
                     <div class="logo-icon">
-                        <img src="logo.png?v=3" alt="EL TACHI">
+                        <img src="logo.png?v=4" alt="EL TACHI">
                     </div>
                     <div class="logo-text">
                         <div class="store-name">EL TACHI</div>
@@ -1967,32 +2019,136 @@
     <!-- SCRIPT DE CACHÉ Y VERSIÓN -->
     <script>
         // VERSIÓN DE LA APLICACIÓN - Cambia este número cada vez que hagas cambios
-        const APP_VERSION = '3.0';
+        const APP_VERSION = '4.0';
         
-        // Forzar recarga si la versión es diferente
-        const storedVersion = localStorage.getItem('app_version');
-        if (storedVersion !== APP_VERSION) {
-            console.log('Nueva versión detectada. Limpiando caché...');
-            localStorage.setItem('app_version', APP_VERSION);
+        // Sistema de caché mejorado
+        const clearAllCaches = async () => {
+            console.log('🧹 Limpiando cachés...');
             
-            // Limpiar caché del service worker si existe
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    for(let registration of registrations) {
-                        registration.unregister();
+            // Limpiar localStorage
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('eltachi_') || key === 'app_version') {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log(`🗑️ Eliminado de localStorage: ${key}`);
+            });
+            
+            // Limpiar sessionStorage
+            sessionStorage.clear();
+            
+            // Limpiar IndexedDB (si existe)
+            if (window.indexedDB) {
+                const dbs = await indexedDB.databases();
+                dbs.forEach(db => {
+                    if (db.name) {
+                        indexedDB.deleteDatabase(db.name);
+                        console.log(`🗑️ Eliminando IndexedDB: ${db.name}`);
                     }
                 });
             }
             
-            // Limpiar localStorage específico de la app
-            localStorage.removeItem('eltachi_cart');
+            // Limpiar caché de Service Workers
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                try {
+                    await navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        for (let registration of registrations) {
+                            registration.unregister();
+                            console.log('🗑️ Service Worker desregistrado:', registration.scope);
+                        }
+                    });
+                } catch (error) {
+                    console.log('⚠️ Error al desregistrar Service Workers:', error);
+                }
+            }
             
-            // Recargar la página para aplicar cambios
-            window.location.reload();
-        }
+            // Limpiar caché HTTP
+            if ('caches' in window) {
+                try {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(cacheName => {
+                            console.log(`🗑️ Eliminando caché HTTP: ${cacheName}`);
+                            return caches.delete(cacheName);
+                        })
+                    );
+                } catch (error) {
+                    console.log('⚠️ Error al limpiar caché HTTP:', error);
+                }
+            }
+            
+            console.log('✅ Cachés limpiados exitosamente');
+        };
         
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('App EL TACHI versión', APP_VERSION, 'cargada');
+        // Verificar y actualizar versión
+        const checkVersion = async () => {
+            const storedVersion = localStorage.getItem('app_version');
+            const shouldReload = localStorage.getItem('force_reload');
+            
+            console.log(`🔄 Versión actual: ${APP_VERSION}, Versión almacenada: ${storedVersion}`);
+            
+            // Si la versión cambió o hay que forzar recarga
+            if (storedVersion !== APP_VERSION || shouldReload === 'true') {
+                console.log('🚨 Nueva versión detectada o recarga forzada');
+                
+                // Mostrar mensaje al usuario
+                if (!localStorage.getItem('app_version')) {
+                    // Primera carga
+                    console.log('🎉 Primera carga de la aplicación');
+                } else {
+                    // Actualización
+                    console.log('🔄 Actualizando aplicación...');
+                    
+                    // Mostrar toast de actualización
+                    const updateToast = document.createElement('div');
+                    updateToast.className = 'toast show';
+                    updateToast.style.background = 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)';
+                    updateToast.innerHTML = `
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Actualizando aplicación...</span>
+                    `;
+                    document.body.appendChild(updateToast);
+                    
+                    setTimeout(() => {
+                        updateToast.remove();
+                    }, 2000);
+                }
+                
+                // Limpiar todos los cachés
+                await clearAllCaches();
+                
+                // Guardar nueva versión
+                localStorage.setItem('app_version', APP_VERSION);
+                localStorage.removeItem('force_reload');
+                
+                // Recargar la página para aplicar cambios
+                setTimeout(() => {
+                    console.log('🔄 Recargando aplicación...');
+                    window.location.reload();
+                }, 1000);
+                
+                return false; // No continuar con la ejecución normal
+            }
+            
+            console.log('✅ Versión actualizada correctamente');
+            return true; // Continuar con la ejecución normal
+        };
+        
+        // Inicializar verificación de versión
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Iniciando EL TACHI v' + APP_VERSION);
+            
+            const shouldContinue = await checkVersion();
+            if (!shouldContinue) {
+                return; // Detener ejecución si se va a recargar
+            }
+            
+            console.log('✅ Aplicación lista para usar');
         });
     </script>
 
@@ -2463,7 +2619,7 @@
             });
         }
         
-        // CHECKOUT FUNCTIONS
+        // CHECKOUT FUNCTIONS - CORREGIDO SCROLL
         function openCheckout() {
             const modal = elements.checkoutModal;
             modal.style.display = 'flex';
@@ -2477,6 +2633,14 @@
             document.getElementById('addressField').style.display = 'none';
             
             setCheckoutStep(1);
+            
+            // Forzar redibujado para asegurar que el scroll funcione
+            setTimeout(() => {
+                const checkoutBody = document.querySelector('.checkout-body');
+                if (checkoutBody) {
+                    checkoutBody.style.overflowY = 'auto';
+                }
+            }, 100);
         }
         
         function setCheckoutStep(step) {
@@ -2495,6 +2659,12 @@
             
             const sections = ['sectionCustomer', 'sectionConfirm', 'sectionComplete'];
             document.getElementById(sections[step - 1]).classList.add('active');
+            
+            // Scroll al inicio de la sección
+            const checkoutBody = document.querySelector('.checkout-body');
+            if (checkoutBody) {
+                checkoutBody.scrollTop = 0;
+            }
         }
         
         function goToConfirm() {
@@ -2720,6 +2890,59 @@
             `;
         }
         
+        // SISTEMA DE INSTALACIÓN PWA MEJORADO
+        let deferredPrompt;
+        let installButton = null;
+        
+        function showInstallButton() {
+            // Solo mostrar si tenemos el evento deferredPrompt
+            if (deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
+                // Crear botón si no existe
+                if (!installButton) {
+                    installButton = document.createElement('button');
+                    installButton.className = 'install-btn';
+                    installButton.id = 'installPwaBtn';
+                    installButton.innerHTML = '<i class="fas fa-download"></i> Instalar App';
+                    
+                    installButton.addEventListener('click', async () => {
+                        if (!deferredPrompt) return;
+                        
+                        // Mostrar el prompt de instalación
+                        deferredPrompt.prompt();
+                        
+                        // Esperar a que el usuario responda
+                        const { outcome } = await deferredPrompt.userChoice;
+                        
+                        if (outcome === 'accepted') {
+                            console.log('✅ Usuario aceptó la instalación PWA');
+                            showToast('¡App instalada!', 'success');
+                        } else {
+                            console.log('❌ Usuario rechazó la instalación PWA');
+                        }
+                        
+                        // Limpiar el deferredPrompt
+                        deferredPrompt = null;
+                        
+                        // Ocultar el botón
+                        if (installButton) {
+                            installButton.remove();
+                            installButton = null;
+                        }
+                    });
+                    
+                    document.body.appendChild(installButton);
+                    
+                    // Ocultar automáticamente después de 30 segundos
+                    setTimeout(() => {
+                        if (installButton && document.body.contains(installButton)) {
+                            installButton.remove();
+                            installButton = null;
+                        }
+                    }, 30000);
+                }
+            }
+        }
+        
         // EVENT LISTENERS
         function setupEventListeners() {
             // Carrito
@@ -2787,11 +3010,33 @@
                     elements.checkoutModal.style.display = 'none';
                 }
             });
+            
+            // EVENTOS PWA
+            window.addEventListener('beforeinstallprompt', (e) => {
+                console.log('🎯 Evento beforeinstallprompt disparado');
+                e.preventDefault();
+                deferredPrompt = e;
+                
+                // Mostrar el botón de instalación inmediatamente
+                showInstallButton();
+                
+                // También mostrar después de 5 segundos por si acaso
+                setTimeout(showInstallButton, 5000);
+            });
+            
+            // Detectar si ya está instalada como PWA
+            window.addEventListener('DOMContentLoaded', () => {
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    console.log('📱 Aplicación ejecutándose como PWA instalada');
+                } else {
+                    console.log('🌐 Aplicación ejecutándose en navegador');
+                }
+            });
         }
         
         // INICIALIZAR APP
         async function initApp() {
-            console.log('🚀 Inicializando EL TACHI...');
+            console.log('🚀 Inicializando EL TACHI v' + APP_VERSION + '...');
             
             // Cargar datos
             await loadSettings();
@@ -2805,6 +3050,21 @@
             setupEventListeners();
             
             console.log('✅ App lista para usar');
+            
+            // Verificar si hay Service Worker obsoleto
+            checkForServiceWorkerUpdate();
+        }
+        
+        // Verificar actualizaciones del Service Worker
+        function checkForServiceWorkerUpdate() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration().then(registration => {
+                    if (registration) {
+                        registration.update();
+                        console.log('🔄 Service Worker actualizado');
+                    }
+                });
+            }
         }
         
         // Inicializar cuando el DOM esté listo
@@ -2876,16 +3136,43 @@
             document.head.appendChild(style);
         });
         
-        // Service Worker para PWA
+        // Service Worker simplificado sin caché agresivo
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js?v=3')
-                .then(registration => {
-                    console.log('ServiceWorker registrado:', registration.scope);
-                })
-                .catch(error => {
-                    console.log('ServiceWorker error:', error);
-                });
+            window.addEventListener('load', () => {
+                // Registrar Service Worker con parámetro de versión
+                navigator.serviceWorker.register('/sw.js?v=' + APP_VERSION + '&' + Date.now())
+                    .then(registration => {
+                        console.log('✅ Service Worker registrado:', registration.scope);
+                        
+                        // Escuchar actualizaciones
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('🔄 Nueva versión del Service Worker disponible');
+                                    showToast('Nueva versión disponible. Recargando...', 'success');
+                                    
+                                    // Forzar recarga después de 2 segundos
+                                    setTimeout(() => {
+                                        localStorage.setItem('force_reload', 'true');
+                                        window.location.reload();
+                                    }, 2000);
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.log('❌ Error al registrar Service Worker:', error);
+                    });
+            });
         }
+        
+        // Función para forzar actualización manual
+        window.forceAppUpdate = function() {
+            console.log('🔄 Forzando actualización manual...');
+            localStorage.setItem('force_reload', 'true');
+            window.location.reload();
+        };
     </script>
 </body>
 </html>
