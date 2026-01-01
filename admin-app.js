@@ -7,6 +7,7 @@ const adminState = {
     orders: [],
     filteredOrders: [],
     products: [],
+    filteredProducts: [],
     categories: [],
     settings: null,
     currentTab: 'dashboard',
@@ -17,7 +18,8 @@ const adminState = {
         activeOrders: 0
     },
     lastOrderId: null,
-    realtimeEnabled: true
+    realtimeEnabled: true,
+    productSearchTerm: ''
 };
 
 // FUNCIONES DE UTILIDAD (definidas primero)
@@ -321,6 +323,9 @@ async function loadProducts() {
             ...doc.data()
         }));
         
+        // Inicializar productos filtrados con todos los productos
+        adminState.filteredProducts = [...adminState.products];
+        
         console.log(`🍔 ${adminState.products.length} productos cargados`);
         return adminState.products;
         
@@ -478,6 +483,11 @@ function startRealtimeUpdates() {
     productsUnsubscribe = db.collection('products').onSnapshot((snapshot) => {
         console.log('📡 Cambios en productos detectados');
         loadProducts().then(() => {
+            // Aplicar filtro de búsqueda si existe
+            if (adminState.productSearchTerm) {
+                filterProducts(adminState.productSearchTerm);
+            }
+            
             if (adminState.currentTab === 'products') {
                 updateProductsGrid();
             }
@@ -1489,22 +1499,96 @@ function openWhatsAppAdmin(phone, orderId, customerName, total, status, estimate
     window.open(whatsappUrl, '_blank');
 }
 
-// FUNCIONES DE UI - PRODUCTOS
+// FUNCIONES DE UI - PRODUCTOS (CON BUSCADOR)
 function updateProductsGrid() {
     const grid = document.getElementById('productsGrid');
     if (!grid) return;
     
-    if (adminState.products.length === 0) {
+    // Crear contenedor del buscador si no existe
+    let searchContainer = document.getElementById('productSearchContainer');
+    if (!searchContainer) {
+        searchContainer = document.createElement('div');
+        searchContainer.id = 'productSearchContainer';
+        searchContainer.className = 'filter-controls';
+        searchContainer.style.cssText = 'margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 12px;';
+        
+        const searchBox = document.createElement('div');
+        searchBox.style.cssText = 'display: flex; align-items: center; gap: 10px; flex: 1; max-width: 500px;';
+        
+        searchBox.innerHTML = `
+            <div style="position: relative; flex: 1;">
+                <input type="text" 
+                       id="productSearchInput" 
+                       placeholder="Buscar productos por nombre..." 
+                       class="form-input" 
+                       style="padding-left: 40px; width: 100%;"
+                       value="${adminState.productSearchTerm}">
+                <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6b7280;"></i>
+            </div>
+            <button id="clearProductSearch" class="button-secondary" style="white-space: nowrap;">
+                <i class="fas fa-times"></i> Limpiar
+            </button>
+        `;
+        
+        searchContainer.appendChild(searchBox);
+        
+        // Contador de productos
+        const counter = document.createElement('div');
+        counter.id = 'productCounter';
+        counter.className = 'filter-counter';
+        counter.textContent = `${adminState.filteredProducts.length} productos`;
+        searchContainer.appendChild(counter);
+        
+        // Insertar antes del grid
+        grid.parentNode.insertBefore(searchContainer, grid);
+        
+        // Configurar eventos del buscador
+        const searchInput = document.getElementById('productSearchInput');
+        const clearButton = document.getElementById('clearProductSearch');
+        
+        searchInput.addEventListener('input', function() {
+            adminState.productSearchTerm = this.value.trim();
+            filterProducts(adminState.productSearchTerm);
+        });
+        
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                filterProducts(this.value.trim());
+            }
+        });
+        
+        clearButton.addEventListener('click', function() {
+            adminState.productSearchTerm = '';
+            document.getElementById('productSearchInput').value = '';
+            filterProducts('');
+        });
+    }
+    
+    // Actualizar contador
+    const counter = document.getElementById('productCounter');
+    if (counter) {
+        counter.textContent = `${adminState.filteredProducts.length} productos`;
+    }
+    
+    if (adminState.filteredProducts.length === 0) {
         grid.innerHTML = `
             <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
                 <i class="fas fa-hamburger" style="font-size: 3rem; color: #e5e7eb; margin-bottom: 20px;"></i>
-                <p style="color: #6b7280; margin-bottom: 10px;">No hay productos registrados</p>
-                <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 20px;">
-                    Agrega productos para comenzar a vender
+                <p style="color: #6b7280; margin-bottom: 10px;">
+                    ${adminState.productSearchTerm ? 
+                        `No se encontraron productos que coincidan con "${adminState.productSearchTerm}"` : 
+                        'No hay productos registrados'}
                 </p>
-                <button class="button-primary" id="addFirstProduct" style="margin-top: 15px;">
-                    <i class="fas fa-plus"></i> Agregar primer producto
-                </button>
+                <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 20px;">
+                    ${adminState.productSearchTerm ? 
+                        'Intenta con otros términos de búsqueda' : 
+                        'Agrega productos para comenzar a vender'}
+                </p>
+                ${!adminState.productSearchTerm ? `
+                    <button class="button-primary" id="addFirstProduct" style="margin-top: 15px;">
+                        <i class="fas fa-plus"></i> Agregar primer producto
+                    </button>
+                ` : ''}
             </div>
         `;
         
@@ -1517,7 +1601,7 @@ function updateProductsGrid() {
     
     grid.innerHTML = '';
     
-    adminState.products.forEach(product => {
+    adminState.filteredProducts.forEach(product => {
         const soldCount = adminState.orders.reduce((count, order) => {
             if (order.items) {
                 const item = order.items.find(i => i.id === product.id);
@@ -1527,6 +1611,13 @@ function updateProductsGrid() {
             }
             return count;
         }, 0);
+        
+        // Resaltar término de búsqueda en el nombre
+        let highlightedName = product.nombre;
+        if (adminState.productSearchTerm) {
+            const regex = new RegExp(`(${adminState.productSearchTerm})`, 'gi');
+            highlightedName = product.nombre.replace(regex, '<mark style="background: #fef3c7; color: #92400e; padding: 0 2px; border-radius: 3px;">$1</mark>');
+        }
         
         const card = document.createElement('div');
         card.className = 'product-card';
@@ -1541,7 +1632,7 @@ function updateProductsGrid() {
         `;
         card.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-                <h3 class="card-title" style="margin: 0; color: #1e40af;">${product.nombre}</h3>
+                <h3 class="card-title" style="margin: 0; color: #1e40af;">${highlightedName}</h3>
                 <span class="status-badge ${product.disponible ? 'status-listo' : 'status-entregado'}" style="font-size: 0.75rem;">
                     ${product.disponible ? '✓ Disponible' : '✗ No disponible'}
                 </span>
@@ -1572,6 +1663,23 @@ function updateProductsGrid() {
         
         grid.appendChild(card);
     });
+}
+
+function filterProducts(searchTerm) {
+    adminState.productSearchTerm = searchTerm;
+    
+    if (!searchTerm) {
+        adminState.filteredProducts = [...adminState.products];
+    } else {
+        const term = searchTerm.toLowerCase();
+        adminState.filteredProducts = adminState.products.filter(product => 
+            product.nombre.toLowerCase().includes(term) ||
+            (product.descripcion && product.descripcion.toLowerCase().includes(term)) ||
+            (product.categoria && adminState.categories.find(c => c.id === product.categoria)?.nombre.toLowerCase().includes(term))
+        );
+    }
+    
+    updateProductsGrid();
 }
 
 function showNewProductForm() {
@@ -1703,7 +1811,12 @@ async function saveProduct(productId = null) {
         }
         
         await loadProducts();
-        updateProductsGrid();
+        
+        // Aplicar filtro de búsqueda si existe
+        if (adminState.productSearchTerm) {
+            filterProducts(adminState.productSearchTerm);
+        }
+        
         hideProductForm();
         
         showNotification(`Producto ${isNew ? 'agregado' : 'actualizado'} correctamente`, 'success');
@@ -1723,7 +1836,11 @@ async function deleteProduct(productId) {
         await db.collection('products').doc(productId).delete();
         
         await loadProducts();
-        updateProductsGrid();
+        
+        // Aplicar filtro de búsqueda si existe
+        if (adminState.productSearchTerm) {
+            filterProducts(adminState.productSearchTerm);
+        }
         
         showNotification('Producto eliminado correctamente', 'success');
         
@@ -2636,3 +2753,4 @@ window.forceRefreshOrders = forceRefreshOrders;
 window.debugRealtimeUpdates = debugRealtimeUpdates;
 window.toggleRealtimeUpdates = toggleRealtimeUpdates;
 window.showNotification = showNotification;
+window.filterProducts = filterProducts;
