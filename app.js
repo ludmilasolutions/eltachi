@@ -48,7 +48,7 @@ async function loadSettings() {
                     azul: "#1e40af",
                     amarillo: "#f59e0b"
                 },
-                telefono_whatsapp: "5491122334455",
+                telefono_whatsapp: "54934122334455",
                 api_key_gemini: ""
             };
             
@@ -259,7 +259,7 @@ function getProductEmoji(category) {
         'empanadas': '🥟'
     };
     
-    return emojis[category] || '🍽️';
+    
 }
 
 // CARRITO
