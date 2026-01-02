@@ -2293,7 +2293,7 @@
                 'ensaladas': 'fas fa-leaf'
             };
             
-            return icons[categoryId] || 'fas fa-utensils';
+
         }
         
         // Renderizar categorías
@@ -2301,13 +2301,6 @@
             const container = elements.categoryTabs;
             container.innerHTML = '';
             
-            // Botón "Todos"
-            const allButton = document.createElement('button');
-            allButton.className = `category-tab ${appState.currentCategory === 'all' ? 'active' : ''}`;
-            allButton.innerHTML = '<i class="fas fa-th-large"></i> Todos';
-            allButton.dataset.categoryId = 'all';
-            allButton.addEventListener('click', () => selectCategory('all'));
-            container.appendChild(allButton);
             
             // Categorías de la base de datos
             appState.categories.forEach(category => {
