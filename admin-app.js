@@ -9,7 +9,7 @@ const adminState = {
     products: [],
     filteredProducts: [],
     categories: [],
-    selectedCategory: 'todos', // Nueva propiedad para categoría seleccionada
+    selectedCategory: 'todos',
     settings: null,
     currentTab: 'dashboard',
     currentFilter: 'hoy',
@@ -21,7 +21,8 @@ const adminState = {
     lastOrderId: null,
     realtimeEnabled: true,
     productSearchTerm: '',
-    storeAutoStatus: 'calculando' // Nuevo estado para el estado automático
+    isManualOverride: false, // Nueva propiedad para saber si el estado fue cambiado manualmente
+    manualOverrideTime: null // Hora del cambio manual
 };
 
 // FUNCIONES DE UTILIDAD (definidas primero)
@@ -68,7 +69,6 @@ function showNotification(message, type = 'info') {
         </button>
     `;
     
-    // Cerrar al hacer clic
     notification.addEventListener('click', (e) => {
         if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
             notification.remove();
@@ -77,7 +77,6 @@ function showNotification(message, type = 'info') {
     
     document.body.appendChild(notification);
     
-    // Remover después de 6 segundos
     setTimeout(() => {
         if (notification.parentNode) {
             notification.style.animation = 'slideOut 0.3s ease';
@@ -184,7 +183,6 @@ function playNotificationSound() {
             audio.currentTime = 0;
             audio.play().catch(e => {
                 console.log('Error reproduciendo sonido:', e);
-                // Si falla el primer sonido, intentar con el segundo
                 const newOrderSound = document.getElementById('newOrderSound');
                 if (newOrderSound) {
                     newOrderSound.currentTime = 0;
@@ -192,7 +190,6 @@ function playNotificationSound() {
                 }
             });
         } else {
-            // Crear audio dinámico si no existe
             const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
             audio.volume = 0.5;
             audio.play().catch(e => console.log('Error con audio dinámico:', e));
@@ -209,7 +206,6 @@ function playNewOrderSound() {
             audio.currentTime = 0;
             audio.play().catch(e => console.log('Error reproduciendo sonido de nuevo pedido:', e));
         } else {
-            // Crear audio dinámico si no existe
             const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
             audio.volume = 0.5;
             audio.play().catch(e => console.log('Error con audio dinámico:', e));
@@ -245,7 +241,7 @@ async function initializeDefaultSettings() {
                 domingo: "11:00 - 23:00"
             },
             abierto: true,
-            modo_manual: false, // Nuevo campo para modo manual
+            estado_manual: false, // Nueva propiedad
             mensaje_cerrado: "Lo sentimos, estamos cerrados en este momento. Volvemos mañana a las 11:00.",
             precio_envio: 300,
             tiempo_base_estimado: 30,
@@ -284,7 +280,6 @@ async function loadOrders() {
             ...doc.data()
         }));
         
-        // Actualizar solo si hay cambios
         if (orders.length !== adminState.orders.length || 
             orders[0]?.id !== adminState.orders[0]?.id) {
             adminState.orders = orders;
@@ -296,7 +291,6 @@ async function loadOrders() {
     } catch (error) {
         console.error('Error cargando pedidos:', error);
         
-        // Fallback: cargar últimos 100 pedidos
         try {
             const snapshot = await db.collection('orders')
                 .orderBy('fecha', 'desc')
@@ -326,7 +320,6 @@ async function loadProducts() {
             ...doc.data()
         }));
         
-        // Inicializar productos filtrados con todos los productos
         adminState.filteredProducts = [...adminState.products];
         
         console.log(`🍔 ${adminState.products.length} productos cargados`);
@@ -358,20 +351,124 @@ async function loadCategories() {
     }
 }
 
+// NUEVA FUNCIÓN: Calcular estado según horarios
+function calculateStoreStatusFromSchedule(settings) {
+    if (!settings || !settings.horarios_por_dia) {
+        console.log('No hay horarios configurados');
+        return true; // Por defecto abierto
+    }
+    
+    const now = new Date();
+    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const today = days[now.getDay()];
+    
+    const schedule = settings.horarios_por_dia[today];
+    
+    if (!schedule) {
+        console.log(`No hay horario para ${today}`);
+        return false;
+    }
+    
+    // Verificar si está cerrado
+    if (schedule.toLowerCase().includes('cerrado') || schedule === '' || schedule === 'Cerrado') {
+        console.log(`Local cerrado según horario: ${schedule}`);
+        return false;
+    }
+    
+    // Parsear horarios
+    const timeRegex = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/;
+    const match = schedule.match(timeRegex);
+    
+    if (!match) {
+        console.log(`Formato de horario inválido: ${schedule}`);
+        return true; // Por defecto abierto si no se puede parsear
+    }
+    
+    const openHour = parseInt(match[1]);
+    const openMinute = parseInt(match[2]);
+    const closeHour = parseInt(match[3]);
+    const closeMinute = parseInt(match[4]);
+    
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    const currentTime = currentHour * 60 + currentMinute;
+    const openTime = openHour * 60 + openMinute;
+    const closeTime = closeHour * 60 + closeMinute;
+    
+    // Si el horario de cierre es menor que el de apertura (ej: 22:00 - 02:00), significa que cierra al día siguiente
+    if (closeTime < openTime) {
+        // Está abierto si la hora actual es después de la apertura O antes del cierre (del día siguiente)
+        return currentTime >= openTime || currentTime <= closeTime;
+    } else {
+        // Horario normal del mismo día
+        return currentTime >= openTime && currentTime <= closeTime;
+    }
+}
+
+// NUEVA FUNCIÓN: Actualizar estado automáticamente
+async function updateStoreStatusAutomatically() {
+    if (!adminState.settings) return;
+    
+    // Verificar si hay un override manual activo
+    if (adminState.isManualOverride && adminState.manualOverrideTime) {
+        const now = new Date();
+        const overrideTime = new Date(adminState.manualOverrideTime);
+        const hoursSinceOverride = (now - overrideTime) / (1000 * 60 * 60);
+        
+        // Si el override manual fue hace más de 2 horas, lo desactivamos
+        if (hoursSinceOverride > 2) {
+            adminState.isManualOverride = false;
+            adminState.manualOverrideTime = null;
+        } else {
+            // Mantener el estado manual
+            console.log('Manteniendo estado manual del local');
+            return;
+        }
+    }
+    
+    // Calcular estado basado en horarios
+    const shouldBeOpen = calculateStoreStatusFromSchedule(adminState.settings);
+    
+    // Si el estado actual es diferente al calculado, actualizar
+    if (adminState.settings.abierto !== shouldBeOpen) {
+        try {
+            await db.collection('settings').doc('config').update({
+                abierto: shouldBeOpen,
+                estado_manual: false
+            });
+            
+            adminState.settings.abierto = shouldBeOpen;
+            adminState.settings.estado_manual = false;
+            
+            console.log(`Estado automático actualizado: ${shouldBeOpen ? 'ABIERTO' : 'CERRADO'}`);
+            
+            // Actualizar UI
+            updateStoreStatus();
+            
+            // Mostrar notificación si el cambio es significativo
+            if (adminState.currentTab === 'settings') {
+                showNotification(`Estado actualizado automáticamente: ${shouldBeOpen ? 'ABIERTO' : 'CERRADO'}`, 'info');
+            }
+            
+        } catch (error) {
+            console.error('Error actualizando estado automático:', error);
+        }
+    }
+}
+
 // FUNCIONES DE TIEMPO REAL MEJORADAS
 let ordersUnsubscribe = null;
 let productsUnsubscribe = null;
 let categoriesUnsubscribe = null;
 let settingsUnsubscribe = null;
-let storeStatusInterval = null;
+let storeStatusCheckInterval = null;
 
 function startRealtimeUpdates() {
     console.log('🎯 Iniciando actualizaciones en tiempo real...');
     
-    // Detener suscripciones anteriores si existen
     stopRealtimeUpdates();
     
-    // Suscripción a nuevos pedidos (últimas 24 horas)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     
     ordersUnsubscribe = db.collection('orders')
@@ -393,20 +490,17 @@ function startRealtimeUpdates() {
                 if (change.type === 'added') {
                     console.log('➕ Nuevo pedido detectado:', change.doc.id);
                     
-                    // Verificar si es realmente nuevo (no existe en el estado actual)
                     const existingIndex = adminState.orders.findIndex(o => o.id === change.doc.id);
                     if (existingIndex === -1) {
-                        // Insertar al inicio del array
                         adminState.orders.unshift(orderData);
                         hasNewOrder = true;
                         changedOrder = orderData;
                         
-                        // Verificar si es muy reciente (menos de 2 minutos)
                         const orderDate = orderData.fecha?.toDate ? orderData.fecha.toDate() : new Date(orderData.fecha);
                         const now = new Date();
                         const diffMinutes = (now - orderDate) / (1000 * 60);
                         
-                        if (diffMinutes < 5) { // Aumentado a 5 minutos para debugging
+                        if (diffMinutes < 5) {
                             console.log('🔔 Pedido reciente:', diffMinutes.toFixed(1), 'minutos');
                             showNotification(`📦 NUEVO PEDIDO #${orderData.id_pedido || orderData.id.substring(0, 8)} por $${orderData.total || 0}`, 'success');
                             playNewOrderSound();
@@ -423,7 +517,6 @@ function startRealtimeUpdates() {
                         adminState.orders[existingIndex] = orderData;
                         changedOrder = orderData;
                         
-                        // Notificar cambio de estado
                         if (orderData.estado !== oldStatus) {
                             hasStatusChange = true;
                             
@@ -455,18 +548,15 @@ function startRealtimeUpdates() {
                 }
             });
             
-            // Actualizar UI solo si hay cambios
             if (hasNewOrder || hasStatusChange || snapshot.docChanges().length > 0) {
                 updateDashboard();
                 applyOrderFilter(adminState.currentFilter);
                 
-                // Si estamos en la pestaña de pedidos, actualizar la tabla
                 if (adminState.currentTab === 'orders') {
                     updateOrdersTable();
                 }
             }
             
-            // Actualizar último pedido ID
             if (changedOrder && hasNewOrder) {
                 adminState.lastOrderId = changedOrder.id;
             }
@@ -475,7 +565,6 @@ function startRealtimeUpdates() {
             console.error('Error en suscripción a pedidos:', error);
             showNotification('Error en conexión en tiempo real', 'error');
             
-            // Reintentar después de 5 segundos
             setTimeout(() => {
                 if (adminState.realtimeEnabled) {
                     startRealtimeUpdates();
@@ -483,11 +572,9 @@ function startRealtimeUpdates() {
             }, 5000);
         });
     
-    // Suscripción a productos
     productsUnsubscribe = db.collection('products').onSnapshot((snapshot) => {
         console.log('📡 Cambios en productos detectados');
         loadProducts().then(() => {
-            // Aplicar filtros actuales
             applyProductFilters();
             
             if (adminState.currentTab === 'products') {
@@ -497,7 +584,6 @@ function startRealtimeUpdates() {
         });
     });
     
-    // Suscripción a categorías
     categoriesUnsubscribe = db.collection('categories').onSnapshot((snapshot) => {
         console.log('📡 Cambios en categorías detectados');
         loadCategories().then(() => {
@@ -510,13 +596,20 @@ function startRealtimeUpdates() {
         });
     });
     
-    // Suscripción a configuraciones
     settingsUnsubscribe = db.collection('settings').doc('config').onSnapshot((doc) => {
         console.log('📡 Cambios en configuración detectados');
         if (doc.exists) {
             adminState.settings = doc.data();
-            // Calcular estado automático
-            calculateAutoStoreStatus();
+            
+            // Verificar si el estado fue cambiado manualmente
+            if (adminState.settings.estado_manual) {
+                adminState.isManualOverride = true;
+                adminState.manualOverrideTime = new Date();
+            } else {
+                adminState.isManualOverride = false;
+                adminState.manualOverrideTime = null;
+            }
+            
             updateStoreStatus();
             if (adminState.currentTab === 'settings') {
                 updateSettingsForm();
@@ -524,27 +617,20 @@ function startRealtimeUpdates() {
         }
     });
     
-    // Configurar intervalo para calcular estado automático cada minuto
-    if (storeStatusInterval) {
-        clearInterval(storeStatusInterval);
-    }
-    storeStatusInterval = setInterval(() => {
-        calculateAutoStoreStatus();
-        updateStoreStatus();
-    }, 60000); // Actualizar cada minuto
+    // Intervalo para actualizar estado del local cada minuto
+    storeStatusCheckInterval = setInterval(() => {
+        updateStoreStatusAutomatically();
+    }, 60000); // Cada minuto
     
-    // Configurar intervalo de actualización periódica
-    const updateInterval = setInterval(() => {
+    // Intervalo para actualizar pedidos cada 15 segundos
+    adminState.updateInterval = setInterval(() => {
         if (adminState.currentTab === 'orders' || adminState.currentTab === 'dashboard') {
             applyOrderFilter(adminState.currentFilter);
             if (adminState.currentTab === 'dashboard') {
                 updateDashboard();
             }
         }
-    }, 15000); // Actualizar cada 15 segundos
-    
-    // Guardar referencia al intervalo
-    adminState.updateInterval = updateInterval;
+    }, 15000);
     
     showNotification('✅ Actualizaciones en tiempo real activadas', 'success');
 }
@@ -572,9 +658,9 @@ function stopRealtimeUpdates() {
         settingsUnsubscribe = null;
     }
     
-    if (storeStatusInterval) {
-        clearInterval(storeStatusInterval);
-        storeStatusInterval = null;
+    if (storeStatusCheckInterval) {
+        clearInterval(storeStatusCheckInterval);
+        storeStatusCheckInterval = null;
     }
     
     if (adminState.updateInterval) {
@@ -594,71 +680,11 @@ function toggleRealtimeUpdates() {
     }
 }
 
-// NUEVA FUNCIÓN PARA CALCULAR ESTADO AUTOMÁTICO DEL LOCAL
-function calculateAutoStoreStatus() {
-    if (!adminState.settings || !adminState.settings.horarios_por_dia) {
-        adminState.storeAutoStatus = 'error';
-        return;
-    }
-    
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const daysMap = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-    const currentDay = daysMap[dayOfWeek];
-    
-    // Obtener horario del día actual
-    const scheduleText = adminState.settings.horarios_por_dia[currentDay];
-    
-    // Si el horario contiene "cerrado" o está vacío
-    if (!scheduleText || scheduleText.toLowerCase().includes('cerrado') || scheduleText.trim() === '') {
-        adminState.storeAutoStatus = 'cerrado';
-        return;
-    }
-    
-    try {
-        // Parsear horarios (formato: "HH:MM - HH:MM" o "HH:MM-HH:MM")
-        const timeMatch = scheduleText.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/);
-        if (!timeMatch) {
-            adminState.storeAutoStatus = 'error';
-            return;
-        }
-        
-        const openHour = parseInt(timeMatch[1]);
-        const openMinute = parseInt(timeMatch[2]);
-        const closeHour = parseInt(timeMatch[3]);
-        const closeMinute = parseInt(timeMatch[4]);
-        
-        // Crear objetos de fecha para comparación
-        const openTime = new Date();
-        openTime.setHours(openHour, openMinute, 0, 0);
-        
-        const closeTime = new Date();
-        closeTime.setHours(closeHour, closeMinute, 59, 999);
-        
-        // Si el cierre es después de medianoche (ej: 00:00 o 01:00), ajustar
-        if (closeHour < openHour || (closeHour === 0 && openHour > 0)) {
-            closeTime.setDate(closeTime.getDate() + 1);
-        }
-        
-        // Verificar si estamos dentro del horario
-        const isOpen = now >= openTime && now <= closeTime;
-        
-        adminState.storeAutoStatus = isOpen ? 'abierto' : 'cerrado';
-        
-        console.log(`🕒 Estado automático calculado: ${adminState.storeAutoStatus} (${openHour}:${openMinute} - ${closeHour}:${closeMinute})`);
-        
-    } catch (error) {
-        console.error('Error calculando estado automático:', error);
-        adminState.storeAutoStatus = 'error';
-    }
-}
-
 // FILTROS Y ORDENACIÓN
 function applyOrderFilter(filterType) {
     const now = new Date();
     adminState.currentFilter = filterType;
     
-    // Actualizar selector si existe
     const filterSelect = document.getElementById('orderFilter');
     if (filterSelect) {
         filterSelect.value = filterType;
@@ -966,7 +992,6 @@ function updateTopProductsList() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Contar solo pedidos de hoy
     const todayOrders = adminState.orders.filter(order => {
         if (!order.fecha) return false;
         const orderDate = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
@@ -1290,7 +1315,6 @@ function updateOrdersTable() {
         tbody.appendChild(row);
     });
     
-    // Agregar estilo para highlight
     if (!document.getElementById('highlightStyle')) {
         const style = document.createElement('style');
         style.id = 'highlightStyle';
@@ -1329,7 +1353,6 @@ async function updateOrderStatus(select) {
     } catch (error) {
         console.error('Error actualizando estado:', error);
         showNotification('Error al actualizar el estado', 'error');
-        // Revertir el select al estado anterior
         const order = adminState.orders.find(o => o.id === orderId);
         if (order) {
             select.value = order.estado;
@@ -1402,12 +1425,10 @@ async function showOrderDetails(orderId) {
         
         let itemIndex = 1;
         order.items.forEach((item) => {
-            // OBTENER EL NOMBRE DEL PRODUCTO
             let productName = item.nombre || 'Producto';
             let productPrice = item.precio || 0;
             let productQuantity = item.cantidad || 1;
             
-            // Si no tiene nombre, buscar en la lista de productos por ID
             if (!item.nombre && item.id) {
                 const product = adminState.products.find(p => p.id === item.id);
                 if (product) {
@@ -1596,7 +1617,6 @@ function applyProductFilters() {
         return matchesSearch && matchesCategory;
     });
     
-    // Actualizar la grilla de productos
     updateProductsGrid();
 }
 
@@ -1605,7 +1625,6 @@ function updateProductsGrid() {
     const grid = document.getElementById('productsGrid');
     if (!grid) return;
     
-    // Crear contenedor del buscador y filtros si no existe
     let searchContainer = document.getElementById('productSearchContainer');
     if (!searchContainer) {
         searchContainer = document.createElement('div');
@@ -1613,11 +1632,9 @@ function updateProductsGrid() {
         searchContainer.className = 'filter-controls';
         searchContainer.style.cssText = 'margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 12px; flex-wrap: wrap; gap: 15px;';
         
-        // Contenedor izquierdo para búsqueda y filtros
         const leftControls = document.createElement('div');
         leftControls.style.cssText = 'display: flex; align-items: center; gap: 10px; flex: 1; max-width: 800px; flex-wrap: wrap;';
         
-        // Buscador
         const searchBox = document.createElement('div');
         searchBox.style.cssText = 'position: relative; flex: 1; min-width: 250px; max-width: 400px;';
         
@@ -1631,13 +1648,11 @@ function updateProductsGrid() {
             <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6b7280;"></i>
         `;
         
-        // Selector de categorías
         const categoryFilter = document.createElement('select');
         categoryFilter.id = 'categoryFilter';
         categoryFilter.className = 'form-input';
         categoryFilter.style.cssText = 'min-width: 180px;';
         
-        // Botón limpiar
         const clearButton = document.createElement('button');
         clearButton.id = 'clearProductSearch';
         clearButton.className = 'button-secondary';
@@ -1648,7 +1663,6 @@ function updateProductsGrid() {
         leftControls.appendChild(categoryFilter);
         leftControls.appendChild(clearButton);
         
-        // Contador de productos
         const counter = document.createElement('div');
         counter.id = 'productCounter';
         counter.className = 'filter-counter';
@@ -1657,17 +1671,13 @@ function updateProductsGrid() {
         searchContainer.appendChild(leftControls);
         searchContainer.appendChild(counter);
         
-        // Insertar antes del grid
         grid.parentNode.insertBefore(searchContainer, grid);
         
-        // Configurar eventos del buscador
         const searchInput = document.getElementById('productSearchInput');
         const categorySelect = document.getElementById('categoryFilter');
         
-        // Llenar el selector de categorías
         updateCategoryFilterOptions();
         
-        // Establecer valor actual del selector
         categorySelect.value = adminState.selectedCategory || 'todos';
         
         searchInput.addEventListener('input', function() {
@@ -1695,22 +1705,18 @@ function updateProductsGrid() {
             applyProductFilters();
         });
     } else {
-        // Si el contenedor ya existe, actualizar el selector de categorías
         updateCategoryFilterOptions();
         
-        // Actualizar valor del selector
         const categorySelect = document.getElementById('categoryFilter');
         if (categorySelect) {
             categorySelect.value = adminState.selectedCategory || 'todos';
         }
     }
     
-    // Actualizar contador
     const counter = document.getElementById('productCounter');
     if (counter) {
         counter.textContent = `${adminState.filteredProducts.length} productos`;
         
-        // Mostrar filtro activo si hay alguno
         if (adminState.productSearchTerm || (adminState.selectedCategory && adminState.selectedCategory !== 'todos')) {
             let filterInfo = 'Filtros: ';
             if (adminState.productSearchTerm) {
@@ -1774,10 +1780,8 @@ function updateProductsGrid() {
             return count;
         }, 0);
         
-        // Obtener nombre de la categoría
         const categoryName = adminState.categories.find(c => c.id === product.categoria)?.nombre || 'Sin categoría';
         
-        // Resaltar término de búsqueda en el nombre
         let highlightedName = product.nombre;
         if (adminState.productSearchTerm) {
             const regex = new RegExp(`(${adminState.productSearchTerm})`, 'gi');
@@ -1797,7 +1801,6 @@ function updateProductsGrid() {
             position: relative;
         `;
         
-        // Indicador de categoría
         const categoryBadge = document.createElement('div');
         categoryBadge.style.cssText = `
             position: absolute;
@@ -1854,22 +1857,18 @@ function updateCategoryFilterOptions() {
     const categoryFilter = document.getElementById('categoryFilter');
     if (!categoryFilter) return;
     
-    // Guardar el valor seleccionado actual
     const currentValue = categoryFilter.value;
     
-    // Limpiar y agregar opciones
     categoryFilter.innerHTML = `
         <option value="todos">Todas las categorías</option>
         <option value="sin-categoria">Sin categoría</option>
     `;
     
-    // Agregar categorías ordenadas
     adminState.categories.forEach(category => {
         const option = document.createElement('option');
         option.value = category.id;
         option.textContent = category.nombre;
         
-        // Contar productos en esta categoría
         const productCount = adminState.products.filter(p => p.categoria === category.id).length;
         if (productCount > 0) {
             option.textContent += ` (${productCount})`;
@@ -1878,7 +1877,6 @@ function updateCategoryFilterOptions() {
         categoryFilter.appendChild(option);
     });
     
-    // Restaurar el valor seleccionado
     categoryFilter.value = currentValue || 'todos';
 }
 
@@ -1896,7 +1894,6 @@ function clearProductFilters() {
     applyProductFilters();
 }
 
-// Actualizar la función filterProducts para usar applyProductFilters
 function filterProducts(searchTerm) {
     adminState.productSearchTerm = searchTerm;
     applyProductFilters();
@@ -2032,7 +2029,6 @@ async function saveProduct(productId = null) {
         
         await loadProducts();
         
-        // Aplicar filtros actuales
         applyProductFilters();
         
         hideProductForm();
@@ -2055,7 +2051,6 @@ async function deleteProduct(productId) {
         
         await loadProducts();
         
-        // Aplicar filtros actuales
         applyProductFilters();
         
         showNotification('Producto eliminado correctamente', 'success');
@@ -2192,7 +2187,6 @@ async function addCategory() {
         await loadCategories();
         updateCategoriesGrid();
         
-        // Actualizar filtro de categorías en productos
         if (adminState.currentTab === 'products') {
             updateCategoryFilterOptions();
         }
@@ -2226,7 +2220,6 @@ async function deleteCategory(categoryId) {
         await loadCategories();
         updateCategoriesGrid();
         
-        // Actualizar filtro de categorías en productos
         if (adminState.currentTab === 'products') {
             updateCategoryFilterOptions();
         }
@@ -2253,7 +2246,7 @@ function cancelEditCategory() {
     }
 }
 
-// FUNCIONES DE CONFIGURACIÓN
+// FUNCIONES DE CONFIGURACIÓN - MODIFICADA
 function updateSettingsForm() {
     if (!adminState.settings) return;
     
@@ -2298,29 +2291,40 @@ function updateSettingsForm() {
     document.getElementById('colorPrimary').value = settings.colores_marca?.azul || '#1e40af';
     document.getElementById('colorSecondary').value = settings.colores_marca?.amarillo || '#f59e0b';
     
-    // Mostrar/ocultar el modo manual en la configuración
-    const manualModeLabel = document.getElementById('manualModeLabel');
-    const manualModeToggle = document.getElementById('manualModeToggle');
-    const autoStatusInfo = document.getElementById('autoStatusInfo');
+    // Calcular y mostrar el estado actual basado en horarios
+    updateCurrentScheduleStatus();
+}
+
+// NUEVA FUNCIÓN: Mostrar estado actual según horarios
+function updateCurrentScheduleStatus() {
+    if (!adminState.settings) return;
     
-    if (manualModeLabel && manualModeToggle && autoStatusInfo) {
-        manualModeToggle.checked = settings.modo_manual || false;
-        manualModeLabel.textContent = `Modo Manual ${settings.modo_manual ? 'ACTIVADO' : 'DESACTIVADO'}`;
-        
-        // Mostrar información sobre el estado automático actual
-        const now = new Date();
-        const dayOfWeek = now.getDay();
-        const daysMap = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-        const currentDay = daysMap[dayOfWeek];
-        const currentSchedule = settings.horarios_por_dia?.[currentDay] || '11:00 - 23:00';
-        
-        autoStatusInfo.innerHTML = `
-            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.9rem;">
-                <div><strong>Estado Automático Actual:</strong> ${adminState.storeAutoStatus === 'abierto' ? '🔓 ABIERTO' : adminState.storeAutoStatus === 'cerrado' ? '🔒 CERRADO' : '⚡ Calculando...'}</div>
-                <div><strong>Horario Hoy (${currentDay}):</strong> ${currentSchedule}</div>
-                <div><strong>Hora Actual:</strong> ${now.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}</div>
-                <div style="margin-top: 5px; color: #6b7280; font-size: 0.8rem;">
-                    ${settings.modo_manual ? '⚠️ El modo manual está ACTIVADO. El estado no cambiará automáticamente.' : '✅ El modo manual está DESACTIVADO. El estado cambiará según los horarios configurados.'}
+    const statusElement = document.getElementById('currentScheduleStatus');
+    if (!statusElement) return;
+    
+    const isOpen = calculateStoreStatusFromSchedule(adminState.settings);
+    const now = new Date();
+    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const today = days[now.getDay()];
+    const schedule = adminState.settings.horarios_por_dia?.[today] || 'No configurado';
+    
+    if (isOpen) {
+        statusElement.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #d1fae5; border-radius: 8px; border-left: 4px solid #10b981;">
+                <i class="fas fa-clock" style="color: #10b981; font-size: 1.2rem;"></i>
+                <div>
+                    <div style="font-weight: 600; color: #065f46;">Según horarios: ABIERTO</div>
+                    <div style="font-size: 0.85rem; color: #047857;">Hoy (${today}): ${schedule}</div>
+                </div>
+            </div>
+        `;
+    } else {
+        statusElement.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #fee2e2; border-radius: 8px; border-left: 4px solid #ef4444;">
+                <i class="fas fa-clock" style="color: #ef4444; font-size: 1.2rem;"></i>
+                <div>
+                    <div style="font-weight: 600; color: #991b1b;">Según horarios: CERRADO</div>
+                    <div style="font-size: 0.85rem; color: #dc2626;">Hoy (${today}): ${schedule}</div>
                 </div>
             </div>
         `;
@@ -2352,20 +2356,13 @@ async function saveSettings() {
         }
     });
     
-    // Guardar el modo manual si existe
-    const manualModeToggle = document.getElementById('manualModeToggle');
-    if (manualModeToggle) {
-        settingsData.modo_manual = manualModeToggle.checked;
-    }
-    
     try {
         await db.collection('settings').doc('config').update(settingsData);
         
         adminState.settings = { ...adminState.settings, ...settingsData };
         
-        // Recalcular estado automático después de guardar
-        calculateAutoStoreStatus();
         updateStoreStatus();
+        updateCurrentScheduleStatus();
         
         showNotification('Configuración guardada correctamente', 'success');
         
@@ -2382,96 +2379,58 @@ function updateStoreStatus() {
     const statusValueElement = document.getElementById('storeStatusValue');
     const toggle = document.getElementById('storeToggle');
     const toggleLabel = document.getElementById('storeToggleLabel');
-    const autoStatusIndicator = document.getElementById('autoStatusIndicator');
     
     if (!statusElement || !statusValueElement || !toggle || !toggleLabel) return;
     
-    // Determinar el estado final (automático o manual)
-    let finalStatus;
-    let isAuto;
+    const isOpen = adminState.settings.abierto !== false;
     
-    if (adminState.settings.modo_manual) {
-        // Modo manual: usar el estado guardado en la base de datos
-        finalStatus = adminState.settings.abierto !== false;
-        isAuto = false;
-    } else {
-        // Modo automático: usar el estado calculado
-        finalStatus = adminState.storeAutoStatus === 'abierto';
-        isAuto = true;
+    // Actualizar estado visual del toggle
+    if (toggle) {
+        toggle.checked = isOpen;
     }
     
-    // Actualizar el estado visual
-    if (finalStatus) {
+    if (isOpen) {
         statusElement.textContent = '📍 Local ABIERTO';
         statusElement.style.color = '#10b981';
         statusValueElement.textContent = 'ABIERTO';
         statusValueElement.style.color = '#10b981';
-        toggle.checked = true;
         toggleLabel.textContent = 'Abierto';
+        
+        // Mostrar indicador de estado manual si aplica
+        if (adminState.settings.estado_manual) {
+            statusElement.innerHTML += ' <span style="font-size: 0.8rem; background: #f59e0b; color: white; padding: 2px 8px; border-radius: 10px;">MANUAL</span>';
+        }
     } else {
         statusElement.textContent = '📍 Local CERRADO';
         statusElement.style.color = '#ef4444';
         statusValueElement.textContent = 'CERRADO';
         statusValueElement.style.color = '#ef4444';
-        toggle.checked = false;
         toggleLabel.textContent = 'Cerrado';
-    }
-    
-    // Actualizar indicador de estado automático
-    if (autoStatusIndicator) {
-        if (isAuto) {
-            autoStatusIndicator.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                    <i class="fas fa-robot" style="color: #3b82f6;"></i>
-                    <div>
-                        <div style="font-weight: 600; color: #1e40af;">Modo Automático ACTIVADO</div>
-                        <div style="font-size: 0.8rem; color: #6b7280;">
-                            El estado cambia automáticamente según los horarios configurados
-                        </div>
-                    </div>
-                </div>
-            `;
-        } else {
-            autoStatusIndicator.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                    <i class="fas fa-hand-paper" style="color: #f59e0b;"></i>
-                    <div>
-                        <div style="font-weight: 600; color: #92400e;">Modo Manual ACTIVADO</div>
-                        <div style="font-size: 0.8rem; color: #92400e;">
-                            El estado se controla manualmente con el interruptor
-                        </div>
-                    </div>
-                </div>
-            `;
+        
+        if (adminState.settings.estado_manual) {
+            statusElement.innerHTML += ' <span style="font-size: 0.8rem; background: #f59e0b; color: white; padding: 2px 8px; border-radius: 10px;">MANUAL</span>';
         }
     }
     
-    // Actualizar información del estado automático si estamos en la pestaña de configuración
-    if (adminState.currentTab === 'settings') {
-        updateSettingsForm();
-    }
+    // Actualizar también el estado según horarios
+    updateCurrentScheduleStatus();
 }
 
+// FUNCIÓN MODIFICADA: toggleStoreStatus
 async function toggleStoreStatus(checkbox) {
     const isOpen = checkbox.checked;
     
     try {
-        // Primero, activar el modo manual si no está activado
-        if (!adminState.settings.modo_manual) {
-            await db.collection('settings').doc('config').update({
-                modo_manual: true,
-                fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            adminState.settings.modo_manual = true;
-        }
-        
-        // Luego, actualizar el estado
         await db.collection('settings').doc('config').update({
             abierto: isOpen,
+            estado_manual: true, // Marcar como cambio manual
             fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         adminState.settings.abierto = isOpen;
+        adminState.settings.estado_manual = true;
+        adminState.isManualOverride = true;
+        adminState.manualOverrideTime = new Date();
         
         updateStoreStatus();
         
@@ -2481,44 +2440,6 @@ async function toggleStoreStatus(checkbox) {
         console.error('Error cambiando estado:', error);
         showNotification('Error al cambiar el estado del local', 'error');
         checkbox.checked = !isOpen;
-    }
-}
-
-async function toggleManualMode(checkbox) {
-    const isManual = checkbox.checked;
-    
-    try {
-        await db.collection('settings').doc('config').update({
-            modo_manual: isManual,
-            fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        adminState.settings.modo_manual = isManual;
-        
-        // Si se desactiva el modo manual, recalcular el estado automático
-        if (!isManual) {
-            calculateAutoStoreStatus();
-            
-            // Actualizar el estado en la base de datos según el cálculo automático
-            const shouldBeOpen = adminState.storeAutoStatus === 'abierto';
-            await db.collection('settings').doc('config').update({
-                abierto: shouldBeOpen,
-                fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            adminState.settings.abierto = shouldBeOpen;
-            
-            showNotification('Modo automático activado. Estado actualizado según horarios.', 'success');
-        } else {
-            showNotification('Modo manual activado. El estado no cambiará automáticamente.', 'warning');
-        }
-        
-        updateStoreStatus();
-        
-    } catch (error) {
-        console.error('Error cambiando modo:', error);
-        showNotification('Error al cambiar el modo', 'error');
-        checkbox.checked = !isManual;
     }
 }
 
@@ -2533,9 +2454,6 @@ async function loadAllData() {
             adminState.settings = await getSettings();
         }
         
-        // Calcular estado automático inicial
-        calculateAutoStoreStatus();
-        
         await loadOrders();
         await loadProducts();
         await loadCategories();
@@ -2548,6 +2466,9 @@ async function loadAllData() {
         updateCategoriesGrid();
         updateSettingsForm();
         updateStoreStatus();
+        
+        // Verificar estado automático al cargar
+        updateStoreStatusAutomatically();
         
         console.log('✅ Datos cargados correctamente');
         
@@ -2764,8 +2685,8 @@ function debugRealtimeUpdates() {
     console.log('- Filtro actual:', adminState.currentFilter);
     console.log('- Último pedido ID:', adminState.lastOrderId);
     console.log('- Realtime habilitado:', adminState.realtimeEnabled);
-    console.log('- Estado automático:', adminState.storeAutoStatus);
-    console.log('- Modo manual:', adminState.settings?.modo_manual);
+    console.log('- Estado manual activo:', adminState.isManualOverride);
+    console.log('- Hora override manual:', adminState.manualOverrideTime);
     console.log('- Suscripciones activas:', {
         orders: ordersUnsubscribe ? 'ACTIVA' : 'INACTIVA',
         products: productsUnsubscribe ? 'ACTIVA' : 'INACTIVA',
@@ -2773,7 +2694,6 @@ function debugRealtimeUpdates() {
         settings: settingsUnsubscribe ? 'ACTIVA' : 'INACTIVA'
     });
     
-    // Verificar conexión
     db.collection('orders').limit(1).get()
         .then(snap => {
             console.log('✅ Conexión a Firestore: OK');
@@ -2872,13 +2792,6 @@ function setupAdminEventListeners() {
         });
     }
     
-    const manualModeToggle = document.getElementById('manualModeToggle');
-    if (manualModeToggle) {
-        manualModeToggle.addEventListener('change', function() {
-            toggleManualMode(this);
-        });
-    }
-    
     const saveSettingsButton = document.getElementById('saveSettingsButton');
     if (saveSettingsButton) {
         saveSettingsButton.addEventListener('click', saveSettings);
@@ -2922,7 +2835,6 @@ function setupAdminEventListeners() {
         });
     }
     
-    // Botón de actualización manual
     const refreshButton = document.createElement('button');
     refreshButton.className = 'button-secondary';
     refreshButton.style.cssText = 'margin-left: 10px; padding: 8px 12px; display: flex; align-items: center; gap: 6px;';
@@ -2934,7 +2846,6 @@ function setupAdminEventListeners() {
         filterControls.querySelector('.filter-left')?.appendChild(refreshButton);
     }
     
-    // Botón de debug (solo en desarrollo)
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         const debugButton = document.createElement('button');
         debugButton.className = 'button-secondary';
@@ -2997,7 +2908,6 @@ async function initAdminApp() {
     try {
         console.log('🚀 Inicializando Panel Admin...');
         
-        // Verificar conexión a Firebase
         if (!firebase.apps.length) {
             showNotification('Error: Firebase no está inicializado', 'error');
             return;
@@ -3008,7 +2918,6 @@ async function initAdminApp() {
                 adminState.currentUser = user;
                 showAdminPanel();
                 
-                // Actualizar avatar de usuario
                 const userAvatar = document.getElementById('userAvatar');
                 if (userAvatar) {
                     const initials = user.email ? user.email.substring(0, 2).toUpperCase() : 'AD';
@@ -3016,18 +2925,14 @@ async function initAdminApp() {
                     userAvatar.style.background = 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)';
                 }
                 
-                // Cargar datos iniciales
                 await loadAllData();
                 
-                // Configurar eventos
                 setupAdminEventListeners();
                 
-                // Iniciar actualizaciones en tiempo real
                 setTimeout(() => {
                     startRealtimeUpdates();
                 }, 1000);
                 
-                // Mostrar notificación de conexión
                 showNotification('✅ Panel admin conectado - Actualizaciones en tiempo real activadas', 'success');
                 
             } else {
@@ -3077,7 +2982,6 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     document.head.appendChild(style);
     
-    // Agregar elementos de audio si no existen
     if (!document.getElementById('notificationSound')) {
         const notificationSound = document.createElement('audio');
         notificationSound.id = 'notificationSound';
@@ -3114,7 +3018,6 @@ window.deleteProduct = deleteProduct;
 window.editCategory = editCategory;
 window.deleteCategory = deleteCategory;
 window.toggleStoreStatus = toggleStoreStatus;
-window.toggleManualMode = toggleManualMode;
 window.addCategory = addCategory;
 window.cancelEditCategory = cancelEditCategory;
 window.applyOrderFilter = applyOrderFilter;
