@@ -9,6 +9,7 @@ const adminState = {
     products: [],
     filteredProducts: [],
     categories: [],
+    selectedCategory: 'todos', // Nueva propiedad para categoría seleccionada
     settings: null,
     currentTab: 'dashboard',
     currentFilter: 'hoy',
@@ -483,10 +484,8 @@ function startRealtimeUpdates() {
     productsUnsubscribe = db.collection('products').onSnapshot((snapshot) => {
         console.log('📡 Cambios en productos detectados');
         loadProducts().then(() => {
-            // Aplicar filtro de búsqueda si existe
-            if (adminState.productSearchTerm) {
-                filterProducts(adminState.productSearchTerm);
-            }
+            // Aplicar filtros actuales
+            applyProductFilters();
             
             if (adminState.currentTab === 'products') {
                 updateProductsGrid();
@@ -501,6 +500,9 @@ function startRealtimeUpdates() {
         loadCategories().then(() => {
             if (adminState.currentTab === 'categories') {
                 updateCategoriesGrid();
+            }
+            if (adminState.currentTab === 'products') {
+                updateProductsGrid();
             }
         });
     });
@@ -1499,44 +1501,82 @@ function openWhatsAppAdmin(phone, orderId, customerName, total, status, estimate
     window.open(whatsappUrl, '_blank');
 }
 
-// FUNCIONES DE UI - PRODUCTOS (CON BUSCADOR)
+// NUEVA FUNCIÓN PARA APLICAR FILTROS DE PRODUCTOS
+function applyProductFilters() {
+    const searchTerm = adminState.productSearchTerm.toLowerCase();
+    const categoryId = adminState.selectedCategory;
+    
+    adminState.filteredProducts = adminState.products.filter(product => {
+        const matchesSearch = !searchTerm || 
+            product.nombre.toLowerCase().includes(searchTerm) ||
+            (product.descripcion && product.descripcion.toLowerCase().includes(searchTerm));
+        
+        const matchesCategory = categoryId === 'todos' || !categoryId || 
+            product.categoria === categoryId ||
+            (!product.categoria && categoryId === 'sin-categoria');
+        
+        return matchesSearch && matchesCategory;
+    });
+    
+    // Actualizar la grilla de productos
+    updateProductsGrid();
+}
+
+// FUNCIONES DE UI - PRODUCTOS (CON BUSCADOR Y FILTRO POR CATEGORÍA)
 function updateProductsGrid() {
     const grid = document.getElementById('productsGrid');
     if (!grid) return;
     
-    // Crear contenedor del buscador si no existe
+    // Crear contenedor del buscador y filtros si no existe
     let searchContainer = document.getElementById('productSearchContainer');
     if (!searchContainer) {
         searchContainer = document.createElement('div');
         searchContainer.id = 'productSearchContainer';
         searchContainer.className = 'filter-controls';
-        searchContainer.style.cssText = 'margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 12px;';
+        searchContainer.style.cssText = 'margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 12px; flex-wrap: wrap; gap: 15px;';
         
+        // Contenedor izquierdo para búsqueda y filtros
+        const leftControls = document.createElement('div');
+        leftControls.style.cssText = 'display: flex; align-items: center; gap: 10px; flex: 1; max-width: 800px; flex-wrap: wrap;';
+        
+        // Buscador
         const searchBox = document.createElement('div');
-        searchBox.style.cssText = 'display: flex; align-items: center; gap: 10px; flex: 1; max-width: 500px;';
+        searchBox.style.cssText = 'position: relative; flex: 1; min-width: 250px; max-width: 400px;';
         
         searchBox.innerHTML = `
-            <div style="position: relative; flex: 1;">
-                <input type="text" 
-                       id="productSearchInput" 
-                       placeholder="Buscar productos por nombre..." 
-                       class="form-input" 
-                       style="padding-left: 40px; width: 100%;"
-                       value="${adminState.productSearchTerm}">
-                <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6b7280;"></i>
-            </div>
-            <button id="clearProductSearch" class="button-secondary" style="white-space: nowrap;">
-                <i class="fas fa-times"></i> Limpiar
-            </button>
+            <input type="text" 
+                   id="productSearchInput" 
+                   placeholder="Buscar productos por nombre..." 
+                   class="form-input" 
+                   style="padding-left: 40px; width: 100%;"
+                   value="${adminState.productSearchTerm}">
+            <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6b7280;"></i>
         `;
         
-        searchContainer.appendChild(searchBox);
+        // Selector de categorías
+        const categoryFilter = document.createElement('select');
+        categoryFilter.id = 'categoryFilter';
+        categoryFilter.className = 'form-input';
+        categoryFilter.style.cssText = 'min-width: 180px;';
+        
+        // Botón limpiar
+        const clearButton = document.createElement('button');
+        clearButton.id = 'clearProductSearch';
+        clearButton.className = 'button-secondary';
+        clearButton.style.cssText = 'white-space: nowrap; display: flex; align-items: center; gap: 6px;';
+        clearButton.innerHTML = '<i class="fas fa-times"></i> Limpiar filtros';
+        
+        leftControls.appendChild(searchBox);
+        leftControls.appendChild(categoryFilter);
+        leftControls.appendChild(clearButton);
         
         // Contador de productos
         const counter = document.createElement('div');
         counter.id = 'productCounter';
         counter.className = 'filter-counter';
         counter.textContent = `${adminState.filteredProducts.length} productos`;
+        
+        searchContainer.appendChild(leftControls);
         searchContainer.appendChild(counter);
         
         // Insertar antes del grid
@@ -1544,30 +1584,70 @@ function updateProductsGrid() {
         
         // Configurar eventos del buscador
         const searchInput = document.getElementById('productSearchInput');
-        const clearButton = document.getElementById('clearProductSearch');
+        const categorySelect = document.getElementById('categoryFilter');
+        
+        // Llenar el selector de categorías
+        updateCategoryFilterOptions();
+        
+        // Establecer valor actual del selector
+        categorySelect.value = adminState.selectedCategory || 'todos';
         
         searchInput.addEventListener('input', function() {
             adminState.productSearchTerm = this.value.trim();
-            filterProducts(adminState.productSearchTerm);
+            applyProductFilters();
         });
         
         searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                filterProducts(this.value.trim());
+                adminState.productSearchTerm = this.value.trim();
+                applyProductFilters();
             }
+        });
+        
+        categorySelect.addEventListener('change', function() {
+            adminState.selectedCategory = this.value;
+            applyProductFilters();
         });
         
         clearButton.addEventListener('click', function() {
             adminState.productSearchTerm = '';
+            adminState.selectedCategory = 'todos';
             document.getElementById('productSearchInput').value = '';
-            filterProducts('');
+            document.getElementById('categoryFilter').value = 'todos';
+            applyProductFilters();
         });
+    } else {
+        // Si el contenedor ya existe, actualizar el selector de categorías
+        updateCategoryFilterOptions();
+        
+        // Actualizar valor del selector
+        const categorySelect = document.getElementById('categoryFilter');
+        if (categorySelect) {
+            categorySelect.value = adminState.selectedCategory || 'todos';
+        }
     }
     
     // Actualizar contador
     const counter = document.getElementById('productCounter');
     if (counter) {
         counter.textContent = `${adminState.filteredProducts.length} productos`;
+        
+        // Mostrar filtro activo si hay alguno
+        if (adminState.productSearchTerm || (adminState.selectedCategory && adminState.selectedCategory !== 'todos')) {
+            let filterInfo = 'Filtros: ';
+            if (adminState.productSearchTerm) {
+                filterInfo += `"${adminState.productSearchTerm}" `;
+            }
+            if (adminState.selectedCategory && adminState.selectedCategory !== 'todos') {
+                const category = adminState.categories.find(c => c.id === adminState.selectedCategory);
+                filterInfo += `${category ? `en ${category.nombre}` : 'categoría seleccionada'}`;
+            }
+            counter.title = filterInfo;
+            counter.style.cursor = 'help';
+        } else {
+            counter.title = 'Mostrando todos los productos';
+            counter.style.cursor = 'default';
+        }
     }
     
     if (adminState.filteredProducts.length === 0) {
@@ -1575,20 +1655,24 @@ function updateProductsGrid() {
             <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
                 <i class="fas fa-hamburger" style="font-size: 3rem; color: #e5e7eb; margin-bottom: 20px;"></i>
                 <p style="color: #6b7280; margin-bottom: 10px;">
-                    ${adminState.productSearchTerm ? 
-                        `No se encontraron productos que coincidan con "${adminState.productSearchTerm}"` : 
+                    ${adminState.productSearchTerm || adminState.selectedCategory !== 'todos' ? 
+                        `No se encontraron productos con los filtros aplicados` : 
                         'No hay productos registrados'}
                 </p>
                 <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 20px;">
-                    ${adminState.productSearchTerm ? 
-                        'Intenta con otros términos de búsqueda' : 
+                    ${adminState.productSearchTerm || adminState.selectedCategory !== 'todos' ? 
+                        'Intenta con otros términos de búsqueda o selecciona otra categoría' : 
                         'Agrega productos para comenzar a vender'}
                 </p>
-                ${!adminState.productSearchTerm ? `
+                ${!adminState.productSearchTerm && adminState.selectedCategory === 'todos' ? `
                     <button class="button-primary" id="addFirstProduct" style="margin-top: 15px;">
                         <i class="fas fa-plus"></i> Agregar primer producto
                     </button>
-                ` : ''}
+                ` : `
+                    <button class="button-secondary" onclick="clearProductFilters()" style="margin-top: 15px;">
+                        <i class="fas fa-times"></i> Limpiar filtros
+                    </button>
+                `}
             </div>
         `;
         
@@ -1612,6 +1696,9 @@ function updateProductsGrid() {
             return count;
         }, 0);
         
+        // Obtener nombre de la categoría
+        const categoryName = adminState.categories.find(c => c.id === product.categoria)?.nombre || 'Sin categoría';
+        
         // Resaltar término de búsqueda en el nombre
         let highlightedName = product.nombre;
         if (adminState.productSearchTerm) {
@@ -1629,10 +1716,28 @@ function updateProductsGrid() {
             border: 1px solid ${product.disponible ? '#e5e7eb' : '#fee2e2'};
             transition: all 0.2s;
             opacity: ${product.disponible ? '1' : '0.7'};
+            position: relative;
         `;
+        
+        // Indicador de categoría
+        const categoryBadge = document.createElement('div');
+        categoryBadge.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #f1f5f9;
+            color: #64748b;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid #e2e8f0;
+        `;
+        categoryBadge.textContent = categoryName;
+        
         card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-                <h3 class="card-title" style="margin: 0; color: #1e40af;">${highlightedName}</h3>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding-right: 80px;">
+                <h3 class="card-title" style="margin: 0; color: #1e40af; font-size: 1.2rem;">${highlightedName}</h3>
                 <span class="status-badge ${product.disponible ? 'status-listo' : 'status-entregado'}" style="font-size: 0.75rem;">
                     ${product.disponible ? '✓ Disponible' : '✗ No disponible'}
                 </span>
@@ -1640,15 +1745,15 @@ function updateProductsGrid() {
             <p style="color: #6b7280; margin-bottom: 15px; font-size: 0.9rem; min-height: 40px; line-height: 1.4;">
                 ${product.descripcion || 'Sin descripción'}
             </p>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px;">
                 <div>
                     <div class="card-value" style="color: #1e40af; font-size: 1.5rem; font-weight: 700;">$${product.precio}</div>
                     <div style="font-size: 0.8rem; color: #6b7280; display: flex; align-items: center; gap: 4px;">
                         <i class="fas fa-chart-line"></i> ${soldCount} vendidos
                     </div>
                 </div>
-                <div style="font-size: 0.8rem; color: #9ca3af; background: #f3f4f6; padding: 4px 10px; border-radius: 12px;">
-                    ${adminState.categories.find(c => c.id === product.categoria)?.nombre || 'Sin categoría'}
+                <div style="font-size: 0.8rem; color: #9ca3af; background: #f3f4f6; padding: 4px 10px; border-radius: 12px; display: flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-tag"></i> ${categoryName}
                 </div>
             </div>
             <div style="display: flex; gap: 8px;">
@@ -1661,25 +1766,62 @@ function updateProductsGrid() {
             </div>
         `;
         
+        card.appendChild(categoryBadge);
         grid.appendChild(card);
     });
 }
 
+// FUNCIÓN PARA ACTUALIZAR LAS OPCIONES DEL FILTRO DE CATEGORÍAS
+function updateCategoryFilterOptions() {
+    const categoryFilter = document.getElementById('categoryFilter');
+    if (!categoryFilter) return;
+    
+    // Guardar el valor seleccionado actual
+    const currentValue = categoryFilter.value;
+    
+    // Limpiar y agregar opciones
+    categoryFilter.innerHTML = `
+        <option value="todos">Todas las categorías</option>
+        <option value="sin-categoria">Sin categoría</option>
+    `;
+    
+    // Agregar categorías ordenadas
+    adminState.categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.nombre;
+        
+        // Contar productos en esta categoría
+        const productCount = adminState.products.filter(p => p.categoria === category.id).length;
+        if (productCount > 0) {
+            option.textContent += ` (${productCount})`;
+        }
+        
+        categoryFilter.appendChild(option);
+    });
+    
+    // Restaurar el valor seleccionado
+    categoryFilter.value = currentValue || 'todos';
+}
+
+// FUNCIÓN PARA LIMPIAR FILTROS DE PRODUCTOS
+function clearProductFilters() {
+    adminState.productSearchTerm = '';
+    adminState.selectedCategory = 'todos';
+    
+    const searchInput = document.getElementById('productSearchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    
+    if (searchInput) searchInput.value = '';
+    if (categoryFilter) categoryFilter.value = 'todos';
+    
+    applyProductFilters();
+}
+
+// Actualizar la función filterProducts para usar applyProductFilters
 function filterProducts(searchTerm) {
     adminState.productSearchTerm = searchTerm;
-    
-    if (!searchTerm) {
-        adminState.filteredProducts = [...adminState.products];
-    } else {
-        const term = searchTerm.toLowerCase();
-        adminState.filteredProducts = adminState.products.filter(product => 
-            product.nombre.toLowerCase().includes(term) ||
-            (product.descripcion && product.descripcion.toLowerCase().includes(term)) ||
-            (product.categoria && adminState.categories.find(c => c.id === product.categoria)?.nombre.toLowerCase().includes(term))
-        );
-    }
-    
-    updateProductsGrid();
+    applyProductFilters();
 }
 
 function showNewProductForm() {
@@ -1812,10 +1954,8 @@ async function saveProduct(productId = null) {
         
         await loadProducts();
         
-        // Aplicar filtro de búsqueda si existe
-        if (adminState.productSearchTerm) {
-            filterProducts(adminState.productSearchTerm);
-        }
+        // Aplicar filtros actuales
+        applyProductFilters();
         
         hideProductForm();
         
@@ -1837,10 +1977,8 @@ async function deleteProduct(productId) {
         
         await loadProducts();
         
-        // Aplicar filtro de búsqueda si existe
-        if (adminState.productSearchTerm) {
-            filterProducts(adminState.productSearchTerm);
-        }
+        // Aplicar filtros actuales
+        applyProductFilters();
         
         showNotification('Producto eliminado correctamente', 'success');
         
@@ -1976,6 +2114,11 @@ async function addCategory() {
         await loadCategories();
         updateCategoriesGrid();
         
+        // Actualizar filtro de categorías en productos
+        if (adminState.currentTab === 'products') {
+            updateCategoryFilterOptions();
+        }
+        
     } catch (error) {
         console.error('Error guardando categoría:', error);
         
@@ -2004,6 +2147,11 @@ async function deleteCategory(categoryId) {
         
         await loadCategories();
         updateCategoriesGrid();
+        
+        // Actualizar filtro de categorías en productos
+        if (adminState.currentTab === 'products') {
+            updateCategoryFilterOptions();
+        }
         
         showNotification('Categoría eliminada correctamente', 'success');
         
@@ -2754,3 +2902,5 @@ window.debugRealtimeUpdates = debugRealtimeUpdates;
 window.toggleRealtimeUpdates = toggleRealtimeUpdates;
 window.showNotification = showNotification;
 window.filterProducts = filterProducts;
+window.applyProductFilters = applyProductFilters;
+window.clearProductFilters = clearProductFilters;
