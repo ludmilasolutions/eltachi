@@ -9,7 +9,6 @@ const adminState = {
     products: [],
     filteredProducts: [],
     categories: [],
-    selectedCategory: 'todos',
     settings: null,
     currentTab: 'dashboard',
     currentFilter: 'hoy',
@@ -20,9 +19,7 @@ const adminState = {
     },
     lastOrderId: null,
     realtimeEnabled: true,
-    productSearchTerm: '',
-    isManualOverride: false, // Nueva propiedad para saber si el estado fue cambiado manualmente
-    manualOverrideTime: null // Hora del cambio manual
+    productSearchTerm: ''
 };
 
 // FUNCIONES DE UTILIDAD (definidas primero)
@@ -69,6 +66,7 @@ function showNotification(message, type = 'info') {
         </button>
     `;
     
+    // Cerrar al hacer clic
     notification.addEventListener('click', (e) => {
         if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
             notification.remove();
@@ -77,6 +75,7 @@ function showNotification(message, type = 'info') {
     
     document.body.appendChild(notification);
     
+    // Remover después de 6 segundos
     setTimeout(() => {
         if (notification.parentNode) {
             notification.style.animation = 'slideOut 0.3s ease';
@@ -183,6 +182,7 @@ function playNotificationSound() {
             audio.currentTime = 0;
             audio.play().catch(e => {
                 console.log('Error reproduciendo sonido:', e);
+                // Si falla el primer sonido, intentar con el segundo
                 const newOrderSound = document.getElementById('newOrderSound');
                 if (newOrderSound) {
                     newOrderSound.currentTime = 0;
@@ -190,6 +190,7 @@ function playNotificationSound() {
                 }
             });
         } else {
+            // Crear audio dinámico si no existe
             const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
             audio.volume = 0.5;
             audio.play().catch(e => console.log('Error con audio dinámico:', e));
@@ -206,6 +207,7 @@ function playNewOrderSound() {
             audio.currentTime = 0;
             audio.play().catch(e => console.log('Error reproduciendo sonido de nuevo pedido:', e));
         } else {
+            // Crear audio dinámico si no existe
             const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
             audio.volume = 0.5;
             audio.play().catch(e => console.log('Error con audio dinámico:', e));
@@ -241,7 +243,6 @@ async function initializeDefaultSettings() {
                 domingo: "11:00 - 23:00"
             },
             abierto: true,
-            estado_manual: false, // Nueva propiedad
             mensaje_cerrado: "Lo sentimos, estamos cerrados en este momento. Volvemos mañana a las 11:00.",
             precio_envio: 300,
             tiempo_base_estimado: 30,
@@ -280,6 +281,7 @@ async function loadOrders() {
             ...doc.data()
         }));
         
+        // Actualizar solo si hay cambios
         if (orders.length !== adminState.orders.length || 
             orders[0]?.id !== adminState.orders[0]?.id) {
             adminState.orders = orders;
@@ -291,6 +293,7 @@ async function loadOrders() {
     } catch (error) {
         console.error('Error cargando pedidos:', error);
         
+        // Fallback: cargar últimos 100 pedidos
         try {
             const snapshot = await db.collection('orders')
                 .orderBy('fecha', 'desc')
@@ -320,6 +323,7 @@ async function loadProducts() {
             ...doc.data()
         }));
         
+        // Inicializar productos filtrados con todos los productos
         adminState.filteredProducts = [...adminState.products];
         
         console.log(`🍔 ${adminState.products.length} productos cargados`);
@@ -351,124 +355,19 @@ async function loadCategories() {
     }
 }
 
-// NUEVA FUNCIÓN: Calcular estado según horarios
-function calculateStoreStatusFromSchedule(settings) {
-    if (!settings || !settings.horarios_por_dia) {
-        console.log('No hay horarios configurados');
-        return true; // Por defecto abierto
-    }
-    
-    const now = new Date();
-    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-    const today = days[now.getDay()];
-    
-    const schedule = settings.horarios_por_dia[today];
-    
-    if (!schedule) {
-        console.log(`No hay horario para ${today}`);
-        return false;
-    }
-    
-    // Verificar si está cerrado
-    if (schedule.toLowerCase().includes('cerrado') || schedule === '' || schedule === 'Cerrado') {
-        console.log(`Local cerrado según horario: ${schedule}`);
-        return false;
-    }
-    
-    // Parsear horarios
-    const timeRegex = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/;
-    const match = schedule.match(timeRegex);
-    
-    if (!match) {
-        console.log(`Formato de horario inválido: ${schedule}`);
-        return true; // Por defecto abierto si no se puede parsear
-    }
-    
-    const openHour = parseInt(match[1]);
-    const openMinute = parseInt(match[2]);
-    const closeHour = parseInt(match[3]);
-    const closeMinute = parseInt(match[4]);
-    
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    const currentTime = currentHour * 60 + currentMinute;
-    const openTime = openHour * 60 + openMinute;
-    const closeTime = closeHour * 60 + closeMinute;
-    
-    // Si el horario de cierre es menor que el de apertura (ej: 22:00 - 02:00), significa que cierra al día siguiente
-    if (closeTime < openTime) {
-        // Está abierto si la hora actual es después de la apertura O antes del cierre (del día siguiente)
-        return currentTime >= openTime || currentTime <= closeTime;
-    } else {
-        // Horario normal del mismo día
-        return currentTime >= openTime && currentTime <= closeTime;
-    }
-}
-
-// NUEVA FUNCIÓN: Actualizar estado automáticamente
-async function updateStoreStatusAutomatically() {
-    if (!adminState.settings) return;
-    
-    // Verificar si hay un override manual activo
-    if (adminState.isManualOverride && adminState.manualOverrideTime) {
-        const now = new Date();
-        const overrideTime = new Date(adminState.manualOverrideTime);
-        const hoursSinceOverride = (now - overrideTime) / (1000 * 60 * 60);
-        
-        // Si el override manual fue hace más de 2 horas, lo desactivamos
-        if (hoursSinceOverride > 2) {
-            adminState.isManualOverride = false;
-            adminState.manualOverrideTime = null;
-        } else {
-            // Mantener el estado manual
-            console.log('Manteniendo estado manual del local');
-            return;
-        }
-    }
-    
-    // Calcular estado basado en horarios
-    const shouldBeOpen = calculateStoreStatusFromSchedule(adminState.settings);
-    
-    // Si el estado actual es diferente al calculado, actualizar
-    if (adminState.settings.abierto !== shouldBeOpen) {
-        try {
-            await db.collection('settings').doc('config').update({
-                abierto: shouldBeOpen,
-                estado_manual: false
-            });
-            
-            adminState.settings.abierto = shouldBeOpen;
-            adminState.settings.estado_manual = false;
-            
-            console.log(`Estado automático actualizado: ${shouldBeOpen ? 'ABIERTO' : 'CERRADO'}`);
-            
-            // Actualizar UI
-            updateStoreStatus();
-            
-            // Mostrar notificación si el cambio es significativo
-            if (adminState.currentTab === 'settings') {
-                showNotification(`Estado actualizado automáticamente: ${shouldBeOpen ? 'ABIERTO' : 'CERRADO'}`, 'info');
-            }
-            
-        } catch (error) {
-            console.error('Error actualizando estado automático:', error);
-        }
-    }
-}
-
 // FUNCIONES DE TIEMPO REAL MEJORADAS
 let ordersUnsubscribe = null;
 let productsUnsubscribe = null;
 let categoriesUnsubscribe = null;
 let settingsUnsubscribe = null;
-let storeStatusCheckInterval = null;
 
 function startRealtimeUpdates() {
     console.log('🎯 Iniciando actualizaciones en tiempo real...');
     
+    // Detener suscripciones anteriores si existen
     stopRealtimeUpdates();
     
+    // Suscripción a nuevos pedidos (últimas 24 horas)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     
     ordersUnsubscribe = db.collection('orders')
@@ -490,17 +389,20 @@ function startRealtimeUpdates() {
                 if (change.type === 'added') {
                     console.log('➕ Nuevo pedido detectado:', change.doc.id);
                     
+                    // Verificar si es realmente nuevo (no existe en el estado actual)
                     const existingIndex = adminState.orders.findIndex(o => o.id === change.doc.id);
                     if (existingIndex === -1) {
+                        // Insertar al inicio del array
                         adminState.orders.unshift(orderData);
                         hasNewOrder = true;
                         changedOrder = orderData;
                         
+                        // Verificar si es muy reciente (menos de 2 minutos)
                         const orderDate = orderData.fecha?.toDate ? orderData.fecha.toDate() : new Date(orderData.fecha);
                         const now = new Date();
                         const diffMinutes = (now - orderDate) / (1000 * 60);
                         
-                        if (diffMinutes < 5) {
+                        if (diffMinutes < 5) { // Aumentado a 5 minutos para debugging
                             console.log('🔔 Pedido reciente:', diffMinutes.toFixed(1), 'minutos');
                             showNotification(`📦 NUEVO PEDIDO #${orderData.id_pedido || orderData.id.substring(0, 8)} por $${orderData.total || 0}`, 'success');
                             playNewOrderSound();
@@ -517,6 +419,7 @@ function startRealtimeUpdates() {
                         adminState.orders[existingIndex] = orderData;
                         changedOrder = orderData;
                         
+                        // Notificar cambio de estado
                         if (orderData.estado !== oldStatus) {
                             hasStatusChange = true;
                             
@@ -548,15 +451,18 @@ function startRealtimeUpdates() {
                 }
             });
             
+            // Actualizar UI solo si hay cambios
             if (hasNewOrder || hasStatusChange || snapshot.docChanges().length > 0) {
                 updateDashboard();
                 applyOrderFilter(adminState.currentFilter);
                 
+                // Si estamos en la pestaña de pedidos, actualizar la tabla
                 if (adminState.currentTab === 'orders') {
                     updateOrdersTable();
                 }
             }
             
+            // Actualizar último pedido ID
             if (changedOrder && hasNewOrder) {
                 adminState.lastOrderId = changedOrder.id;
             }
@@ -565,6 +471,7 @@ function startRealtimeUpdates() {
             console.error('Error en suscripción a pedidos:', error);
             showNotification('Error en conexión en tiempo real', 'error');
             
+            // Reintentar después de 5 segundos
             setTimeout(() => {
                 if (adminState.realtimeEnabled) {
                     startRealtimeUpdates();
@@ -572,10 +479,14 @@ function startRealtimeUpdates() {
             }, 5000);
         });
     
+    // Suscripción a productos
     productsUnsubscribe = db.collection('products').onSnapshot((snapshot) => {
         console.log('📡 Cambios en productos detectados');
         loadProducts().then(() => {
-            applyProductFilters();
+            // Aplicar filtro de búsqueda si existe
+            if (adminState.productSearchTerm) {
+                filterProducts(adminState.productSearchTerm);
+            }
             
             if (adminState.currentTab === 'products') {
                 updateProductsGrid();
@@ -584,32 +495,21 @@ function startRealtimeUpdates() {
         });
     });
     
+    // Suscripción a categorías
     categoriesUnsubscribe = db.collection('categories').onSnapshot((snapshot) => {
         console.log('📡 Cambios en categorías detectados');
         loadCategories().then(() => {
             if (adminState.currentTab === 'categories') {
                 updateCategoriesGrid();
             }
-            if (adminState.currentTab === 'products') {
-                updateProductsGrid();
-            }
         });
     });
     
+    // Suscripción a configuraciones
     settingsUnsubscribe = db.collection('settings').doc('config').onSnapshot((doc) => {
         console.log('📡 Cambios en configuración detectados');
         if (doc.exists) {
             adminState.settings = doc.data();
-            
-            // Verificar si el estado fue cambiado manualmente
-            if (adminState.settings.estado_manual) {
-                adminState.isManualOverride = true;
-                adminState.manualOverrideTime = new Date();
-            } else {
-                adminState.isManualOverride = false;
-                adminState.manualOverrideTime = null;
-            }
-            
             updateStoreStatus();
             if (adminState.currentTab === 'settings') {
                 updateSettingsForm();
@@ -617,20 +517,18 @@ function startRealtimeUpdates() {
         }
     });
     
-    // Intervalo para actualizar estado del local cada minuto
-    storeStatusCheckInterval = setInterval(() => {
-        updateStoreStatusAutomatically();
-    }, 60000); // Cada minuto
-    
-    // Intervalo para actualizar pedidos cada 15 segundos
-    adminState.updateInterval = setInterval(() => {
+    // Configurar intervalo de actualización periódica
+    const updateInterval = setInterval(() => {
         if (adminState.currentTab === 'orders' || adminState.currentTab === 'dashboard') {
             applyOrderFilter(adminState.currentFilter);
             if (adminState.currentTab === 'dashboard') {
                 updateDashboard();
             }
         }
-    }, 15000);
+    }, 15000); // Actualizar cada 15 segundos
+    
+    // Guardar referencia al intervalo
+    adminState.updateInterval = updateInterval;
     
     showNotification('✅ Actualizaciones en tiempo real activadas', 'success');
 }
@@ -658,11 +556,6 @@ function stopRealtimeUpdates() {
         settingsUnsubscribe = null;
     }
     
-    if (storeStatusCheckInterval) {
-        clearInterval(storeStatusCheckInterval);
-        storeStatusCheckInterval = null;
-    }
-    
     if (adminState.updateInterval) {
         clearInterval(adminState.updateInterval);
         adminState.updateInterval = null;
@@ -685,6 +578,7 @@ function applyOrderFilter(filterType) {
     const now = new Date();
     adminState.currentFilter = filterType;
     
+    // Actualizar selector si existe
     const filterSelect = document.getElementById('orderFilter');
     if (filterSelect) {
         filterSelect.value = filterType;
@@ -992,6 +886,7 @@ function updateTopProductsList() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Contar solo pedidos de hoy
     const todayOrders = adminState.orders.filter(order => {
         if (!order.fecha) return false;
         const orderDate = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
@@ -1315,6 +1210,7 @@ function updateOrdersTable() {
         tbody.appendChild(row);
     });
     
+    // Agregar estilo para highlight
     if (!document.getElementById('highlightStyle')) {
         const style = document.createElement('style');
         style.id = 'highlightStyle';
@@ -1353,6 +1249,7 @@ async function updateOrderStatus(select) {
     } catch (error) {
         console.error('Error actualizando estado:', error);
         showNotification('Error al actualizar el estado', 'error');
+        // Revertir el select al estado anterior
         const order = adminState.orders.find(o => o.id === orderId);
         if (order) {
             select.value = order.estado;
@@ -1425,10 +1322,12 @@ async function showOrderDetails(orderId) {
         
         let itemIndex = 1;
         order.items.forEach((item) => {
+            // OBTENER EL NOMBRE DEL PRODUCTO
             let productName = item.nombre || 'Producto';
             let productPrice = item.precio || 0;
             let productQuantity = item.cantidad || 1;
             
+            // Si no tiene nombre, buscar en la lista de productos por ID
             if (!item.nombre && item.id) {
                 const product = adminState.products.find(p => p.id === item.id);
                 if (product) {
@@ -1600,138 +1499,75 @@ function openWhatsAppAdmin(phone, orderId, customerName, total, status, estimate
     window.open(whatsappUrl, '_blank');
 }
 
-// NUEVA FUNCIÓN PARA APLICAR FILTROS DE PRODUCTOS
-function applyProductFilters() {
-    const searchTerm = adminState.productSearchTerm.toLowerCase();
-    const categoryId = adminState.selectedCategory;
-    
-    adminState.filteredProducts = adminState.products.filter(product => {
-        const matchesSearch = !searchTerm || 
-            product.nombre.toLowerCase().includes(searchTerm) ||
-            (product.descripcion && product.descripcion.toLowerCase().includes(searchTerm));
-        
-        const matchesCategory = categoryId === 'todos' || !categoryId || 
-            product.categoria === categoryId ||
-            (!product.categoria && categoryId === 'sin-categoria');
-        
-        return matchesSearch && matchesCategory;
-    });
-    
-    updateProductsGrid();
-}
-
-// FUNCIONES DE UI - PRODUCTOS (CON BUSCADOR Y FILTRO POR CATEGORÍA)
+// FUNCIONES DE UI - PRODUCTOS (CON BUSCADOR)
 function updateProductsGrid() {
     const grid = document.getElementById('productsGrid');
     if (!grid) return;
     
+    // Crear contenedor del buscador si no existe
     let searchContainer = document.getElementById('productSearchContainer');
     if (!searchContainer) {
         searchContainer = document.createElement('div');
         searchContainer.id = 'productSearchContainer';
         searchContainer.className = 'filter-controls';
-        searchContainer.style.cssText = 'margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 12px; flex-wrap: wrap; gap: 15px;';
-        
-        const leftControls = document.createElement('div');
-        leftControls.style.cssText = 'display: flex; align-items: center; gap: 10px; flex: 1; max-width: 800px; flex-wrap: wrap;';
+        searchContainer.style.cssText = 'margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 12px;';
         
         const searchBox = document.createElement('div');
-        searchBox.style.cssText = 'position: relative; flex: 1; min-width: 250px; max-width: 400px;';
+        searchBox.style.cssText = 'display: flex; align-items: center; gap: 10px; flex: 1; max-width: 500px;';
         
         searchBox.innerHTML = `
-            <input type="text" 
-                   id="productSearchInput" 
-                   placeholder="Buscar productos por nombre..." 
-                   class="form-input" 
-                   style="padding-left: 40px; width: 100%;"
-                   value="${adminState.productSearchTerm}">
-            <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6b7280;"></i>
+            <div style="position: relative; flex: 1;">
+                <input type="text" 
+                       id="productSearchInput" 
+                       placeholder="Buscar productos por nombre..." 
+                       class="form-input" 
+                       style="padding-left: 40px; width: 100%;"
+                       value="${adminState.productSearchTerm}">
+                <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #6b7280;"></i>
+            </div>
+            <button id="clearProductSearch" class="button-secondary" style="white-space: nowrap;">
+                <i class="fas fa-times"></i> Limpiar
+            </button>
         `;
         
-        const categoryFilter = document.createElement('select');
-        categoryFilter.id = 'categoryFilter';
-        categoryFilter.className = 'form-input';
-        categoryFilter.style.cssText = 'min-width: 180px;';
+        searchContainer.appendChild(searchBox);
         
-        const clearButton = document.createElement('button');
-        clearButton.id = 'clearProductSearch';
-        clearButton.className = 'button-secondary';
-        clearButton.style.cssText = 'white-space: nowrap; display: flex; align-items: center; gap: 6px;';
-        clearButton.innerHTML = '<i class="fas fa-times"></i> Limpiar filtros';
-        
-        leftControls.appendChild(searchBox);
-        leftControls.appendChild(categoryFilter);
-        leftControls.appendChild(clearButton);
-        
+        // Contador de productos
         const counter = document.createElement('div');
         counter.id = 'productCounter';
         counter.className = 'filter-counter';
         counter.textContent = `${adminState.filteredProducts.length} productos`;
-        
-        searchContainer.appendChild(leftControls);
         searchContainer.appendChild(counter);
         
+        // Insertar antes del grid
         grid.parentNode.insertBefore(searchContainer, grid);
         
+        // Configurar eventos del buscador
         const searchInput = document.getElementById('productSearchInput');
-        const categorySelect = document.getElementById('categoryFilter');
-        
-        updateCategoryFilterOptions();
-        
-        categorySelect.value = adminState.selectedCategory || 'todos';
+        const clearButton = document.getElementById('clearProductSearch');
         
         searchInput.addEventListener('input', function() {
             adminState.productSearchTerm = this.value.trim();
-            applyProductFilters();
+            filterProducts(adminState.productSearchTerm);
         });
         
         searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                adminState.productSearchTerm = this.value.trim();
-                applyProductFilters();
+                filterProducts(this.value.trim());
             }
-        });
-        
-        categorySelect.addEventListener('change', function() {
-            adminState.selectedCategory = this.value;
-            applyProductFilters();
         });
         
         clearButton.addEventListener('click', function() {
             adminState.productSearchTerm = '';
-            adminState.selectedCategory = 'todos';
             document.getElementById('productSearchInput').value = '';
-            document.getElementById('categoryFilter').value = 'todos';
-            applyProductFilters();
+            filterProducts('');
         });
-    } else {
-        updateCategoryFilterOptions();
-        
-        const categorySelect = document.getElementById('categoryFilter');
-        if (categorySelect) {
-            categorySelect.value = adminState.selectedCategory || 'todos';
-        }
     }
     
+    // Actualizar contador
     const counter = document.getElementById('productCounter');
     if (counter) {
         counter.textContent = `${adminState.filteredProducts.length} productos`;
-        
-        if (adminState.productSearchTerm || (adminState.selectedCategory && adminState.selectedCategory !== 'todos')) {
-            let filterInfo = 'Filtros: ';
-            if (adminState.productSearchTerm) {
-                filterInfo += `"${adminState.productSearchTerm}" `;
-            }
-            if (adminState.selectedCategory && adminState.selectedCategory !== 'todos') {
-                const category = adminState.categories.find(c => c.id === adminState.selectedCategory);
-                filterInfo += `${category ? `en ${category.nombre}` : 'categoría seleccionada'}`;
-            }
-            counter.title = filterInfo;
-            counter.style.cursor = 'help';
-        } else {
-            counter.title = 'Mostrando todos los productos';
-            counter.style.cursor = 'default';
-        }
     }
     
     if (adminState.filteredProducts.length === 0) {
@@ -1739,24 +1575,20 @@ function updateProductsGrid() {
             <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
                 <i class="fas fa-hamburger" style="font-size: 3rem; color: #e5e7eb; margin-bottom: 20px;"></i>
                 <p style="color: #6b7280; margin-bottom: 10px;">
-                    ${adminState.productSearchTerm || adminState.selectedCategory !== 'todos' ? 
-                        `No se encontraron productos con los filtros aplicados` : 
+                    ${adminState.productSearchTerm ? 
+                        `No se encontraron productos que coincidan con "${adminState.productSearchTerm}"` : 
                         'No hay productos registrados'}
                 </p>
                 <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 20px;">
-                    ${adminState.productSearchTerm || adminState.selectedCategory !== 'todos' ? 
-                        'Intenta con otros términos de búsqueda o selecciona otra categoría' : 
+                    ${adminState.productSearchTerm ? 
+                        'Intenta con otros términos de búsqueda' : 
                         'Agrega productos para comenzar a vender'}
                 </p>
-                ${!adminState.productSearchTerm && adminState.selectedCategory === 'todos' ? `
+                ${!adminState.productSearchTerm ? `
                     <button class="button-primary" id="addFirstProduct" style="margin-top: 15px;">
                         <i class="fas fa-plus"></i> Agregar primer producto
                     </button>
-                ` : `
-                    <button class="button-secondary" onclick="clearProductFilters()" style="margin-top: 15px;">
-                        <i class="fas fa-times"></i> Limpiar filtros
-                    </button>
-                `}
+                ` : ''}
             </div>
         `;
         
@@ -1780,8 +1612,7 @@ function updateProductsGrid() {
             return count;
         }, 0);
         
-        const categoryName = adminState.categories.find(c => c.id === product.categoria)?.nombre || 'Sin categoría';
-        
+        // Resaltar término de búsqueda en el nombre
         let highlightedName = product.nombre;
         if (adminState.productSearchTerm) {
             const regex = new RegExp(`(${adminState.productSearchTerm})`, 'gi');
@@ -1798,27 +1629,10 @@ function updateProductsGrid() {
             border: 1px solid ${product.disponible ? '#e5e7eb' : '#fee2e2'};
             transition: all 0.2s;
             opacity: ${product.disponible ? '1' : '0.7'};
-            position: relative;
         `;
-        
-        const categoryBadge = document.createElement('div');
-        categoryBadge.style.cssText = `
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #f1f5f9;
-            color: #64748b;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            border: 1px solid #e2e8f0;
-        `;
-        categoryBadge.textContent = categoryName;
-        
         card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding-right: 80px;">
-                <h3 class="card-title" style="margin: 0; color: #1e40af; font-size: 1.2rem;">${highlightedName}</h3>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                <h3 class="card-title" style="margin: 0; color: #1e40af;">${highlightedName}</h3>
                 <span class="status-badge ${product.disponible ? 'status-listo' : 'status-entregado'}" style="font-size: 0.75rem;">
                     ${product.disponible ? '✓ Disponible' : '✗ No disponible'}
                 </span>
@@ -1826,15 +1640,15 @@ function updateProductsGrid() {
             <p style="color: #6b7280; margin-bottom: 15px; font-size: 0.9rem; min-height: 40px; line-height: 1.4;">
                 ${product.descripcion || 'Sin descripción'}
             </p>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div>
                     <div class="card-value" style="color: #1e40af; font-size: 1.5rem; font-weight: 700;">$${product.precio}</div>
                     <div style="font-size: 0.8rem; color: #6b7280; display: flex; align-items: center; gap: 4px;">
                         <i class="fas fa-chart-line"></i> ${soldCount} vendidos
                     </div>
                 </div>
-                <div style="font-size: 0.8rem; color: #9ca3af; background: #f3f4f6; padding: 4px 10px; border-radius: 12px; display: flex; align-items: center; gap: 4px;">
-                    <i class="fas fa-tag"></i> ${categoryName}
+                <div style="font-size: 0.8rem; color: #9ca3af; background: #f3f4f6; padding: 4px 10px; border-radius: 12px;">
+                    ${adminState.categories.find(c => c.id === product.categoria)?.nombre || 'Sin categoría'}
                 </div>
             </div>
             <div style="display: flex; gap: 8px;">
@@ -1847,56 +1661,25 @@ function updateProductsGrid() {
             </div>
         `;
         
-        card.appendChild(categoryBadge);
         grid.appendChild(card);
     });
 }
 
-// FUNCIÓN PARA ACTUALIZAR LAS OPCIONES DEL FILTRO DE CATEGORÍAS
-function updateCategoryFilterOptions() {
-    const categoryFilter = document.getElementById('categoryFilter');
-    if (!categoryFilter) return;
-    
-    const currentValue = categoryFilter.value;
-    
-    categoryFilter.innerHTML = `
-        <option value="todos">Todas las categorías</option>
-        <option value="sin-categoria">Sin categoría</option>
-    `;
-    
-    adminState.categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category.id;
-        option.textContent = category.nombre;
-        
-        const productCount = adminState.products.filter(p => p.categoria === category.id).length;
-        if (productCount > 0) {
-            option.textContent += ` (${productCount})`;
-        }
-        
-        categoryFilter.appendChild(option);
-    });
-    
-    categoryFilter.value = currentValue || 'todos';
-}
-
-// FUNCIÓN PARA LIMPIAR FILTROS DE PRODUCTOS
-function clearProductFilters() {
-    adminState.productSearchTerm = '';
-    adminState.selectedCategory = 'todos';
-    
-    const searchInput = document.getElementById('productSearchInput');
-    const categoryFilter = document.getElementById('categoryFilter');
-    
-    if (searchInput) searchInput.value = '';
-    if (categoryFilter) categoryFilter.value = 'todos';
-    
-    applyProductFilters();
-}
-
 function filterProducts(searchTerm) {
     adminState.productSearchTerm = searchTerm;
-    applyProductFilters();
+    
+    if (!searchTerm) {
+        adminState.filteredProducts = [...adminState.products];
+    } else {
+        const term = searchTerm.toLowerCase();
+        adminState.filteredProducts = adminState.products.filter(product => 
+            product.nombre.toLowerCase().includes(term) ||
+            (product.descripcion && product.descripcion.toLowerCase().includes(term)) ||
+            (product.categoria && adminState.categories.find(c => c.id === product.categoria)?.nombre.toLowerCase().includes(term))
+        );
+    }
+    
+    updateProductsGrid();
 }
 
 function showNewProductForm() {
@@ -2029,7 +1812,10 @@ async function saveProduct(productId = null) {
         
         await loadProducts();
         
-        applyProductFilters();
+        // Aplicar filtro de búsqueda si existe
+        if (adminState.productSearchTerm) {
+            filterProducts(adminState.productSearchTerm);
+        }
         
         hideProductForm();
         
@@ -2051,7 +1837,10 @@ async function deleteProduct(productId) {
         
         await loadProducts();
         
-        applyProductFilters();
+        // Aplicar filtro de búsqueda si existe
+        if (adminState.productSearchTerm) {
+            filterProducts(adminState.productSearchTerm);
+        }
         
         showNotification('Producto eliminado correctamente', 'success');
         
@@ -2187,10 +1976,6 @@ async function addCategory() {
         await loadCategories();
         updateCategoriesGrid();
         
-        if (adminState.currentTab === 'products') {
-            updateCategoryFilterOptions();
-        }
-        
     } catch (error) {
         console.error('Error guardando categoría:', error);
         
@@ -2220,10 +2005,6 @@ async function deleteCategory(categoryId) {
         await loadCategories();
         updateCategoriesGrid();
         
-        if (adminState.currentTab === 'products') {
-            updateCategoryFilterOptions();
-        }
-        
         showNotification('Categoría eliminada correctamente', 'success');
         
     } catch (error) {
@@ -2246,7 +2027,7 @@ function cancelEditCategory() {
     }
 }
 
-// FUNCIONES DE CONFIGURACIÓN - MODIFICADA
+// FUNCIONES DE CONFIGURACIÓN
 function updateSettingsForm() {
     if (!adminState.settings) return;
     
@@ -2290,45 +2071,6 @@ function updateSettingsForm() {
     
     document.getElementById('colorPrimary').value = settings.colores_marca?.azul || '#1e40af';
     document.getElementById('colorSecondary').value = settings.colores_marca?.amarillo || '#f59e0b';
-    
-    // Calcular y mostrar el estado actual basado en horarios
-    updateCurrentScheduleStatus();
-}
-
-// NUEVA FUNCIÓN: Mostrar estado actual según horarios
-function updateCurrentScheduleStatus() {
-    if (!adminState.settings) return;
-    
-    const statusElement = document.getElementById('currentScheduleStatus');
-    if (!statusElement) return;
-    
-    const isOpen = calculateStoreStatusFromSchedule(adminState.settings);
-    const now = new Date();
-    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-    const today = days[now.getDay()];
-    const schedule = adminState.settings.horarios_por_dia?.[today] || 'No configurado';
-    
-    if (isOpen) {
-        statusElement.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #d1fae5; border-radius: 8px; border-left: 4px solid #10b981;">
-                <i class="fas fa-clock" style="color: #10b981; font-size: 1.2rem;"></i>
-                <div>
-                    <div style="font-weight: 600; color: #065f46;">Según horarios: ABIERTO</div>
-                    <div style="font-size: 0.85rem; color: #047857;">Hoy (${today}): ${schedule}</div>
-                </div>
-            </div>
-        `;
-    } else {
-        statusElement.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #fee2e2; border-radius: 8px; border-left: 4px solid #ef4444;">
-                <i class="fas fa-clock" style="color: #ef4444; font-size: 1.2rem;"></i>
-                <div>
-                    <div style="font-weight: 600; color: #991b1b;">Según horarios: CERRADO</div>
-                    <div style="font-size: 0.85rem; color: #dc2626;">Hoy (${today}): ${schedule}</div>
-                </div>
-            </div>
-        `;
-    }
 }
 
 async function saveSettings() {
@@ -2362,7 +2104,6 @@ async function saveSettings() {
         adminState.settings = { ...adminState.settings, ...settingsData };
         
         updateStoreStatus();
-        updateCurrentScheduleStatus();
         
         showNotification('Configuración guardada correctamente', 'success');
         
@@ -2384,57 +2125,37 @@ function updateStoreStatus() {
     
     const isOpen = adminState.settings.abierto !== false;
     
-    // Actualizar estado visual del toggle
-    if (toggle) {
-        toggle.checked = isOpen;
-    }
-    
     if (isOpen) {
         statusElement.textContent = '📍 Local ABIERTO';
         statusElement.style.color = '#10b981';
         statusValueElement.textContent = 'ABIERTO';
         statusValueElement.style.color = '#10b981';
+        toggle.checked = true;
         toggleLabel.textContent = 'Abierto';
-        
-        // Mostrar indicador de estado manual si aplica
-        if (adminState.settings.estado_manual) {
-            statusElement.innerHTML += ' <span style="font-size: 0.8rem; background: #f59e0b; color: white; padding: 2px 8px; border-radius: 10px;">MANUAL</span>';
-        }
     } else {
         statusElement.textContent = '📍 Local CERRADO';
         statusElement.style.color = '#ef4444';
         statusValueElement.textContent = 'CERRADO';
         statusValueElement.style.color = '#ef4444';
+        toggle.checked = false;
         toggleLabel.textContent = 'Cerrado';
-        
-        if (adminState.settings.estado_manual) {
-            statusElement.innerHTML += ' <span style="font-size: 0.8rem; background: #f59e0b; color: white; padding: 2px 8px; border-radius: 10px;">MANUAL</span>';
-        }
     }
-    
-    // Actualizar también el estado según horarios
-    updateCurrentScheduleStatus();
 }
 
-// FUNCIÓN MODIFICADA: toggleStoreStatus
 async function toggleStoreStatus(checkbox) {
     const isOpen = checkbox.checked;
     
     try {
         await db.collection('settings').doc('config').update({
             abierto: isOpen,
-            estado_manual: true, // Marcar como cambio manual
             fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         adminState.settings.abierto = isOpen;
-        adminState.settings.estado_manual = true;
-        adminState.isManualOverride = true;
-        adminState.manualOverrideTime = new Date();
         
         updateStoreStatus();
         
-        showNotification(`Local ${isOpen ? 'abierto' : 'cerrado'} manualmente`, 'success');
+        showNotification(`Local ${isOpen ? 'abierto' : 'cerrado'} correctamente`, 'success');
         
     } catch (error) {
         console.error('Error cambiando estado:', error);
@@ -2466,9 +2187,6 @@ async function loadAllData() {
         updateCategoriesGrid();
         updateSettingsForm();
         updateStoreStatus();
-        
-        // Verificar estado automático al cargar
-        updateStoreStatusAutomatically();
         
         console.log('✅ Datos cargados correctamente');
         
@@ -2685,8 +2403,6 @@ function debugRealtimeUpdates() {
     console.log('- Filtro actual:', adminState.currentFilter);
     console.log('- Último pedido ID:', adminState.lastOrderId);
     console.log('- Realtime habilitado:', adminState.realtimeEnabled);
-    console.log('- Estado manual activo:', adminState.isManualOverride);
-    console.log('- Hora override manual:', adminState.manualOverrideTime);
     console.log('- Suscripciones activas:', {
         orders: ordersUnsubscribe ? 'ACTIVA' : 'INACTIVA',
         products: productsUnsubscribe ? 'ACTIVA' : 'INACTIVA',
@@ -2694,6 +2410,7 @@ function debugRealtimeUpdates() {
         settings: settingsUnsubscribe ? 'ACTIVA' : 'INACTIVA'
     });
     
+    // Verificar conexión
     db.collection('orders').limit(1).get()
         .then(snap => {
             console.log('✅ Conexión a Firestore: OK');
@@ -2835,6 +2552,7 @@ function setupAdminEventListeners() {
         });
     }
     
+    // Botón de actualización manual
     const refreshButton = document.createElement('button');
     refreshButton.className = 'button-secondary';
     refreshButton.style.cssText = 'margin-left: 10px; padding: 8px 12px; display: flex; align-items: center; gap: 6px;';
@@ -2846,6 +2564,7 @@ function setupAdminEventListeners() {
         filterControls.querySelector('.filter-left')?.appendChild(refreshButton);
     }
     
+    // Botón de debug (solo en desarrollo)
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         const debugButton = document.createElement('button');
         debugButton.className = 'button-secondary';
@@ -2908,6 +2627,7 @@ async function initAdminApp() {
     try {
         console.log('🚀 Inicializando Panel Admin...');
         
+        // Verificar conexión a Firebase
         if (!firebase.apps.length) {
             showNotification('Error: Firebase no está inicializado', 'error');
             return;
@@ -2918,6 +2638,7 @@ async function initAdminApp() {
                 adminState.currentUser = user;
                 showAdminPanel();
                 
+                // Actualizar avatar de usuario
                 const userAvatar = document.getElementById('userAvatar');
                 if (userAvatar) {
                     const initials = user.email ? user.email.substring(0, 2).toUpperCase() : 'AD';
@@ -2925,14 +2646,18 @@ async function initAdminApp() {
                     userAvatar.style.background = 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)';
                 }
                 
+                // Cargar datos iniciales
                 await loadAllData();
                 
+                // Configurar eventos
                 setupAdminEventListeners();
                 
+                // Iniciar actualizaciones en tiempo real
                 setTimeout(() => {
                     startRealtimeUpdates();
                 }, 1000);
                 
+                // Mostrar notificación de conexión
                 showNotification('✅ Panel admin conectado - Actualizaciones en tiempo real activadas', 'success');
                 
             } else {
@@ -2982,6 +2707,7 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     document.head.appendChild(style);
     
+    // Agregar elementos de audio si no existen
     if (!document.getElementById('notificationSound')) {
         const notificationSound = document.createElement('audio');
         notificationSound.id = 'notificationSound';
@@ -3028,5 +2754,3 @@ window.debugRealtimeUpdates = debugRealtimeUpdates;
 window.toggleRealtimeUpdates = toggleRealtimeUpdates;
 window.showNotification = showNotification;
 window.filterProducts = filterProducts;
-window.applyProductFilters = applyProductFilters;
-window.clearProductFilters = clearProductFilters;
