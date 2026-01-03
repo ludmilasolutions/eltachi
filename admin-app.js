@@ -20,7 +20,8 @@ const adminState = {
     },
     lastOrderId: null,
     realtimeEnabled: true,
-    productSearchTerm: ''
+    productSearchTerm: '',
+    storeAutoStatus: 'calculando' // Nuevo estado para el estado automático
 };
 
 // FUNCIONES DE UTILIDAD (definidas primero)
@@ -244,6 +245,7 @@ async function initializeDefaultSettings() {
                 domingo: "11:00 - 23:00"
             },
             abierto: true,
+            modo_manual: false, // Nuevo campo para modo manual
             mensaje_cerrado: "Lo sentimos, estamos cerrados en este momento. Volvemos mañana a las 11:00.",
             precio_envio: 300,
             tiempo_base_estimado: 30,
@@ -361,6 +363,7 @@ let ordersUnsubscribe = null;
 let productsUnsubscribe = null;
 let categoriesUnsubscribe = null;
 let settingsUnsubscribe = null;
+let storeStatusInterval = null;
 
 function startRealtimeUpdates() {
     console.log('🎯 Iniciando actualizaciones en tiempo real...');
@@ -512,12 +515,23 @@ function startRealtimeUpdates() {
         console.log('📡 Cambios en configuración detectados');
         if (doc.exists) {
             adminState.settings = doc.data();
+            // Calcular estado automático
+            calculateAutoStoreStatus();
             updateStoreStatus();
             if (adminState.currentTab === 'settings') {
                 updateSettingsForm();
             }
         }
     });
+    
+    // Configurar intervalo para calcular estado automático cada minuto
+    if (storeStatusInterval) {
+        clearInterval(storeStatusInterval);
+    }
+    storeStatusInterval = setInterval(() => {
+        calculateAutoStoreStatus();
+        updateStoreStatus();
+    }, 60000); // Actualizar cada minuto
     
     // Configurar intervalo de actualización periódica
     const updateInterval = setInterval(() => {
@@ -558,6 +572,11 @@ function stopRealtimeUpdates() {
         settingsUnsubscribe = null;
     }
     
+    if (storeStatusInterval) {
+        clearInterval(storeStatusInterval);
+        storeStatusInterval = null;
+    }
+    
     if (adminState.updateInterval) {
         clearInterval(adminState.updateInterval);
         adminState.updateInterval = null;
@@ -572,6 +591,65 @@ function toggleRealtimeUpdates() {
     } else {
         stopRealtimeUpdates();
         showNotification('⏸️ Actualizaciones en tiempo real desactivadas', 'warning');
+    }
+}
+
+// NUEVA FUNCIÓN PARA CALCULAR ESTADO AUTOMÁTICO DEL LOCAL
+function calculateAutoStoreStatus() {
+    if (!adminState.settings || !adminState.settings.horarios_por_dia) {
+        adminState.storeAutoStatus = 'error';
+        return;
+    }
+    
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const daysMap = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const currentDay = daysMap[dayOfWeek];
+    
+    // Obtener horario del día actual
+    const scheduleText = adminState.settings.horarios_por_dia[currentDay];
+    
+    // Si el horario contiene "cerrado" o está vacío
+    if (!scheduleText || scheduleText.toLowerCase().includes('cerrado') || scheduleText.trim() === '') {
+        adminState.storeAutoStatus = 'cerrado';
+        return;
+    }
+    
+    try {
+        // Parsear horarios (formato: "HH:MM - HH:MM" o "HH:MM-HH:MM")
+        const timeMatch = scheduleText.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/);
+        if (!timeMatch) {
+            adminState.storeAutoStatus = 'error';
+            return;
+        }
+        
+        const openHour = parseInt(timeMatch[1]);
+        const openMinute = parseInt(timeMatch[2]);
+        const closeHour = parseInt(timeMatch[3]);
+        const closeMinute = parseInt(timeMatch[4]);
+        
+        // Crear objetos de fecha para comparación
+        const openTime = new Date();
+        openTime.setHours(openHour, openMinute, 0, 0);
+        
+        const closeTime = new Date();
+        closeTime.setHours(closeHour, closeMinute, 59, 999);
+        
+        // Si el cierre es después de medianoche (ej: 00:00 o 01:00), ajustar
+        if (closeHour < openHour || (closeHour === 0 && openHour > 0)) {
+            closeTime.setDate(closeTime.getDate() + 1);
+        }
+        
+        // Verificar si estamos dentro del horario
+        const isOpen = now >= openTime && now <= closeTime;
+        
+        adminState.storeAutoStatus = isOpen ? 'abierto' : 'cerrado';
+        
+        console.log(`🕒 Estado automático calculado: ${adminState.storeAutoStatus} (${openHour}:${openMinute} - ${closeHour}:${closeMinute})`);
+        
+    } catch (error) {
+        console.error('Error calculando estado automático:', error);
+        adminState.storeAutoStatus = 'error';
     }
 }
 
@@ -2219,6 +2297,34 @@ function updateSettingsForm() {
     
     document.getElementById('colorPrimary').value = settings.colores_marca?.azul || '#1e40af';
     document.getElementById('colorSecondary').value = settings.colores_marca?.amarillo || '#f59e0b';
+    
+    // Mostrar/ocultar el modo manual en la configuración
+    const manualModeLabel = document.getElementById('manualModeLabel');
+    const manualModeToggle = document.getElementById('manualModeToggle');
+    const autoStatusInfo = document.getElementById('autoStatusInfo');
+    
+    if (manualModeLabel && manualModeToggle && autoStatusInfo) {
+        manualModeToggle.checked = settings.modo_manual || false;
+        manualModeLabel.textContent = `Modo Manual ${settings.modo_manual ? 'ACTIVADO' : 'DESACTIVADO'}`;
+        
+        // Mostrar información sobre el estado automático actual
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const daysMap = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+        const currentDay = daysMap[dayOfWeek];
+        const currentSchedule = settings.horarios_por_dia?.[currentDay] || '11:00 - 23:00';
+        
+        autoStatusInfo.innerHTML = `
+            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.9rem;">
+                <div><strong>Estado Automático Actual:</strong> ${adminState.storeAutoStatus === 'abierto' ? '🔓 ABIERTO' : adminState.storeAutoStatus === 'cerrado' ? '🔒 CERRADO' : '⚡ Calculando...'}</div>
+                <div><strong>Horario Hoy (${currentDay}):</strong> ${currentSchedule}</div>
+                <div><strong>Hora Actual:</strong> ${now.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}</div>
+                <div style="margin-top: 5px; color: #6b7280; font-size: 0.8rem;">
+                    ${settings.modo_manual ? '⚠️ El modo manual está ACTIVADO. El estado no cambiará automáticamente.' : '✅ El modo manual está DESACTIVADO. El estado cambiará según los horarios configurados.'}
+                </div>
+            </div>
+        `;
+    }
 }
 
 async function saveSettings() {
@@ -2246,11 +2352,19 @@ async function saveSettings() {
         }
     });
     
+    // Guardar el modo manual si existe
+    const manualModeToggle = document.getElementById('manualModeToggle');
+    if (manualModeToggle) {
+        settingsData.modo_manual = manualModeToggle.checked;
+    }
+    
     try {
         await db.collection('settings').doc('config').update(settingsData);
         
         adminState.settings = { ...adminState.settings, ...settingsData };
         
+        // Recalcular estado automático después de guardar
+        calculateAutoStoreStatus();
         updateStoreStatus();
         
         showNotification('Configuración guardada correctamente', 'success');
@@ -2268,12 +2382,26 @@ function updateStoreStatus() {
     const statusValueElement = document.getElementById('storeStatusValue');
     const toggle = document.getElementById('storeToggle');
     const toggleLabel = document.getElementById('storeToggleLabel');
+    const autoStatusIndicator = document.getElementById('autoStatusIndicator');
     
     if (!statusElement || !statusValueElement || !toggle || !toggleLabel) return;
     
-    const isOpen = adminState.settings.abierto !== false;
+    // Determinar el estado final (automático o manual)
+    let finalStatus;
+    let isAuto;
     
-    if (isOpen) {
+    if (adminState.settings.modo_manual) {
+        // Modo manual: usar el estado guardado en la base de datos
+        finalStatus = adminState.settings.abierto !== false;
+        isAuto = false;
+    } else {
+        // Modo automático: usar el estado calculado
+        finalStatus = adminState.storeAutoStatus === 'abierto';
+        isAuto = true;
+    }
+    
+    // Actualizar el estado visual
+    if (finalStatus) {
         statusElement.textContent = '📍 Local ABIERTO';
         statusElement.style.color = '#10b981';
         statusValueElement.textContent = 'ABIERTO';
@@ -2288,12 +2416,56 @@ function updateStoreStatus() {
         toggle.checked = false;
         toggleLabel.textContent = 'Cerrado';
     }
+    
+    // Actualizar indicador de estado automático
+    if (autoStatusIndicator) {
+        if (isAuto) {
+            autoStatusIndicator.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                    <i class="fas fa-robot" style="color: #3b82f6;"></i>
+                    <div>
+                        <div style="font-weight: 600; color: #1e40af;">Modo Automático ACTIVADO</div>
+                        <div style="font-size: 0.8rem; color: #6b7280;">
+                            El estado cambia automáticamente según los horarios configurados
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            autoStatusIndicator.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                    <i class="fas fa-hand-paper" style="color: #f59e0b;"></i>
+                    <div>
+                        <div style="font-weight: 600; color: #92400e;">Modo Manual ACTIVADO</div>
+                        <div style="font-size: 0.8rem; color: #92400e;">
+                            El estado se controla manualmente con el interruptor
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    // Actualizar información del estado automático si estamos en la pestaña de configuración
+    if (adminState.currentTab === 'settings') {
+        updateSettingsForm();
+    }
 }
 
 async function toggleStoreStatus(checkbox) {
     const isOpen = checkbox.checked;
     
     try {
+        // Primero, activar el modo manual si no está activado
+        if (!adminState.settings.modo_manual) {
+            await db.collection('settings').doc('config').update({
+                modo_manual: true,
+                fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            adminState.settings.modo_manual = true;
+        }
+        
+        // Luego, actualizar el estado
         await db.collection('settings').doc('config').update({
             abierto: isOpen,
             fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
@@ -2303,12 +2475,50 @@ async function toggleStoreStatus(checkbox) {
         
         updateStoreStatus();
         
-        showNotification(`Local ${isOpen ? 'abierto' : 'cerrado'} correctamente`, 'success');
+        showNotification(`Local ${isOpen ? 'abierto' : 'cerrado'} manualmente`, 'success');
         
     } catch (error) {
         console.error('Error cambiando estado:', error);
         showNotification('Error al cambiar el estado del local', 'error');
         checkbox.checked = !isOpen;
+    }
+}
+
+async function toggleManualMode(checkbox) {
+    const isManual = checkbox.checked;
+    
+    try {
+        await db.collection('settings').doc('config').update({
+            modo_manual: isManual,
+            fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        adminState.settings.modo_manual = isManual;
+        
+        // Si se desactiva el modo manual, recalcular el estado automático
+        if (!isManual) {
+            calculateAutoStoreStatus();
+            
+            // Actualizar el estado en la base de datos según el cálculo automático
+            const shouldBeOpen = adminState.storeAutoStatus === 'abierto';
+            await db.collection('settings').doc('config').update({
+                abierto: shouldBeOpen,
+                fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            adminState.settings.abierto = shouldBeOpen;
+            
+            showNotification('Modo automático activado. Estado actualizado según horarios.', 'success');
+        } else {
+            showNotification('Modo manual activado. El estado no cambiará automáticamente.', 'warning');
+        }
+        
+        updateStoreStatus();
+        
+    } catch (error) {
+        console.error('Error cambiando modo:', error);
+        showNotification('Error al cambiar el modo', 'error');
+        checkbox.checked = !isManual;
     }
 }
 
@@ -2322,6 +2532,9 @@ async function loadAllData() {
             await initializeDefaultSettings();
             adminState.settings = await getSettings();
         }
+        
+        // Calcular estado automático inicial
+        calculateAutoStoreStatus();
         
         await loadOrders();
         await loadProducts();
@@ -2551,6 +2764,8 @@ function debugRealtimeUpdates() {
     console.log('- Filtro actual:', adminState.currentFilter);
     console.log('- Último pedido ID:', adminState.lastOrderId);
     console.log('- Realtime habilitado:', adminState.realtimeEnabled);
+    console.log('- Estado automático:', adminState.storeAutoStatus);
+    console.log('- Modo manual:', adminState.settings?.modo_manual);
     console.log('- Suscripciones activas:', {
         orders: ordersUnsubscribe ? 'ACTIVA' : 'INACTIVA',
         products: productsUnsubscribe ? 'ACTIVA' : 'INACTIVA',
@@ -2654,6 +2869,13 @@ function setupAdminEventListeners() {
     if (storeToggle) {
         storeToggle.addEventListener('change', function() {
             toggleStoreStatus(this);
+        });
+    }
+    
+    const manualModeToggle = document.getElementById('manualModeToggle');
+    if (manualModeToggle) {
+        manualModeToggle.addEventListener('change', function() {
+            toggleManualMode(this);
         });
     }
     
@@ -2892,6 +3114,7 @@ window.deleteProduct = deleteProduct;
 window.editCategory = editCategory;
 window.deleteCategory = deleteCategory;
 window.toggleStoreStatus = toggleStoreStatus;
+window.toggleManualMode = toggleManualMode;
 window.addCategory = addCategory;
 window.cancelEditCategory = cancelEditCategory;
 window.applyOrderFilter = applyOrderFilter;
