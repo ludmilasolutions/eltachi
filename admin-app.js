@@ -1167,6 +1167,7 @@ function updateOrdersTable() {
         
         const isUrgent = order.estado === 'Recibido' && order.tipo_pedido === 'envío';
         const isNew = adminState.lastOrderId === order.id;
+        const isRegisteredUser = order.isRegisteredUser || order.userId;
         const rowStyle = isUrgent ? 'background-color: #fef3c7 !important;' : 
                        isNew ? 'background-color: #f0f9ff !important; animation: highlightRow 2s;' : '';
         
@@ -1180,6 +1181,7 @@ function updateOrdersTable() {
                     <div>
                         <div style="display: flex; align-items: center; gap: 4px;">
                             <strong style="font-size: 0.9rem; color: #1e40af;">${order.id_pedido || order.id.substring(0, 8)}</strong>
+                            ${isRegisteredUser ? '<i class="fas fa-user-check" style="color: #10b981; font-size: 0.75rem;" title="Usuario registrado"></i>' : ''}
                             ${commentsHtml}
                             ${isNew ? '<span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 600;">NUEVO</span>' : ''}
                         </div>
@@ -1364,8 +1366,39 @@ async function showOrderDetails(orderId) {
         itemsHtml += '</div></div>';
     }
     
+    // Sección de usuario registrado
+    const userInfoHtml = order.isRegisteredUser || order.userId ? `
+        <div style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #3b82f6;">
+            <div style="font-weight: 600; color: #1e40af; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-user-check" style="color: #3b82f6;"></i> Usuario Registrado
+                <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">CUENTA GOOGLE</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                ${order.userName ? `
+                    <div>
+                        <div style="font-size: 0.8rem; color: #6b7280;">Nombre</div>
+                        <div style="font-weight: 600; color: #1e40af;">${order.userName}</div>
+                    </div>
+                ` : ''}
+                ${order.userEmail ? `
+                    <div>
+                        <div style="font-size: 0.8rem; color: #6b7280;">Email</div>
+                        <div style="font-weight: 600; color: #1e40af;">${order.userEmail}</div>
+                    </div>
+                ` : ''}
+                ${order.userId ? `
+                    <div>
+                        <div style="font-size: 0.8rem; color: #6b7280;">ID de Usuario</div>
+                        <div style="font-weight: 600; color: #6b7280; font-size: 0.8rem;">${order.userId}</div>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    ` : '';
+    
     modalOrderId.textContent = `Pedido: ${order.id_pedido || order.id}`;
     modalOrderDetails.innerHTML = `
+        ${userInfoHtml}
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
             <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
                 <div style="font-size: 0.9rem; color: #6b7280;">Cliente</div>
