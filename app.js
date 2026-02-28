@@ -8,8 +8,309 @@ let appState = {
     products: [],
     cart: [],
     currentCategory: null,
-    geminiEngine: null
+    geminiEngine: null,
+    currentUser: null,
+    userOrders: []
 };
+
+// Proveedor de Google
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+// Funciones de autenticación
+async function loginWithGoogle() {
+    try {
+        console.log("🔐 Iniciando sesión con Google...");
+        const result = await firebase.auth().signInWithPopup(googleProvider);
+        const user = result.user;
+        
+        console.log("✅ Usuario autenticado:", user.email);
+        showToast(`Bienvenido, ${user.displayName || user.email}`, 'success');
+        
+        return user;
+    } catch (error) {
+        console.error("❌ Error en login con Google:", error);
+        
+        let errorMessage = "Error al iniciar sesión";
+        if (error.code === 'auth/popup-closed-by-user') {
+            errorMessage = "Ventana cerrada antes de completar el inicio de sesión";
+        } else if (error.code === 'auth/account-exists-with-different-credential') {
+            errorMessage = "Ya existe una cuenta con el mismo correo electrónico";
+        }
+        
+        showToast(errorMessage, 'error');
+        return null;
+    }
+}
+
+async function logout() {
+    try {
+        await firebase.auth().signOut();
+        console.log("✅ Sesión cerrada");
+        showToast("Sesión cerrada correctamente", 'success');
+    } catch (error) {
+        console.error("❌ Error al cerrar sesión:", error);
+        showToast("Error al cerrar sesión", 'error');
+    }
+}
+
+function updateUserUI() {
+    const loginBtn = document.getElementById('loginBtn');
+    const userInfo = document.getElementById('userInfo');
+    const userPhoto = document.getElementById('userPhoto');
+    const userEmail = document.getElementById('userEmail');
+    const myOrdersBtn = document.getElementById('myOrdersBtn');
+    
+    if (!loginBtn || !userInfo) return;
+    
+    if (appState.currentUser) {
+        // Usuario logueado
+        loginBtn.style.display = 'none';
+        userInfo.style.display = 'flex';
+        
+        if (userPhoto) {
+            userPhoto.src = appState.currentUser.photoURL || 'https://via.placeholder.com/32';
+        }
+        if (userEmail) {
+            userEmail.textContent = appState.currentUser.email || appState.currentUser.displayName;
+        }
+        if (myOrdersBtn) {
+            myOrdersBtn.style.display = 'flex';
+        }
+        
+        // Cargar pedidos del usuario
+        loadUserOrders();
+    } else {
+        // Usuario no logueado
+        loginBtn.style.display = 'flex';
+        userInfo.style.display = 'none';
+        if (myOrdersBtn) {
+            myOrdersBtn.style.display = 'none';
+        }
+    }
+}
+
+function setupAuthListeners() {
+    if (!auth) return;
+    
+    auth.onAuthStateChanged((user) => {
+        appState.currentUser = user;
+        console.log("📱 Estado de auth cambiado:", user ? user.email : "No autenticado");
+        updateUserUI();
+    });
+    
+    // Event listeners para botones de auth
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const myOrdersBtn = document.getElementById('myOrdersBtn');
+    
+    if (loginBtn) {
+        loginBtn.addEventListener('click', loginWithGoogle);
+    }
+    
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+    
+    if (myOrdersBtn) {
+        myOrdersBtn.addEventListener('click', openUserOrdersModal);
+    }
+    
+    // Configurar modales de pedidos
+    const closeUserOrders = document.getElementById('closeUserOrders');
+    const closeUserOrderDetails = document.getElementById('closeUserOrderDetails');
+    const closeUserOrderDetailsBtn = document.getElementById('closeUserOrderDetailsBtn');
+    
+    if (closeUserOrders) {
+        closeUserOrders.addEventListener('click', closeUserOrdersModal);
+    }
+    
+    if (closeUserOrderDetails) {
+        closeUserOrderDetails.addEventListener('click', closeUserOrderDetailsModal);
+    }
+    
+    if (closeUserOrderDetailsBtn) {
+        closeUserOrderDetailsBtn.addEventListener('click', closeUserOrderDetailsModal);
+    }
+}
+
+// Funciones de Mis Pedidos
+async function loadUserOrders() {
+    if (!appState.currentUser) {
+        appState.userOrders = [];
+        return;
+    }
+    
+    try {
+        const snapshot = await db.collection('orders')
+            .where('userId', '==', appState.currentUser.uid)
+            .orderBy('fecha', 'desc')
+            .get();
+        
+        appState.userOrders = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        console.log(`📋 ${appState.userOrders.length} pedidos cargados para usuario`);
+    } catch (error) {
+        console.error("❌ Error cargando pedidos del usuario:", error);
+        appState.userOrders = [];
+    }
+}
+
+function openUserOrdersModal() {
+    const modal = document.getElementById('userOrdersModal');
+    if (!modal) return;
+    
+    if (!appState.currentUser) {
+        showToast("Debes iniciar sesión para ver tus pedidos", 'error');
+        return;
+    }
+    
+    renderUserOrders();
+    modal.style.display = 'flex';
+}
+
+function closeUserOrdersModal() {
+    const modal = document.getElementById('userOrdersModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function renderUserOrders() {
+    const container = document.getElementById('userOrdersBody');
+    if (!container) return;
+    
+    if (appState.userOrders.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-clipboard-list"></i>
+                <h3>No tienes pedidos</h3>
+                <p>Cuando realices un pedido, podrás verlo aquí</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    appState.userOrders.forEach(order => {
+        const fecha = order.fecha?.toDate ? order.fecha.toDate() : new Date(order.fecha);
+        const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : '--';
+        
+        const statusClass = order.estado === 'Recibido' ? 'recibido' :
+                          order.estado === 'En preparación' ? 'preparacion' :
+                          order.estado === 'Listo' ? 'listo' : 'entregado';
+        
+        const itemsCount = order.items?.length || 0;
+        
+        html += `
+            <div class="user-order-card" onclick="showUserOrderDetails('${order.id}')">
+                <div class="user-order-header">
+                    <span class="user-order-id">${order.id_pedido || order.id}</span>
+                    <span class="user-order-status ${statusClass}">${order.estado || 'Recibido'}</span>
+                </div>
+                <div class="user-order-date">${fechaStr}</div>
+                <div class="user-order-items">${itemsCount} item${itemsCount !== 1 ? 's' : ''}</div>
+                <div class="user-order-total">$${order.total || 0}</div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function showUserOrderDetails(orderId) {
+    const order = appState.userOrders.find(o => o.id === orderId);
+    if (!order) {
+        showToast("Pedido no encontrado", 'error');
+        return;
+    }
+    
+    const modal = document.getElementById('userOrderDetailsModal');
+    const titleEl = document.getElementById('userOrderDetailId');
+    const bodyEl = document.getElementById('userOrderDetailsBody');
+    
+    if (!modal || !titleEl || !bodyEl) return;
+    
+    const fecha = order.fecha?.toDate ? order.fecha.toDate() : new Date(order.fecha);
+    const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    }) : '--';
+    
+    const statusClass = order.estado === 'Recibido' ? 'recibido' :
+                      order.estado === 'En preparación' ? 'preparacion' :
+                      order.estado === 'Listo' ? 'listo' : 'entregado';
+    
+    let itemsHtml = '';
+    if (order.items && order.items.length > 0) {
+        order.items.forEach(item => {
+            itemsHtml += `
+                <div class="user-order-item">
+                    <span>${item.nombre || item.name} x${item.cantidad || item.quantity}</span>
+                    <span>$${item.total || (item.price * item.quantity)}</span>
+                </div>
+            `;
+        });
+    }
+    
+    bodyEl.innerHTML = `
+        <div class="user-order-detail-section">
+            <div class="user-order-detail-label">Estado</div>
+            <span class="user-order-status ${statusClass}">${order.estado || 'Recibido'}</span>
+        </div>
+        <div class="user-order-detail-section">
+            <div class="user-order-detail-label">Fecha</div>
+            <div class="user-order-detail-value">${fechaStr}</div>
+        </div>
+        <div class="user-order-detail-section">
+            <div class="user-order-detail-label">Tipo de pedido</div>
+            <div class="user-order-detail-value">${order.tipo_pedido === 'envío' ? 'Envío a domicilio' : 'Retiro en local'}</div>
+        </div>
+        ${order.direccion ? `
+        <div class="user-order-detail-section">
+            <div class="user-order-detail-label">Dirección</div>
+            <div class="user-order-detail-value">${order.direccion}</div>
+        </div>
+        ` : ''}
+        <div class="user-order-detail-section">
+            <div class="user-order-detail-label">Productos</div>
+            <div class="user-order-items-list">
+                ${itemsHtml || '<p>Sin productos</p>'}
+            </div>
+        </div>
+        <div class="user-order-detail-section">
+            <div class="user-order-detail-label">Total</div>
+            <div class="user-order-detail-value" style="font-size: 1.5rem; color: var(--amarillo);">$${order.total || 0}</div>
+        </div>
+        ${order.comentarios ? `
+        <div class="user-order-detail-section">
+            <div class="user-order-detail-label">Comentarios</div>
+            <div class="user-order-detail-value">${order.comentarios}</div>
+        </div>
+        ` : ''}
+    `;
+    
+    titleEl.textContent = order.id_pedido || order.id;
+    modal.style.display = 'flex';
+}
+
+function closeUserOrderDetailsModal() {
+    const modal = document.getElementById('userOrderDetailsModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Hacer funciones disponibles globalmente
+window.showUserOrderDetails = showUserOrderDetails;
+window.openUserOrdersModal = openUserOrdersModal;
 
 // Cargar configuración del local
 async function loadSettings() {
@@ -782,6 +1083,15 @@ async function confirmOrderHandler() {
             fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
         
+        // Agregar datos del usuario si está logueado
+        if (appState.currentUser) {
+            orderData.userId = appState.currentUser.uid;
+            orderData.userEmail = appState.currentUser.email;
+            orderData.userName = appState.currentUser.displayName || customerNameValue;
+            orderData.userPhotoURL = appState.currentUser.photoURL || null;
+            orderData.isRegisteredUser = true;
+        }
+        
         // Guardar en Firestore
         await db.collection('orders').doc(orderId).set(orderData);
         
@@ -954,6 +1264,9 @@ async function initApp() {
         
         // Configurar event listeners
         setupCheckout();
+        
+        // Configurar autenticación
+        setupAuthListeners();
         
         console.log('✅ Aplicación lista para usar');
         
