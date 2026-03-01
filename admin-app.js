@@ -235,26 +235,27 @@ async function checkAdminStatus(user) {
     try {
         if (!user || !user.email) return false;
         
-        // Verificar en colección "admins" por email
+        // Verificar en colección "admins" por UID del documento
         const adminDoc = await db.collection('admins').doc(user.uid).get();
-        if (adminDoc.exists && adminDoc.data().isAdmin === true) {
-            return true;
+        if (adminDoc.exists) {
+            const data = adminDoc.data();
+            // Aceptar varios formatos de campo admin
+            if (data.isAdmin === true || data.activo === true || data.rol === 'admin') {
+                return true;
+            }
         }
         
-        // También verificar por email en caso de que el UID no coincida
+        // También verificar por email
         const adminByEmail = await db.collection('admins')
             .where('email', '==', user.email)
             .limit(1)
             .get();
         
         if (!adminByEmail.empty) {
-            return adminByEmail.docs[0].data().isAdmin === true;
-        }
-        
-        // Verificar en settings/config si hay lista de admins
-        const settings = await getSettings();
-        if (settings && settings.adminEmails) {
-            return settings.adminEmails.includes(user.email);
+            const data = adminByEmail.docs[0].data();
+            if (data.isAdmin === true || data.activo === true || data.rol === 'admin') {
+                return true;
+            }
         }
         
         return false;
