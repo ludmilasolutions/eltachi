@@ -1,0 +1,79 @@
+{
+  "name": "EL TACHI - Panel Admin",
+  "short_name": "Admin TACHI",
+  "description": "Panel de administración de EL TACHI Rotisería",
+  "start_url": "/admin.html?v=1",
+  "display": "standalone",
+  "background_color": "#1e40af",
+  "theme_color": "#1e40af",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "es-AR",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "logo.png?v=2",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png?v=2",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ver pedidos",
+      "short_name": "Pedidos",
+      "description": "Ver todos los pedidos",
+      "url": "/admin.html?v=1#orders",
+      "icons": [{ "src": "logo.png?v=2", "sizes": "96x96" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Ver panel de control",
+      "url": "/admin.html?v=1#dashboard",
+      "icons": [{ "src": "logo.png?v=2", "sizes": "96x96" }]
+    }
+  ]
+}
