@@ -203,19 +203,65 @@ function playNotificationSound() {
 
 function playNewOrderSound() {
     try {
-        const audio = document.getElementById('newOrderSound');
-        if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(e => console.log('Error reproduciendo sonido de nuevo pedido:', e));
-        } else {
-            // Crear audio dinámico si no existe
-            const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
-            audio.volume = 0.5;
-            audio.play().catch(e => console.log('Error con audio dinámico:', e));
+        // Sonido más fuerte y repetido para asegurar que se escuche
+        const playSound = () => {
+            const audio = new Audio('https://cdn.freesound.org/previews/612/612095_5674468-lq.mp3');
+            audio.volume = 0.8;
+            audio.play().catch(e => console.log('Error con audio:', e));
+        };
+        
+        // Reproducir 3 veces conintervalo
+        playSound();
+        setTimeout(playSound, 800);
+        setTimeout(playSound, 1600);
+        
+        // También intentar con el elemento de audio existente
+        const audioEl = document.getElementById('newOrderSound');
+        if (audioEl) {
+            audioEl.volume = 0.8;
+            audioEl.currentTime = 0;
+            audioEl.play().catch(e => {});
         }
     } catch (error) {
         console.log('Error con sonido de nuevo pedido:', error);
     }
+}
+
+function showNewOrderAlert(orderId) {
+    // Crear alerta visual parpadeante
+    const alertDiv = document.createElement('div');
+    alertDiv.id = 'newOrderAlert';
+    alertDiv.innerHTML = `
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                    background: rgba(0,0,0,0.8); z-index: 10000; display: flex; 
+                    align-items: center; justify-content: center; flex-direction: column;">
+            <div style="background: white; padding: 40px; border-radius: 20px; 
+                        text-align: center; animation: pulse 0.5s infinite;">
+                <i class="fas fa-bell" style="font-size: 60px; color: #f59e0b; margin-bottom: 20px;"></i>
+                <h2 style="color: #1e40af; margin-bottom: 10px;">NUEVO PEDIDO!</h2>
+                <p style="font-size: 18px; color: #6b7280;">#${orderId}</p>
+                <button onclick="this.parentElement.parentElement.remove()" 
+                        style="margin-top: 20px; padding: 12px 30px; background: #10b981; 
+                               color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">
+                    <i class="fas fa-check"></i> Aceptar
+                </button>
+            </div>
+        </div>
+        <style>
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+        </style>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    // Auto cerrar después de 30 segundos
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 30000);
 }
 
 // FUNCIONES DE FIREBASE
@@ -481,8 +527,10 @@ function startRealtimeUpdates() {
                         
                         if (diffMinutes < 5) { // Aumentado a 5 minutos para debugging
                             console.log('🔔 Pedido reciente:', diffMinutes.toFixed(1), 'minutos');
-                            showNotification(`📦 NUEVO PEDIDO #${orderData.id_pedido || orderData.id.substring(0, 8)} por $${orderData.total || 0}`, 'success');
+                            const orderId = orderData.id_pedido || orderData.id.substring(0, 8);
+                            showNotification(`📦 NUEVO PEDIDO #${orderId} por $${orderData.total || 0}`, 'success');
                             playNewOrderSound();
+                            showNewOrderAlert(orderId);
                         }
                     }
                 }
@@ -895,10 +943,20 @@ function updateDashboard() {
     adminState.stats.activeOrders = adminState.orders.filter(order => 
         order.estado === 'Recibido' || order.estado === 'En preparación'
     ).length;
+    adminState.stats.pendingOrders = adminState.orders.filter(order => 
+        order.estado === 'Recibido'
+    ).length;
     
     document.getElementById('ordersToday').textContent = adminState.stats.todayOrders;
     document.getElementById('salesToday').textContent = `$${adminState.stats.todaySales}`;
     document.getElementById('activeOrders').textContent = adminState.stats.activeOrders;
+    
+    // Actualizar badge de pendientes si existe
+    const pendingBadge = document.getElementById('pendingOrdersBadge');
+    if (pendingBadge) {
+        pendingBadge.textContent = adminState.stats.pendingOrders;
+        pendingBadge.style.display = adminState.stats.pendingOrders > 0 ? 'flex' : 'none';
+    }
     
     updateRecentOrdersList();
     updateTopProductsList();
@@ -1242,46 +1300,63 @@ function updateOrdersTable() {
             </div>
         `;
         
-        const isUrgent = order.estado === 'Recibido' && order.tipo_pedido === 'envío';
+        // Destacar pedidos pendientes (no modificados)
+        const isPending = order.estado === 'Recibido';
+        const isPreparing = order.estado === 'En preparación';
         const isNew = adminState.lastOrderId === order.id;
         const isRegisteredUser = order.isRegisteredUser || order.userId;
-        const rowStyle = isUrgent ? 'background-color: #fef3c7 !important;' : 
-                       isNew ? 'background-color: #f0f9ff !important; animation: highlightRow 2s;' : '';
+        
+        // Prioridad visual: Pendiente > Preparando > Nuevo
+        let highlightStyle = '';
+        let highlightIcon = '';
+        let badge = '';
+        
+        if (isPending) {
+            highlightStyle = 'background: linear-gradient(90deg, #fef3c7 0%, #fde68a 100%) !important; border-left: 4px solid #f59e0b !important;';
+            highlightIcon = '<i class="fas fa-exclamation-circle" style="color: #f59e0b; font-size: 1rem;"></i>';
+            badge = '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 700; margin-left: 4px;">PENDIENTE</span>';
+        } else if (isPreparing) {
+            highlightStyle = 'background: linear-gradient(90deg, #dbeafe 0%, #bfdbfe 100%) !important; border-left: 4px solid #3b82f6 !important;';
+            highlightIcon = '<i class="fas fa-fire" style="color: #3b82f6; font-size: 1rem;"></i>';
+        } else if (isNew) {
+            highlightStyle = 'background-color: #f0f9ff !important; animation: highlightRow 2s;';
+            highlightIcon = '<i class="fas fa-star" style="color: #3b82f6;"></i>';
+        }
         
         row.innerHTML = `
-            <td style="${rowStyle}">
+            <td style="${highlightStyle}">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div style="min-width: 24px;">
-                        ${isUrgent ? '<i class="fas fa-bolt" style="color: #f59e0b;"></i>' : 
-                          isNew ? '<i class="fas fa-star" style="color: #3b82f6;"></i>' : ''}
+                        ${highlightIcon}
                     </div>
                     <div>
                         <div style="display: flex; align-items: center; gap: 4px;">
                             <strong style="font-size: 0.9rem; color: #1e40af;">${order.id_pedido || order.id.substring(0, 8)}</strong>
                             ${isRegisteredUser ? '<i class="fas fa-user-check" style="color: #10b981; font-size: 0.75rem;" title="Usuario registrado"></i>' : ''}
                             ${commentsHtml}
-                            ${isNew ? '<span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 600;">NUEVO</span>' : ''}
+                            ${badge}
+                            ${isNew && !isPending ? '<span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 600;">NUEVO</span>' : ''}
                         </div>
                         ${itemsHtml}
                     </div>
                 </div>
             </td>
-            <td style="${rowStyle}">
+            <td style="${highlightStyle}">
                 <div style="font-size: 0.85rem;">${fechaStr}</div>
             </td>
-            <td style="${rowStyle}">
+            <td style="${highlightStyle}">
                 ${customerInfo}
             </td>
-            <td style="${rowStyle}">
+            <td style="${highlightStyle}">
                 <strong style="color: #1e40af; font-size: 1rem;">$${order.total || 0}</strong>
             </td>
-            <td style="${rowStyle}">
+            <td style="${highlightStyle}">
                 ${statusSelect}
             </td>
-            <td style="${rowStyle}">
+            <td style="${highlightStyle}">
                 ${timeInput}
             </td>
-            <td style="${rowStyle}">
+            <td style="${highlightStyle}">
                 ${actionButtons}
             </td>
         `;
@@ -2876,6 +2951,7 @@ window.forceRefreshOrders = forceRefreshOrders;
 window.debugRealtimeUpdates = debugRealtimeUpdates;
 window.toggleRealtimeUpdates = toggleRealtimeUpdates;
 window.showNotification = showNotification;
+window.showNewOrderAlert = showNewOrderAlert;
 window.filterProducts = filterProducts;
 window.checkAdminStatus = checkAdminStatus;
 window.addAdmin = addAdmin;
