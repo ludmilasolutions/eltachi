@@ -2,6 +2,21 @@
   publish = "."
 
 [[redirects]]
+  from = "/manifest.json"
+  to = "/manifest.json"
+  status = 200
+
+[[redirects]]
+  from = "/manifest-admin.json"
+  to = "/manifest-admin.json"
+  status = 200
+
+[[redirects]]
+  from = "/service-worker.js"
+  to = "/service-worker.js"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
@@ -22,6 +37,12 @@
 [[headers]]
   for = "*.html"
   [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "*.json"
+  [headers.values]
+    Content-Type = "application/json"
     Cache-Control = "public, max-age=0, must-revalidate"
     
 [[headers]]
