@@ -1073,7 +1073,6 @@ function updateTopProductsList() {
         }
     }
 }
-    });
     
     const topProducts = Object.entries(productCount)
         .sort((a, b) => b[1] - a[1])
