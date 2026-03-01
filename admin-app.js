@@ -233,9 +233,8 @@ function playNewOrderSound() {
         };
     }
     
-    // Reproducir audio directamente
-    const audio = new Audio();
-    audio.src = 'https://www.w3schools.com/html/alert.mp3';
+    // Reproducir audio local
+    const audio = new Audio('SD_ALERT_3.mp3');
     audio.volume = 1.0;
     audio.play().then(() => console.log('🔔')).catch(e => console.log('Error:', e));
 }
