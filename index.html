@@ -2648,32 +2648,6 @@
                 closeUserOrderDetailsBtn.onclick = closeUserOrderDetailsModal;
             }
         }
-            
-            if (elements.logoutBtn) {
-                elements.logoutBtn.addEventListener('click', logout);
-            }
-            
-            if (elements.myOrdersBtn) {
-                elements.myOrdersBtn.addEventListener('click', openUserOrdersModal);
-            }
-            
-            // Cerrar modales de pedidos
-            const closeUserOrders = document.getElementById('closeUserOrders');
-            const closeUserOrderDetails = document.getElementById('closeUserOrderDetails');
-            const closeUserOrderDetailsBtn = document.getElementById('closeUserOrderDetailsBtn');
-            
-            if (closeUserOrders) {
-                closeUserOrders.addEventListener('click', closeUserOrdersModal);
-            }
-            
-            if (closeUserOrderDetails) {
-                closeUserOrderDetails.addEventListener('click', closeUserOrderDetailsModal);
-            }
-            
-            if (closeUserOrderDetailsBtn) {
-                closeUserOrderDetailsBtn.addEventListener('click', closeUserOrderDetailsModal);
-            }
-        }
         
         async function loadUserOrders() {
             if (!appState.currentUser) {
