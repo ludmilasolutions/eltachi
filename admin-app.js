@@ -201,43 +201,68 @@ function playNotificationSound() {
     }
 }
 
+let audioCtx = null;
+let soundIntervals = [];
+
+function stopSound() {
+    // Limpiar todos los timeouts pendientes
+    soundIntervals.forEach(id => clearTimeout(id));
+    soundIntervals = [];
+    
+    // Cerrar AudioContext si existe
+    if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+    }
+}
+
 function playNewOrderSound() {
     try {
-        // Intentar reproducir sonido inmediatamente (sin delay)
-        const playSound = () => {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Limpiar sonidos anteriores
+        stopSound();
+        
+        // Crear AudioContext
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Función para reproducir un beep
+        const playBeep = () => {
+            if (!audioCtx) return;
+            
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
             
-            oscillator.frequency.value = 880; // Frecuencia más alta
+            oscillator.frequency.value = 880;
             oscillator.type = 'square';
             gainNode.gain.value = 0.3;
             
             oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.3);
+            oscillator.stop(audioCtx.currentTime + 0.25);
         };
         
-        // Reproducir múltiples veces
-        playSound();
-        setTimeout(playSound, 300);
-        setTimeout(playSound, 600);
-        setTimeout(playSound, 900);
+        // Programar beeps
+        playBeep();
+        soundIntervals.push(setTimeout(playBeep, 250));
+        soundIntervals.push(setTimeout(playBeep, 500));
+        soundIntervals.push(setTimeout(playBeep, 750));
     } catch (error) {
         console.log('Error con sonido:', error);
     }
 }
 
 function showNewOrderAlert(orderId) {
+    // Detener sonido anterior
+    stopSound();
+    
     // Cerrar alerta anterior si existe
     const existingAlert = document.getElementById('newOrderAlert');
     if (existingAlert) {
         existingAlert.remove();
     }
     
-    // Crear alerta visual con botón claro
+    // Crear alerta visual
     const alertDiv = document.createElement('div');
     alertDiv.id = 'newOrderAlert';
     alertDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(30,64,175,0.95);z-index:10000;display:flex;align-items:center;justify-content:center;';
@@ -247,7 +272,7 @@ function showNewOrderAlert(orderId) {
             <i class="fas fa-bell" style="font-size:70px;color:#f59e0b;margin-bottom:15px;animation:pulse 0.3s infinite;"></i>
             <h2 style="color:#1e40af;margin:0 0 10px 0;font-size:26px;">¡NUEVO PEDIDO!</h2>
             <p style="font-size:22px;color:#374151;font-weight:bold;margin:0 0 5px 0;">#${orderId}</p>
-            <p style="font-size:14px;color:#6b7280;margin:0 0 25px 0;">Hace click en el botón para aceptar</p>
+            <p style="font-size:14px;color:#6b7280;margin:0 0 25px 0;">Tocá ACEPTAR para silenciar</p>
             <button id="acceptOrderBtn" style="width:100%;padding:18px 30px;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:12px;font-size:18px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(16,185,129,0.4);">
                 <i class="fas fa-check-circle"></i> ACEPTAR
             </button>
@@ -260,23 +285,22 @@ function showNewOrderAlert(orderId) {
         </style>
     `;
     
-    // Agregar al DOM primero
     document.body.appendChild(alertDiv);
     
-    // Evento del botón
+    // Al hacer click en ACEPTAR: SILENCIAR y cerrar
     document.getElementById('acceptOrderBtn').onclick = function(e) {
         e.stopPropagation();
+        stopSound(); // Detiene el sonido
         alertDiv.remove();
     };
     
-    // También cerrar al hacer click fuera del contenido
     alertDiv.onclick = function(e) {
         if (e.target === alertDiv) {
+            stopSound(); // Detiene el sonido
             alertDiv.remove();
         }
     };
     
-    // Auto cerrar después de 30 segundos
     setTimeout(() => {
         if (alertDiv.parentElement) {
             alertDiv.remove();
