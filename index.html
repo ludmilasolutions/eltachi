@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -179,6 +180,84 @@
             width: fit-content;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* NUEVOS ESTILOS PARA LOGIN */
+        .auth-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .login-button {
+            background: white;
+            color: var(--azul-oscuro);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .login-button:hover {
+            background: var(--amarillo);
+            color: var(--gris-oscuro);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 8px 4px 4px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+        }
+        
+        .user-email {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .icon-button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .icon-button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
         }
         
         .cart-button-header {
@@ -1763,287 +1842,6 @@
         .floating {
             animation: float 3s ease-in-out infinite;
         }
-        
-        /* AUTH BUTTONS */
-        .auth-button-header {
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            padding: 0.5rem 1rem;
-            color: white;
-            font-weight: 600;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            backdrop-filter: blur(20px);
-        }
-        
-        .auth-button-header:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-2px);
-            border-color: var(--amarillo);
-        }
-        
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            padding: 0.35rem 0.75rem;
-            backdrop-filter: blur(20px);
-        }
-        
-        .user-photo {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 2px solid white;
-            object-fit: cover;
-        }
-        
-        .user-email {
-            color: white;
-            font-size: 0.8rem;
-            font-weight: 600;
-            max-width: 120px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .logout-btn {
-            background: rgba(239, 68, 68, 0.8);
-            border: none;
-            border-radius: 8px;
-            width: 28px;
-            height: 28px;
-            color: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-        
-        .logout-btn:hover {
-            background: var(--rojo);
-            transform: scale(1.1);
-        }
-        
-        /* USER ORDERS MODAL */
-        .user-orders-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1002;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .user-orders-content {
-            background: var(--blanco);
-            border-radius: 28px;
-            width: 100%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow: hidden;
-            animation: slideUp 0.3s ease-out;
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .user-orders-header {
-            padding: 1.5rem;
-            background: var(--gradiente-azul);
-            color: white;
-            border-radius: 28px 28px 0 0;
-            position: relative;
-            flex-shrink: 0;
-        }
-        
-        .user-orders-title {
-            font-size: 1.5rem;
-            font-weight: 900;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        
-        .close-user-orders {
-            position: absolute;
-            top: 1.25rem;
-            right: 1.25rem;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            font-size: 1rem;
-            color: white;
-            cursor: pointer;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-        
-        .close-user-orders:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: rotate(90deg);
-        }
-        
-        .user-orders-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1.5rem;
-        }
-        
-        .user-order-card {
-            background: var(--gris-claro);
-            border-radius: 16px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            border: 1px solid var(--gris-border);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .user-order-card:hover {
-            border-color: var(--azul-electrico);
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.15);
-            transform: translateY(-2px);
-        }
-        
-        .user-order-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
-        }
-        
-        .user-order-id {
-            font-weight: 800;
-            color: var(--azul-oscuro);
-            font-size: 1rem;
-        }
-        
-        .user-order-status {
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        
-        .user-order-status.recibido { background: #DBEAFE; color: #1E40AF; }
-        .user-order-status.preparacion { background: #FEF3C7; color: #92400E; }
-        .user-order-status.listo { background: #D1FAE5; color: #065F46; }
-        .user-order-status.entregado { background: #E5E7EB; color: #374151; }
-        
-        .user-order-date {
-            font-size: 0.85rem;
-            color: var(--gris-medio);
-            margin-bottom: 0.5rem;
-        }
-        
-        .user-order-total {
-            font-weight: 800;
-            color: var(--amarillo);
-            font-size: 1.25rem;
-        }
-        
-        .user-order-items {
-            font-size: 0.85rem;
-            color: var(--gris-medio);
-            margin-top: 0.5rem;
-        }
-        
-        .user-order-details-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1003;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .user-order-details-content {
-            background: var(--blanco);
-            border-radius: 20px;
-            width: 100%;
-            max-width: 450px;
-            max-height: 85vh;
-            overflow-y: auto;
-            padding: 1.5rem;
-            animation: slideUp 0.3s ease-out;
-        }
-        
-        .user-order-details-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--gris-border);
-        }
-        
-        .user-order-details-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: var(--gris-oscuro);
-        }
-        
-        .user-order-detail-section {
-            margin-bottom: 1.25rem;
-        }
-        
-        .user-order-detail-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--gris-medio);
-            text-transform: uppercase;
-            margin-bottom: 0.35rem;
-        }
-        
-        .user-order-detail-value {
-            color: var(--gris-oscuro);
-            font-weight: 600;
-        }
-        
-        .user-order-items-list {
-            background: var(--gris-claro);
-            border-radius: 12px;
-            padding: 1rem;
-        }
-        
-        .user-order-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.5rem 0;
-            border-bottom: 1px dashed var(--gris-border);
-        }
-        
-        .user-order-item:last-child {
-            border-bottom: none;
-        }
     </style>
 </head>
 <body>
@@ -2061,21 +1859,27 @@
                         <div class="store-subtitle">Rotisería & Almacén</div>
                     </div>
                 </div>
-                <button class="cart-button-header" id="cartButton">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span class="cart-count" id="cartCount">0</span>
-                </button>
-                <button class="cart-button-header" id="myOrdersBtn" style="display: none;" title="Mis pedidos">
-                    <i class="fas fa-clipboard-list"></i>
-                </button>
-                <button class="auth-button-header" id="loginBtn" title="Iniciar sesión con Google">
-                    <i class="fab fa-google"></i> Iniciar sesión
-                </button>
-                <div class="user-info hidden" id="userInfo" style="display: none;">
-                    <img id="userPhoto" src="" alt="User" class="user-photo">
-                    <span id="userEmail" class="user-email"></span>
-                    <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">
-                        <i class="fas fa-sign-out-alt"></i>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <!-- BOTÓN DE LOGIN CON GOOGLE -->
+                    <button class="login-button" id="loginBtn">
+                        <i class="fab fa-google"></i> Iniciar sesión
+                    </button>
+                    
+                    <!-- INFORMACIÓN DEL USUARIO (OCULTA INICIALMENTE) -->
+                    <div class="user-info" id="userInfo" style="display: none;">
+                        <img class="user-avatar" id="userPhoto" src="" alt="avatar">
+                        <span class="user-email" id="userEmail"></span>
+                        <button class="icon-button" id="myOrdersBtn" title="Mis pedidos">
+                            <i class="fas fa-box"></i>
+                        </button>
+                        <button class="icon-button" id="logoutBtn" title="Cerrar sesión">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                    
+                    <button class="cart-button-header" id="cartButton">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-count" id="cartCount">0</span>
                     </button>
                 </div>
             </div>
@@ -2304,1198 +2108,47 @@
         </div>
     </div>
 
+    <!-- MODAL MIS PEDIDOS -->
+    <div class="modal-overlay" id="userOrdersModal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-boxes"></i> Mis pedidos</h3>
+                <button class="close-modal" id="closeUserOrders"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="userOrdersBody" style="max-height: 400px; overflow-y: auto; padding: 10px;">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLE DEL PEDIDO -->
+    <div class="modal-overlay" id="userOrderDetailsModal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="userOrderDetailId">Pedido #</h3>
+                <button class="close-modal" id="closeUserOrderDetails"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="userOrderDetailsBody" style="padding: 20px;">
+                <!-- Detalle del pedido -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="closeUserOrderDetailsBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle"></i>
         <span id="toastMessage">Producto agregado al carrito</span>
     </div>
 
-    <!-- USER ORDERS MODAL -->
-    <div class="user-orders-modal" id="userOrdersModal">
-        <div class="user-orders-content">
-            <div class="user-orders-header">
-                <h3 class="user-orders-title">
-                    <i class="fas fa-clipboard-list"></i> Mis Pedidos
-                </h3>
-                <button class="close-user-orders" id="closeUserOrders">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="user-orders-body" id="userOrdersBody">
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- USER ORDER DETAILS MODAL -->
-    <div class="user-order-details-modal" id="userOrderDetailsModal">
-        <div class="user-order-details-content">
-            <div class="user-order-details-header">
-                <h3 class="user-order-details-title" id="userOrderDetailId">Pedido #0001</h3>
-                <button class="close-user-orders" id="closeUserOrderDetails">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="userOrderDetailsBody"></div>
-            <button class="btn-secondary mt-2" id="closeUserOrderDetailsBtn" style="width: 100%; margin-top: 1rem;">
-                Cerrar
-            </button>
-        </div>
-    </div>
-
-    <!-- SCRIPT DE CACHÉ Y VERSIÓN -->
-    <script>
-        // VERSIÓN DE LA APLICACIÓN - Cambia este número cada vez que hagas cambios
-        const APP_VERSION = '4.0';
-        
-        // Sistema de caché mejorado
-        const clearAllCaches = async () => {
-            console.log('🧹 Limpiando cachés...');
-            
-            // Limpiar localStorage
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith('eltachi_') || key === 'app_version') {
-                    keysToRemove.push(key);
-                }
-            }
-            
-            keysToRemove.forEach(key => {
-                localStorage.removeItem(key);
-                console.log(`🗑️ Eliminado de localStorage: ${key}`);
-            });
-            
-            // Limpiar sessionStorage
-            sessionStorage.clear();
-            
-            // Limpiar IndexedDB (si existe)
-            if (window.indexedDB) {
-                const dbs = await indexedDB.databases();
-                dbs.forEach(db => {
-                    if (db.name) {
-                        indexedDB.deleteDatabase(db.name);
-                        console.log(`🗑️ Eliminando IndexedDB: ${db.name}`);
-                    }
-                });
-            }
-            
-            // Limpiar caché de Service Workers
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                try {
-                    await navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                        for (let registration of registrations) {
-                            registration.unregister();
-                            console.log('🗑️ Service Worker desregistrado:', registration.scope);
-                        }
-                    });
-                } catch (error) {
-                    console.log('⚠️ Error al desregistrar Service Workers:', error);
-                }
-            }
-            
-            // Limpiar caché HTTP
-            if ('caches' in window) {
-                try {
-                    const cacheNames = await caches.keys();
-                    await Promise.all(
-                        cacheNames.map(cacheName => {
-                            console.log(`🗑️ Eliminando caché HTTP: ${cacheName}`);
-                            return caches.delete(cacheName);
-                        })
-                    );
-                } catch (error) {
-                    console.log('⚠️ Error al limpiar caché HTTP:', error);
-                }
-            }
-            
-            console.log('✅ Cachés limpiados exitosamente');
-        };
-        
-        // Verificar y actualizar versión
-        const checkVersion = async () => {
-            const storedVersion = localStorage.getItem('app_version');
-            const shouldReload = localStorage.getItem('force_reload');
-            
-            console.log(`🔄 Versión actual: ${APP_VERSION}, Versión almacenada: ${storedVersion}`);
-            
-            // Si la versión cambió o hay que forzar recarga
-            if (storedVersion !== APP_VERSION || shouldReload === 'true') {
-                console.log('🚨 Nueva versión detectada o recarga forzada');
-                
-                // Mostrar mensaje al usuario
-                if (!localStorage.getItem('app_version')) {
-                    // Primera carga
-                    console.log('🎉 Primera carga de la aplicación');
-                } else {
-                    // Actualización
-                    console.log('🔄 Actualizando aplicación...');
-                    
-                    // Mostrar toast de actualización
-                    const updateToast = document.createElement('div');
-                    updateToast.className = 'toast show';
-                    updateToast.style.background = 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)';
-                    updateToast.innerHTML = `
-                        <i class="fas fa-sync-alt"></i>
-                        <span>Actualizando aplicación...</span>
-                    `;
-                    document.body.appendChild(updateToast);
-                    
-                    setTimeout(() => {
-                        updateToast.remove();
-                    }, 2000);
-                }
-                
-                // Limpiar todos los cachés
-                await clearAllCaches();
-                
-                // Guardar nueva versión
-                localStorage.setItem('app_version', APP_VERSION);
-                localStorage.removeItem('force_reload');
-                
-                // Recargar la página para aplicar cambios
-                setTimeout(() => {
-                    console.log('🔄 Recargando aplicación...');
-                    window.location.reload();
-                }, 1000);
-                
-                return false; // No continuar con la ejecución normal
-            }
-            
-            console.log('✅ Versión actualizada correctamente');
-            return true; // Continuar con la ejecución normal
-        };
-        
-        // Inicializar verificación de versión
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 Iniciando EL TACHI v' + APP_VERSION);
-            
-            const shouldContinue = await checkVersion();
-            if (!shouldContinue) {
-                return; // Detener ejecución si se va a recargar
-            }
-            
-            console.log('✅ Aplicación lista para usar');
-        });
-    </script>
-
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     
-    <script>
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAZnd-oA7S99_w2rt8_Vw53ux8l1PqiQ-k",
-            authDomain: "eltachi.firebaseapp.com",
-            projectId: "eltachi",
-            storageBucket: "eltachi.firebasestorage.app",
-            messagingSenderId: "231676602106",
-            appId: "1:231676602106:web:fde347e9caa00760b34b43"
-        };
-        
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        // Estado de la aplicación
-        const appState = {
-            settings: null,
-            categories: [],
-            products: [],
-            cart: [],
-            currentCategory: 'all',
-            orderIdCounter: 1
-        };
-        
-        // DOM Elements
-        const elements = {
-            cartButton: document.getElementById('cartButton'),
-            cartButtonFloating: document.getElementById('cartButtonFloating'),
-            closeCart: document.getElementById('closeCart'),
-            cartOverlay: document.getElementById('cartOverlay'),
-            cartItems: document.getElementById('cartItems'),
-            cartCount: document.getElementById('cartCount'),
-            cartCountFloating: document.getElementById('cartCountFloating'),
-            cartTotal: document.getElementById('cartTotal'),
-            checkoutBtn: document.getElementById('checkoutBtn'),
-            checkoutModal: document.getElementById('checkoutModal'),
-            cancelCheckout: document.getElementById('cancelCheckout'),
-            categoryTabs: document.getElementById('categoryTabs'),
-            productsGrid: document.getElementById('productsGrid'),
-            statusText: document.getElementById('statusText'),
-            statusDot: document.getElementById('statusDot'),
-            deliveryInfo: document.getElementById('deliveryInfo'),
-            toast: document.getElementById('toast'),
-            toastMessage: document.getElementById('toastMessage')
-        };
-        
-        // Toast Notification
-        function showToast(message, type = 'success') {
-            const toast = elements.toast;
-            const icon = toast.querySelector('i');
-            
-            toast.classList.remove('success', 'error');
-            toast.classList.add(type);
-            
-            if (type === 'success') {
-                icon.className = 'fas fa-check-circle';
-            } else {
-                icon.className = 'fas fa-exclamation-circle';
-            }
-            
-            elements.toastMessage.textContent = message;
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-        
-        // Cargar configuración
-        async function loadSettings() {
-            try {
-                const doc = await db.collection('settings').doc('config').get();
-                if (doc.exists) {
-                    appState.settings = doc.data();
-                    updateStoreStatus();
-                    updateDeliveryInfo();
-                } else {
-                    // Configuración por defecto
-                    appState.settings = {
-                        abierto: true,
-                        precio_envio: 300,
-                        tiempo_base_estimado: 30,
-                        telefono_whatsapp: '54934122334455'
-                    };
-                }
-            } catch (error) {
-                console.error('Error cargando configuración:', error);
-            }
-        }
-        
-        // Cargar categorías
-        async function loadCategories() {
-            try {
-                const snapshot = await db.collection('categories').orderBy('orden').get();
-                appState.categories = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                
-                renderCategories();
-            } catch (error) {
-                console.error('Error cargando categorías:', error);
-            }
-        }
-        
-        // Cargar productos
-        async function loadProducts() {
-            try {
-                const snapshot = await db.collection('products').get();
-                appState.products = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                })).filter(product => product.disponible !== false);
-                
-                renderProducts();
-            } catch (error) {
-                console.error('Error cargando productos:', error);
-            }
-        }
-        
-        // Obtener icono por categoría
-        function getCategoryIcon(categoryId) {
-            const icons = {
-                'hamburguesas': 'fas fa-hamburger',
-                'pizzas': 'fas fa-pizza-slice',
-                'empanadas': 'fas fa-dumpling',
-                'asado': 'fas fa-drumstick-bite',
-                'bebidas': 'fas fa-wine-bottle',
-                'postres': 'fas fa-ice-cream',
-                'papas': 'fas fa-french-fries',
-                'sandwiches': 'fas fa-sandwich',
-                'lomos': 'fas fa-bread-slice',
-                'milanesas': 'fas fa-drumstick-bite',
-                'ensaladas': 'fas fa-leaf'
-            };
-            
-
-        }
-        
-        // Renderizar categorías
-        function renderCategories() {
-            const container = elements.categoryTabs;
-            container.innerHTML = '';
-            
-            
-            // Categorías de la base de datos
-            appState.categories.forEach(category => {
-                const button = document.createElement('button');
-                button.className = `category-tab ${appState.currentCategory === category.id ? 'active' : ''}`;
-                button.innerHTML = `<i class="${getCategoryIcon(category.id)}"></i> ${category.nombre}`;
-                button.dataset.categoryId = category.id;
-                
-                button.addEventListener('click', () => {
-                    selectCategory(category.id);
-                });
-                
-                container.appendChild(button);
-            });
-        }
-        
-        // Seleccionar categoría
-        function selectCategory(categoryId) {
-            appState.currentCategory = categoryId;
-            renderCategories();
-            renderProducts();
-        }
-        
-        // Renderizar productos
-        function renderProducts() {
-            const container = elements.productsGrid;
-            
-            // Filtrar productos por categoría
-            let filteredProducts = appState.products;
-            if (appState.currentCategory !== 'all') {
-                filteredProducts = appState.products.filter(
-                    product => product.categoria === appState.currentCategory
-                );
-            }
-            
-            if (filteredProducts.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-utensils"></i>
-                        <h3>No hay productos disponibles</h3>
-                        <p>Prueba seleccionando otra categoría</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = '';
-            
-            filteredProducts.forEach(product => {
-                const cartItem = appState.cart.find(item => item.id === product.id);
-                const quantity = cartItem ? cartItem.quantity : 0;
-                
-                // Determinar badge según propiedades del producto
-                let badges = '';
-                if (product.nuevo) {
-                    badges += '<span class="badge nuevo">NUEVO</span>';
-                }
-                if (product.popular) {
-                    badges += '<span class="badge popular">POPULAR</span>';
-                }
-                if (product.oferta) {
-                    badges += '<span class="badge oferta">OFERTA</span>';
-                }
-                
-                const card = document.createElement('div');
-                card.className = 'product-card';
-                card.innerHTML = `
-                    ${product.destacado ? '<span class="product-badge">🔥 Destacado</span>' : ''}
-                    
-                    <div class="product-header">
-                        <div>
-                            <h3 class="product-title">${product.nombre}</h3>
-                            ${badges}
-                        </div>
-                        <div class="product-price">$${product.precio}</div>
-                    </div>
-                    
-                    ${product.descripcion ? `
-                        <p class="product-description">${product.descripcion}</p>
-                    ` : ''}
-                    
-                    ${product.aderezos_disponibles && product.aderezos_disponibles.length > 0 ? `
-                        <div class="product-includes">
-                            <div class="includes-label">Incluye:</div>
-                            <div class="includes-items">${product.aderezos_disponibles.join(', ')}</div>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="product-actions">
-                        ${quantity > 0 ? `
-                            <div class="quantity-controls">
-                                <button class="quantity-btn decrease" data-product-id="${product.id}">-</button>
-                                <span class="quantity-display">${quantity}</span>
-                                <button class="quantity-btn increase" data-product-id="${product.id}">+</button>
-                            </div>
-                        ` : ''}
-                        
-                        <button class="add-to-cart-btn ${quantity > 0 ? 'added' : ''}" 
-                                data-product-id="${product.id}">
-                            ${quantity > 0 ? 'Agregado' : 'Agregar al pedido'}
-                        </button>
-                    </div>
-                `;
-                
-                container.appendChild(card);
-            });
-            
-            // Agregar event listeners a los botones
-            container.querySelectorAll('.add-to-cart-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const productId = e.target.dataset.productId;
-                    const product = appState.products.find(p => p.id === productId);
-                    if (product) {
-                        addToCart(product);
-                        showToast(`${product.nombre} agregado al carrito`);
-                    }
-                });
-            });
-            
-            container.querySelectorAll('.quantity-btn.increase').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const productId = e.target.dataset.productId;
-                    const product = appState.products.find(p => p.id === productId);
-                    if (product) {
-                        addToCart(product);
-                        showToast(`${product.nombre} agregado al carrito`);
-                    }
-                });
-            });
-            
-            container.querySelectorAll('.quantity-btn.decrease').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const productId = e.target.dataset.productId;
-                    removeFromCart(productId);
-                });
-            });
-        }
-        
-        // CARRITO FUNCTIONS
-        function loadCart() {
-            try {
-                const savedCart = localStorage.getItem('eltachi_cart');
-                if (savedCart) {
-                    appState.cart = JSON.parse(savedCart);
-                    updateCartUI();
-                }
-            } catch (error) {
-                console.error('Error cargando carrito:', error);
-                appState.cart = [];
-            }
-        }
-        
-        function saveCart() {
-            try {
-                localStorage.setItem('eltachi_cart', JSON.stringify(appState.cart));
-                updateCartUI();
-            } catch (error) {
-                console.error('Error guardando carrito:', error);
-            }
-        }
-        
-        function addToCart(product) {
-            const existingItem = appState.cart.find(item => item.id === product.id);
-            
-            if (existingItem) {
-                existingItem.quantity += 1;
-                existingItem.total = existingItem.quantity * existingItem.price;
-            } else {
-                appState.cart.push({
-                    id: product.id,
-                    name: product.nombre,
-                    price: product.precio,
-                    quantity: 1,
-                    total: product.precio,
-                    category: product.categoria,
-                    includes: product.aderezos_disponibles || []
-                });
-            }
-            
-            saveCart();
-            renderProducts();
-            
-            // Feedback visual
-            elements.cartButton.style.transform = 'scale(1.1)';
-            setTimeout(() => {
-                elements.cartButton.style.transform = 'scale(1)';
-            }, 200);
-        }
-        
-        function removeFromCart(productId) {
-            const itemIndex = appState.cart.findIndex(item => item.id === productId);
-            
-            if (itemIndex !== -1) {
-                if (appState.cart[itemIndex].quantity > 1) {
-                    appState.cart[itemIndex].quantity -= 1;
-                    appState.cart[itemIndex].total = appState.cart[itemIndex].quantity * appState.cart[itemIndex].price;
-                } else {
-                    appState.cart.splice(itemIndex, 1);
-                }
-                
-                saveCart();
-                renderProducts();
-            }
-        }
-        
-        function clearCart() {
-            appState.cart = [];
-            saveCart();
-            renderProducts();
-        }
-        
-        function getCartTotal() {
-            return appState.cart.reduce((total, item) => total + item.total, 0);
-        }
-        
-        function updateCartUI() {
-            const totalItems = appState.cart.reduce((sum, item) => sum + item.quantity, 0);
-            
-            elements.cartCount.textContent = totalItems;
-            elements.cartCountFloating.textContent = totalItems;
-            
-            elements.cartCount.style.display = totalItems > 0 ? 'flex' : 'none';
-            elements.cartCountFloating.style.display = totalItems > 0 ? 'flex' : 'none';
-            
-            elements.cartTotal.textContent = `$${getCartTotal()}`;
-            
-            // Actualizar botón de checkout
-            elements.checkoutBtn.disabled = totalItems === 0;
-            
-            renderCartItems();
-        }
-        
-        function renderCartItems() {
-            const container = elements.cartItems;
-            
-            if (appState.cart.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-shopping-basket"></i>
-                        <h3>Carrito vacío</h3>
-                        <p>Agrega productos para continuar</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = '';
-            
-            appState.cart.forEach(item => {
-                const cartItem = document.createElement('div');
-                cartItem.className = 'cart-item';
-                cartItem.innerHTML = `
-                    <div class="cart-item-content">
-                        <div class="cart-item-header">
-                            <div class="cart-item-name">${item.name}</div>
-                            <div class="cart-item-price">$${item.total}</div>
-                        </div>
-                        
-                        ${item.includes.length > 0 ? `
-                            <div class="text-muted" style="font-size: 0.85rem;">
-                                Incluye: ${item.includes.join(', ')}
-                            </div>
-                        ` : ''}
-                        
-                        <div class="cart-item-actions">
-                            <div class="cart-item-quantity">
-                                <button class="cart-quantity-btn decrease" data-product-id="${item.id}">-</button>
-                                <span class="cart-item-quantity-display">${item.quantity}</span>
-                                <button class="cart-quantity-btn increase" data-product-id="${item.id}">+</button>
-                            </div>
-                            <button class="remove-item" data-product-id="${item.id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                container.appendChild(cartItem);
-            });
-            
-            // Agregar event listeners
-            container.querySelectorAll('.cart-quantity-btn.increase').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const productId = e.target.closest('button').dataset.productId;
-                    const product = appState.products.find(p => p.id === productId);
-                    if (product) {
-                        addToCart(product);
-                    }
-                });
-            });
-            
-            container.querySelectorAll('.cart-quantity-btn.decrease').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const productId = e.target.closest('button').dataset.productId;
-                    removeFromCart(productId);
-                });
-            });
-            
-            container.querySelectorAll('.remove-item').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const productId = e.target.closest('button').dataset.productId;
-                    const itemIndex = appState.cart.findIndex(item => item.id === productId);
-                    if (itemIndex !== -1) {
-                        appState.cart.splice(itemIndex, 1);
-                        saveCart();
-                        renderProducts();
-                    }
-                });
-            });
-        }
-        
-        // CHECKOUT FUNCTIONS - CORREGIDO SCROLL
-        function openCheckout() {
-            const modal = elements.checkoutModal;
-            modal.style.display = 'flex';
-            
-            // Resetear formulario
-            document.getElementById('customerName').value = '';
-            document.getElementById('customerPhone').value = '';
-            document.getElementById('customerAddress').value = '';
-            document.getElementById('orderComments').value = '';
-            document.getElementById('deliveryPickup').checked = true;
-            document.getElementById('addressField').style.display = 'none';
-            
-            setCheckoutStep(1);
-            
-            // Forzar redibujado para asegurar que el scroll funcione
-            setTimeout(() => {
-                const checkoutBody = document.querySelector('.checkout-body');
-                if (checkoutBody) {
-                    checkoutBody.style.overflowY = 'auto';
-                }
-            }, 100);
-        }
-        
-        function setCheckoutStep(step) {
-            // Actualizar pasos
-            document.querySelectorAll('.step').forEach(stepEl => {
-                stepEl.classList.remove('active');
-                if (parseInt(stepEl.dataset.step) === step) {
-                    stepEl.classList.add('active');
-                }
-            });
-            
-            // Mostrar sección correspondiente
-            document.querySelectorAll('.checkout-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            const sections = ['sectionCustomer', 'sectionConfirm', 'sectionComplete'];
-            document.getElementById(sections[step - 1]).classList.add('active');
-            
-            // Scroll al inicio de la sección
-            const checkoutBody = document.querySelector('.checkout-body');
-            if (checkoutBody) {
-                checkoutBody.scrollTop = 0;
-            }
-        }
-        
-        function goToConfirm() {
-            // Validar datos
-            const customerName = document.getElementById('customerName').value.trim();
-            const customerPhone = document.getElementById('customerPhone').value.trim();
-            const deliveryType = document.querySelector('input[name="deliveryType"]:checked');
-            
-            if (!customerName) {
-                showToast('Por favor ingresa tu nombre', 'error');
-                return;
-            }
-            
-            if (!customerPhone || customerPhone.length < 8) {
-                showToast('Por favor ingresa un teléfono válido', 'error');
-                return;
-            }
-            
-            if (deliveryType.value === 'envío') {
-                const address = document.getElementById('customerAddress').value.trim();
-                if (!address) {
-                    showToast('Por favor ingresa tu dirección', 'error');
-                    return;
-                }
-            }
-            
-            // Actualizar resumen
-            document.getElementById('confirmCustomerName').textContent = customerName;
-            document.getElementById('confirmCustomerPhone').textContent = customerPhone;
-            document.getElementById('confirmDeliveryType').textContent = 
-                deliveryType.value === 'envío' ? 'Envío a domicilio' : 'Retiro en local';
-            
-            if (deliveryType.value === 'envío') {
-                const address = document.getElementById('customerAddress').value.trim();
-                document.getElementById('confirmAddressSection').style.display = 'block';
-                document.getElementById('confirmCustomerAddress').textContent = address;
-            } else {
-                document.getElementById('confirmAddressSection').style.display = 'none';
-            }
-            
-            const comments = document.getElementById('orderComments').value.trim();
-            if (comments) {
-                document.getElementById('confirmCommentsSection').style.display = 'block';
-                document.getElementById('confirmOrderComments').textContent = comments;
-            } else {
-                document.getElementById('confirmCommentsSection').style.display = 'none';
-            }
-            
-            updateOrderSummary();
-            setCheckoutStep(2);
-        }
-        
-        function updateOrderSummary() {
-            const container = document.getElementById('orderSummaryItems');
-            const totalElement = document.getElementById('orderSummaryTotal');
-            
-            let html = '';
-            let subtotal = 0;
-            
-            appState.cart.forEach(item => {
-                html += `
-                    <div class="summary-item">
-                        <span>${item.name} x${item.quantity}</span>
-                        <span>$${item.total}</span>
-                    </div>
-                `;
-                subtotal += item.total;
-            });
-            
-            // Calcular envío
-            const deliveryType = document.querySelector('input[name="deliveryType"]:checked');
-            let deliveryCost = 0;
-            
-            if (deliveryType && deliveryType.value === 'envío' && appState.settings) {
-                deliveryCost = appState.settings.precio_envio || 0;
-                html += `
-                    <div class="summary-item">
-                        <span>Costo de envío</span>
-                        <span>$${deliveryCost}</span>
-                    </div>
-                `;
-            }
-            
-            const total = subtotal + deliveryCost;
-            
-            container.innerHTML = html;
-            totalElement.textContent = `$${total}`;
-            
-            // Actualizar en la pantalla final
-            document.getElementById('orderTotalDisplay').textContent = `$${total}`;
-        }
-        
-        async function confirmOrder() {
-            try {
-                // Obtener datos
-                const customerName = document.getElementById('customerName').value.trim();
-                const customerPhone = document.getElementById('customerPhone').value.trim();
-                const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
-                const customerAddress = document.getElementById('customerAddress').value.trim();
-                const orderComments = document.getElementById('orderComments').value.trim();
-                
-                // Calcular total
-                let subtotal = getCartTotal();
-                let deliveryCost = 0;
-                
-                if (deliveryType === 'envío') {
-                    deliveryCost = appState.settings?.precio_envio || 0;
-                }
-                
-                const total = subtotal + deliveryCost;
-                
-                // Generar ID de pedido
-                const orderId = `TACHI-${Date.now().toString().slice(-6)}`;
-                
-                // Crear pedido en Firestore
-                const orderData = {
-                    id_pedido: orderId,
-                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                    nombre_cliente: customerName,
-                    telefono: customerPhone,
-                    tipo_pedido: deliveryType,
-                    direccion: deliveryType === 'envío' ? customerAddress : '',
-                    items: appState.cart,
-                    comentarios: orderComments,
-                    subtotal: subtotal,
-                    precio_envio: deliveryCost,
-                    total: total,
-                    estado: 'pendiente',
-                    fecha_actualizacion: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                await db.collection('orders').doc(orderId).set(orderData);
-                
-                // Actualizar pantalla final
-                document.getElementById('orderIdDisplay').textContent = orderId;
-                document.getElementById('orderTimeDisplay').textContent = 
-                    `${appState.settings?.tiempo_base_estimado || 30} minutos`;
-                
-                // Guardar datos para WhatsApp
-                window.lastOrderData = {
-                    id: orderId,
-                    phone: customerPhone,
-                    name: customerName,
-                    total: total,
-                    deliveryType: deliveryType,
-                    address: customerAddress,
-                    comments: orderComments,
-                    items: appState.cart
-                };
-                
-                setCheckoutStep(3);
-                
-            } catch (error) {
-                console.error('Error confirmando pedido:', error);
-                showToast('Error al procesar el pedido. Intenta nuevamente.', 'error');
-            }
-        }
-        
-        function openWhatsApp() {
-            if (!window.lastOrderData) return;
-            
-            const { id, phone, name, total, deliveryType, address, comments, items } = window.lastOrderData;
-            
-            let message = `*NUEVO PEDIDO - EL TACHI*\n\n`;
-            message += `*Pedido:* ${id}\n`;
-            message += `*Cliente:* ${name}\n`;
-            message += `*Teléfono:* ${phone}\n`;
-            message += `*Tipo:* ${deliveryType === 'envío' ? 'Envío a domicilio' : 'Retiro en local'}\n`;
-            
-            if (deliveryType === 'envío') {
-                message += `*Dirección:* ${address}\n`;
-            }
-            
-            message += `\n*DETALLE DEL PEDIDO:*\n`;
-            items.forEach(item => {
-                message += `- ${item.name} x${item.quantity}: $${item.total}\n`;
-            });
-            
-            message += `\n*Subtotal:* $${total - (appState.settings?.precio_envio || 0)}\n`;
-            if (deliveryType === 'envío') {
-                message += `*Envío:* $${appState.settings?.precio_envio || 0}\n`;
-            }
-            message += `*TOTAL:* $${total}\n`;
-            
-            if (comments) {
-                message += `\n*Comentarios:* ${comments}\n`;
-            }
-            
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappNumber = appState.settings?.telefono_whatsapp || '5491122334455';
-            window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
-            
-            // Limpiar carrito
-            clearCart();
-        }
-        
-        function startNewOrder() {
-            elements.checkoutModal.style.display = 'none';
-            clearCart();
-            selectCategory('all');
-        }
-        
-        // UI HELPER FUNCTIONS
-        function updateStoreStatus() {
-            if (!appState.settings) return;
-            
-            if (appState.settings.abierto) {
-                elements.statusText.textContent = 'Abierto ahora';
-                elements.statusDot.style.background = '#10b981';
-            } else {
-                elements.statusText.textContent = 'Cerrado';
-                elements.statusDot.style.background = '#ef4444';
-                elements.statusDot.style.animation = 'none';
-            }
-        }
-        
-        function updateDeliveryInfo() {
-            if (!appState.settings) return;
-            
-            elements.deliveryInfo.innerHTML = `
-                <i class="fas fa-clock"></i>
-                <span>${appState.settings.tiempo_base_estimado || 30} min • Envío $${appState.settings.precio_envio || 0}</span>
-            `;
-        }
-        
-        // SISTEMA DE INSTALACIÓN PWA MEJORADO
-        let deferredPrompt;
-        let installButton = null;
-        
-        function showInstallButton() {
-            // Solo mostrar si tenemos el evento deferredPrompt
-            if (deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
-                // Crear botón si no existe
-                if (!installButton) {
-                    installButton = document.createElement('button');
-                    installButton.className = 'install-btn';
-                    installButton.id = 'installPwaBtn';
-                    installButton.innerHTML = '<i class="fas fa-download"></i> Instalar App';
-                    
-                    installButton.addEventListener('click', async () => {
-                        if (!deferredPrompt) return;
-                        
-                        // Mostrar el prompt de instalación
-                        deferredPrompt.prompt();
-                        
-                        // Esperar a que el usuario responda
-                        const { outcome } = await deferredPrompt.userChoice;
-                        
-                        if (outcome === 'accepted') {
-                            console.log('✅ Usuario aceptó la instalación PWA');
-                            showToast('¡App instalada!', 'success');
-                        } else {
-                            console.log('❌ Usuario rechazó la instalación PWA');
-                        }
-                        
-                        // Limpiar el deferredPrompt
-                        deferredPrompt = null;
-                        
-                        // Ocultar el botón
-                        if (installButton) {
-                            installButton.remove();
-                            installButton = null;
-                        }
-                    });
-                    
-                    document.body.appendChild(installButton);
-                    
-                    // Ocultar automáticamente después de 30 segundos
-                    setTimeout(() => {
-                        if (installButton && document.body.contains(installButton)) {
-                            installButton.remove();
-                            installButton = null;
-                        }
-                    }, 30000);
-                }
-            }
-        }
-        
-        // EVENT LISTENERS
-        function setupEventListeners() {
-            // Carrito
-            elements.cartButton.addEventListener('click', () => {
-                elements.cartOverlay.style.display = 'flex';
-            });
-            
-            elements.cartButtonFloating.addEventListener('click', () => {
-                elements.cartOverlay.style.display = 'flex';
-            });
-            
-            elements.closeCart.addEventListener('click', () => {
-                elements.cartOverlay.style.display = 'none';
-            });
-            
-            elements.cartOverlay.addEventListener('click', (e) => {
-                if (e.target === elements.cartOverlay) {
-                    elements.cartOverlay.style.display = 'none';
-                }
-            });
-            
-            // Checkout
-            elements.checkoutBtn.addEventListener('click', () => {
-                if (appState.cart.length === 0) {
-                    showToast('Agrega productos al carrito primero', 'error');
-                    return;
-                }
-                elements.cartOverlay.style.display = 'none';
-                openCheckout();
-            });
-            
-            elements.cancelCheckout.addEventListener('click', () => {
-                elements.checkoutModal.style.display = 'none';
-            });
-            
-            elements.checkoutModal.addEventListener('click', (e) => {
-                if (e.target === elements.checkoutModal) {
-                    elements.checkoutModal.style.display = 'none';
-                }
-            });
-            
-            // Checkout navigation
-            document.getElementById('nextToConfirm').addEventListener('click', goToConfirm);
-            document.getElementById('backToCustomer').addEventListener('click', () => setCheckoutStep(1));
-            document.getElementById('confirmOrder').addEventListener('click', confirmOrder);
-            document.getElementById('whatsappButton').addEventListener('click', openWhatsApp);
-            document.getElementById('newOrderBtn').addEventListener('click', startNewOrder);
-            
-            // Tipo de pedido
-            document.querySelectorAll('input[name="deliveryType"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    const addressField = document.getElementById('addressField');
-                    if (this.value === 'envío') {
-                        addressField.style.display = 'block';
-                    } else {
-                        addressField.style.display = 'none';
-                    }
-                });
-            });
-            
-            // Cerrar con Escape
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    elements.cartOverlay.style.display = 'none';
-                    elements.checkoutModal.style.display = 'none';
-                }
-            });
-            
-            // EVENTOS PWA
-            window.addEventListener('beforeinstallprompt', (e) => {
-                console.log('🎯 Evento beforeinstallprompt disparado');
-                e.preventDefault();
-                deferredPrompt = e;
-                
-                // Mostrar el botón de instalación inmediatamente
-                showInstallButton();
-                
-                // También mostrar después de 5 segundos por si acaso
-                setTimeout(showInstallButton, 5000);
-            });
-            
-            // Detectar si ya está instalada como PWA
-            window.addEventListener('DOMContentLoaded', () => {
-                if (window.matchMedia('(display-mode: standalone)').matches) {
-                    console.log('📱 Aplicación ejecutándose como PWA instalada');
-                } else {
-                    console.log('🌐 Aplicación ejecutándose en navegador');
-                }
-            });
-        }
-        
-        // INICIALIZAR APP
-        async function initApp() {
-            console.log('🚀 Inicializando EL TACHI v' + APP_VERSION + '...');
-            
-            // Cargar datos
-            await loadSettings();
-            await loadCategories();
-            await loadProducts();
-            
-            // Cargar carrito
-            loadCart();
-            
-            // Configurar event listeners
-            setupEventListeners();
-            
-            console.log('✅ App lista para usar');
-            
-            // Verificar si hay Service Worker obsoleto
-            checkForServiceWorkerUpdate();
-        }
-        
-        // Verificar actualizaciones del Service Worker
-        function checkForServiceWorkerUpdate() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistration().then(registration => {
-                    if (registration) {
-                        registration.update();
-                        console.log('🔄 Service Worker actualizado');
-                    }
-                });
-            }
-        }
-        
-        // Inicializar cuando el DOM esté listo
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            initApp();
-        }
-        
-        // Efectos visuales adicionales
-        document.addEventListener('DOMContentLoaded', function() {
-            // Efecto ripple en botones importantes
-            const importantButtons = ['checkoutBtn', 'confirmOrder', 'whatsappButton'];
-            
-            importantButtons.forEach(btnId => {
-                const btn = document.getElementById(btnId);
-                if (btn) {
-                    btn.addEventListener('click', function(e) {
-                        createRippleEffect(e);
-                    });
-                }
-            });
-            
-            // Efecto ripple
-            function createRippleEffect(event) {
-                const button = event.currentTarget;
-                const circle = document.createElement('span');
-                const diameter = Math.max(button.clientWidth, button.clientHeight);
-                const radius = diameter / 2;
-                
-                circle.style.width = circle.style.height = `${diameter}px`;
-                circle.style.left = `${event.clientX - button.getBoundingClientRect().left - radius}px`;
-                circle.style.top = `${event.clientY - button.getBoundingClientRect().top - radius}px`;
-                circle.classList.add('ripple');
-                
-                const ripple = button.getElementsByClassName('ripple')[0];
-                
-                if (ripple) {
-                    ripple.remove();
-                }
-                
-                button.appendChild(circle);
-            }
-            
-            // Agregar estilo para ripple
-            const style = document.createElement('style');
-            style.textContent = `
-                .ripple {
-                    position: absolute;
-                    border-radius: 50%;
-                    background: rgba(255, 255, 255, 0.6);
-                    transform: scale(0);
-                    animation: ripple-animation 0.6s linear;
-                    pointer-events: none;
-                }
-                
-                @keyframes ripple-animation {
-                    to {
-                        transform: scale(4);
-                        opacity: 0;
-                    }
-                }
-                
-                button {
-                    position: relative;
-                    overflow: hidden;
-                }
-            `;
-            document.head.appendChild(style);
-        });
-        
-        // Service Worker simplificado sin caché agresivo
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Registrar Service Worker con parámetro de versión
-                navigator.serviceWorker.register('/sw.js?v=' + APP_VERSION + '&' + Date.now())
-                    .then(registration => {
-                        console.log('✅ Service Worker registrado:', registration.scope);
-                        
-                        // Escuchar actualizaciones
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('🔄 Nueva versión del Service Worker disponible');
-                                    showToast('Nueva versión disponible. Recargando...', 'success');
-                                    
-                                    // Forzar recarga después de 2 segundos
-                                    setTimeout(() => {
-                                        localStorage.setItem('force_reload', 'true');
-                                        window.location.reload();
-                                    }, 2000);
-                                }
-                            });
-                        });
-                    })
-                    .catch(error => {
-                        console.log('❌ Error al registrar Service Worker:', error);
-                    });
-            });
-        }
-        
-        // Función para forzar actualización manual
-        window.forceAppUpdate = function() {
-            console.log('🔄 Forzando actualización manual...');
-            localStorage.setItem('force_reload', 'true');
-            window.location.reload();
-        };
-    </script>
+    <!-- Script principal de la aplicación -->
+    <script src="app.js"></script>
 </body>
 </html>
