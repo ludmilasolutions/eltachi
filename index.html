@@ -3609,6 +3609,10 @@
                 
                 setCheckoutStep(3);
                 
+                // Limpiar carrito después de enviar pedido
+                appState.cart = [];
+                saveCart();
+                
             } catch (error) {
                 console.error('Error confirmando pedido:', error);
                 showToast('Error al procesar el pedido. Intenta nuevamente.', 'error');
