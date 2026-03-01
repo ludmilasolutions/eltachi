@@ -1056,23 +1056,10 @@ function updateTopProductsList() {
                 if (!productCount[productId]) {
                     productCount[productId] = 0;
                 }
+                productCount[productId] += item.cantidad || 1;
             });
         }
     });
-    
-    // Mostrar/ocultar mensaje de sin datos
-    const noDataEl = document.getElementById('ordersChartNoData');
-    const canvasEl = document.getElementById('ordersChart');
-    if (noDataEl && canvasEl) {
-        if (hasData) {
-            noDataEl.style.display = 'none';
-            canvasEl.style.display = 'block';
-        } else {
-            noDataEl.style.display = 'flex';
-            canvasEl.style.display = 'none';
-        }
-    }
-}
     
     const topProducts = Object.entries(productCount)
         .sort((a, b) => b[1] - a[1])
