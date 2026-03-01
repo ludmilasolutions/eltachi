@@ -1,8 +1,8 @@
 {
-  "name": "EL TACHI - Pedidos Online",
-  "short_name": "EL TACHI",
-  "description": "Pedí online en EL TACHI Rotisería. Envío a domicilio y retiro en local.",
-  "start_url": "/index.html?v=3",
+  "name": "AFM Orders - Pedidos Online",
+  "short_name": "AFM Orders",
+  "description": "AFM Orders - Sistema de pedidos online. Envío a domicilio y retiro en local.",
+  "start_url": "/index.html?v=4",
   "display": "standalone",
   "background_color": "#3B82F6",
   "theme_color": "#3B82F6",

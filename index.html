@@ -26,28 +26,38 @@
     <meta http-equiv="Expires" content="0">
     
     <style>
-        /* VERSIÓN DEL CSS MEJORADA: 4.0 - FECHA: 2024 */
+        /* VERSIÓN 5.0 - ESTILO OSCURO TECNOLÓGICO */
         :root {
+            --fondo-principal: #020617;
+            --fondo-card: rgba(255, 255, 255, 0.05);
+            --fondo-input: rgba(255, 255, 255, 0.03);
+            --texto-primary: #f8fafc;
+            --texto-secondary: #94a3b8;
             --azul-electrico: #3B82F6;
             --azul-oscuro: #1E40AF;
             --azul-claro: #DBEAFE;
-            --amarillo: #F59E0B;
-            --amarillo-oscuro: #D97706;
-            --amarillo-claro: #FEF3C7;
+            --amarillo: #06b6d4;
+            --amarillo-oscuro: #0891b2;
+            --amarillo-claro: #164e63;
             --verde: #10B981;
             --rojo: #EF4444;
             --gris-oscuro: #1F2937;
-            --gris-medio: #6B7280;
-            --gris-claro: #F3F4F6;
-            --gris-border: #E5E7EB;
-            --blanco: #FFFFFF;
-            --sombra: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --sombra-elevada: 0 12px 30px rgba(0, 0, 0, 0.15);
-            --gradiente-azul: linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%);
-            --gradiente-azul-hover: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%);
-            --gradiente-amarillo: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-            --gradiente-amarillo-hover: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
+            --gris-medio: #94a3b8;
+            --gris-claro: #1e293b;
+            --gris-border: rgba(255, 255, 255, 0.08);
+            --blanco: #f8fafc;
+            --sombra: 0 4px 12px rgba(79, 70, 229, 0.2);
+            --sombra-elevada: 0 12px 30px rgba(79, 70, 229, 0.3);
+            --sombra-neon: 0 0 20px rgba(79, 70, 229, 0.4);
+            --sombra-cyan: 0 0 20px rgba(6, 182, 212, 0.4);
+            --gradiente-azul: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            --gradiente-cyan: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+            --gradiente-amarillo: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            --gradiente-amarillo-hover: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);
             --gradiente-rojo: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            --gradiente-verde: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            --border-glow: 1px solid rgba(79, 70, 229, 0.3);
+            --border-glow-cyan: 1px solid rgba(6, 182, 212, 0.3);
             --gradiente-verde: linear-gradient(135deg, #10B981 0%, #059669 100%);
         }
         
@@ -60,27 +70,44 @@
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: var(--gris-oscuro);
+            background: var(--fondo-principal);
+            color: var(--texto-primary);
             line-height: 1.5;
             font-weight: 400;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             min-height: 100vh;
             padding: 10px 0;
+            position: relative;
+        }
+        
+        /* Fondos decorativos */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
         }
         
         /* APP CONTAINER */
         .app-container {
             max-width: 480px;
             margin: 0 auto;
-            background: var(--blanco);
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
             min-height: calc(100vh - 20px);
             position: relative;
             overflow-x: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), var(--sombra-neon);
             border-radius: 24px;
             overflow: hidden;
+            border: var(--border-glow);
         }
         
         /* HEADER - Azul eléctrico mejorado */
@@ -2993,15 +3020,19 @@
                 if (doc.exists) {
                     appState.settings = doc.data();
                     updateStoreStatus();
+                    updateStoreName();
                     updateDeliveryInfo();
                 } else {
                     // Configuración por defecto
                     appState.settings = {
                         abierto: true,
+                        nombre_local: 'AFM Orders',
+                        subtitulo: 'de AFMSolutions',
                         precio_envio: 300,
                         tiempo_base_estimado: 30,
                         telefono_whatsapp: '54934122334455'
                     };
+                    updateStoreName();
                 }
             } catch (error) {
                 console.error('Error cargando configuración:', error);
@@ -3624,7 +3655,7 @@
             
             const { id, phone, name, total, deliveryType, address, comments, items } = window.lastOrderData;
             
-            let message = `*NUEVO PEDIDO - EL TACHI*\n\n`;
+            let message = `*NUEVO PEDIDO - ${appState.settings?.nombre_local || 'AFM Orders'}*\n\n`;
             message += `*Pedido:* ${id}\n`;
             message += `*Cliente:* ${name}\n`;
             message += `*Teléfono:* ${phone}\n`;

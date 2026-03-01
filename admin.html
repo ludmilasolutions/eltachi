@@ -1641,7 +1641,12 @@
                         
                         <div class="form-group">
                             <label class="form-label">Nombre del Local *</label>
-                            <input type="text" class="form-input" id="storeName">
+                            <input type="text" class="form-input" id="storeName" placeholder="AFM Orders">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Subtítulo (ej: de AFMSolutions)</label>
+                            <input type="text" class="form-input" id="storeSubtitle" placeholder="de AFMSolutions">
                         </div>
                         
                         <div class="form-group">
@@ -1828,12 +1833,8 @@
     </button>
 
     <!-- SONIDOS PARA NOTIFICACIONES -->
-    <audio id="notificationSound" preload="auto" style="display:none;">
-        <source src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" type="audio/mpeg">
-    </audio>
-    
     <audio id="newOrderSound" preload="auto" style="display:none;">
-        <source src="https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3" type="audio/mpeg">
+        <source src="SD_ALERT_3.mp3" type="audio/mpeg">
     </audio>
 
     <!-- SCRIPTS -->

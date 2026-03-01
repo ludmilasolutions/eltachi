@@ -1,8 +1,8 @@
 {
-  "name": "EL TACHI - Panel Admin",
-  "short_name": "Admin TACHI",
-  "description": "Panel de administración de EL TACHI Rotisería",
-  "start_url": "/admin.html?v=1",
+  "name": "AFM Orders - Panel Admin",
+  "short_name": "AFM Admin",
+  "description": "Panel de administración de AFM Orders",
+  "start_url": "/admin.html?v=2",
   "display": "standalone",
   "background_color": "#1e40af",
   "theme_color": "#1e40af",

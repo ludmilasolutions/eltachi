@@ -178,23 +178,10 @@ function getFilterName(filter) {
 // FUNCIONES DE SONIDO
 function playNotificationSound() {
     try {
-        const audio = document.getElementById('notificationSound');
+        const audio = document.getElementById('newOrderSound');
         if (audio) {
             audio.currentTime = 0;
-            audio.play().catch(e => {
-                console.log('Error reproduciendo sonido:', e);
-                // Si falla el primer sonido, intentar con el segundo
-                const newOrderSound = document.getElementById('newOrderSound');
-                if (newOrderSound) {
-                    newOrderSound.currentTime = 0;
-                    newOrderSound.play().catch(e2 => console.log('Error con segundo sonido:', e2));
-                }
-            });
-        } else {
-            // Crear audio dinámico si no existe
-            const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
-            audio.volume = 0.5;
-            audio.play().catch(e => console.log('Error con audio dinámico:', e));
+            audio.play().catch(e => console.log('Error reproduciendo sonido:', e));
         }
     } catch (error) {
         console.log('Error con sonido de notificación:', error);
@@ -389,7 +376,7 @@ async function getAdminsList() {
 async function initializeDefaultSettings() {
     try {
         const defaultSettings = {
-            nombre_local: "EL TACHI Rotisería",
+            nombre_local: "AFM Orders",
             horarios_por_dia: {
                 lunes: "11:00 - 23:00",
                 martes: "11:00 - 23:00",
@@ -1719,7 +1706,7 @@ function openWhatsAppAdmin(phone, orderId, customerName, total, status, estimate
     }
     
     let message = `Hola ${customerName || 'cliente'}! 👋\n\n`;
-    message += `Soy de ${adminState.settings?.nombre_local || 'EL TACHI'}. `;
+    message += `Soy de ${adminState.settings?.nombre_local || 'AFM Orders'}. `;
     
     switch(status) {
         case 'En preparación':
@@ -2291,6 +2278,7 @@ function updateSettingsForm() {
     const settings = adminState.settings;
     
     document.getElementById('storeName').value = settings.nombre_local || '';
+    document.getElementById('storeSubtitle').value = settings.subtitulo || '';
     document.getElementById('whatsappPhone').value = settings.telefono_whatsapp || '';
     document.getElementById('geminiApiKey').value = settings.api_key_gemini || '';
     
@@ -2332,7 +2320,8 @@ function updateSettingsForm() {
 
 async function saveSettings() {
     const settingsData = {
-        nombre_local: document.getElementById('storeName').value.trim(),
+            nombre_local: document.getElementById('storeName').value.trim(),
+            subtitulo: document.getElementById('storeSubtitle').value.trim(),
         telefono_whatsapp: document.getElementById('whatsappPhone').value.trim(),
         api_key_gemini: document.getElementById('geminiApiKey').value.trim(),
         horarios_por_dia: {},
