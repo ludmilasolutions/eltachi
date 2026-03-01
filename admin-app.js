@@ -217,19 +217,15 @@ function stopSound() {
 }
 
 function playNewOrderSound() {
-    // Notificación del sistema con sonido
+    // Notificación del sistema
     if (Notification.permission === 'granted') {
         const notification = new Notification('EL TACHI - Nuevo Pedido!', {
             body: 'Tienes un nuevo pedido pendiente',
             icon: 'logo.png',
             tag: 'new-order',
             requireInteraction: true,
-            silent: false,
-            sound: 'default'
+            silent: false
         });
-        
-        window.activeNotifications = window.activeNotifications || [];
-        window.activeNotifications.push(notification);
         
         notification.onclick = function() {
             window.focus();
@@ -237,12 +233,11 @@ function playNewOrderSound() {
         };
     }
     
-    // Reproducir audio como respaldo
-    try {
-        const audio = new Audio('https://cdn.pixabay.com/audio/2024/11/04/audio_6d74e8b3f2.mp3');
-        audio.volume = 0.8;
-        audio.play().catch(() => {});
-    } catch(e) {}
+    // Reproducir audio directamente
+    const audio = new Audio();
+    audio.src = 'https://www.w3schools.com/html/alert.mp3';
+    audio.volume = 1.0;
+    audio.play().then(() => console.log('🔔')).catch(e => console.log('Error:', e));
 }
 
 function requestNotificationPermission() {
