@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="logo.png?v=3">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -351,36 +351,38 @@
             display: inline-flex;
             gap: 0.5rem;
             padding-bottom: 0.5rem;
+            flex-wrap: wrap;
         }
         
         .category-tab {
-            padding: 0.85rem 1.5rem;
-            background: var(--blanco);
-            border: 2px solid var(--gris-border);
+            padding: 0.75rem 1.25rem;
+            background: var(--fondo-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--gris-border);
             border-radius: 12px;
-            font-weight: 700;
-            color: var(--gris-medio);
+            font-weight: 600;
+            color: var(--texto-secondary);
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             white-space: nowrap;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             position: relative;
             overflow: hidden;
         }
         
         .category-tab:hover {
-            border-color: var(--azul-electrico);
-            color: var(--azul-electrico);
+            border-color: var(--amarillo);
+            color: var(--amarillo);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.15);
+            box-shadow: var(--sombra-cyan);
         }
         
         .category-tab.active {
-            background: var(--gradiente-azul);
-            border-color: var(--azul-electrico);
-            color: var(--blanco);
-            font-weight: 800;
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+            background: var(--gradiente-cyan);
+            border-color: var(--amarillo);
+            color: white;
+            font-weight: 700;
+            box-shadow: var(--sombra-cyan);
             transform: translateY(-2px);
         }
         
@@ -398,7 +400,7 @@
         /* PRODUCTOS - TARJETAS MEJORADAS */
         .products-container {
             padding: 0.75rem 1.5rem 6rem;
-            background: linear-gradient(180deg, var(--gris-claro) 0%, var(--blanco) 100px);
+            background: transparent;
             min-height: 60vh;
         }
         
@@ -409,7 +411,8 @@
         }
         
         .product-card {
-            background: var(--blanco);
+            background: var(--fondo-card);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 1.5rem;
             border: 1px solid var(--gris-border);
@@ -425,8 +428,8 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: var(--gradiente-azul);
+            height: 3px;
+            background: var(--gradiente-cyan);
             transform: scaleX(0);
             transition: transform 0.3s ease;
         }
@@ -710,22 +713,25 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(2, 6, 23, 0.9);
             z-index: 1001;
             display: none;
             align-items: flex-end;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
         }
         
         .cart-panel {
-            background: var(--blanco);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
             border-radius: 32px 32px 0 0;
             width: 100%;
             max-height: 90vh;
             display: flex;
             flex-direction: column;
             animation: slideUp 0.3s ease-out;
-            box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5), var(--sombra-neon);
+            border: var(--border-glow);
+            border-bottom: none;
         }
         
         @keyframes slideUp {
@@ -932,15 +938,15 @@
         .checkout-btn {
             width: 100%;
             padding: 1.15rem;
-            background: var(--amarillo);
+            background: var(--gradiente-cyan);
             border: none;
             border-radius: 16px;
-            color: var(--gris-oscuro);
+            color: white;
             font-weight: 900;
             font-size: 1.15rem;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+            box-shadow: 0 8px 25px rgba(6, 182, 212, 0.4);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -950,9 +956,8 @@
         }
         
         .checkout-btn:hover {
-            background: var(--amarillo-oscuro);
             transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(245, 158, 11, 0.5);
+            box-shadow: 0 12px 35px rgba(6, 182, 212, 0.5);
         }
         
         .checkout-btn:disabled {
