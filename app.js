@@ -1016,9 +1016,10 @@ function updateOrderSummary() {
 
 async function confirmOrderHandler() {
     try {
-        // Validar que el local esté abierto
-        if (!appState.settings?.abierto) {
-            alert('El local está cerrado en este momento. No se pueden tomar pedidos.');
+        // Validar que el local esté abierto según horarios
+        if (!checkStoreIsOpen()) {
+            const mensaje = appState.settings?.mensaje_cerrado || 'El local está cerrado en este momento. No se pueden tomar pedidos.';
+            alert(mensaje);
             return;
         }
         
@@ -1222,7 +1223,9 @@ function updateStoreStatus() {
     
     if (!appState.settings) return;
     
-    if (appState.settings.abierto) {
+    const isOpen = checkStoreIsOpen();
+    
+    if (isOpen) {
         if (statusDot) {
             statusDot.style.background = '#10b981';
         }
@@ -1237,6 +1240,36 @@ function updateStoreStatus() {
             statusText.textContent = 'Cerrado';
         }
     }
+}
+
+function checkStoreIsOpen() {
+    const settings = appState.settings;
+    if (!settings || !settings.horarios_por_dia) return false;
+    
+    const now = new Date();
+    const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const currentDay = dayNames[now.getDay()];
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = currentHour * 60 + currentMinute;
+    
+    const schedule = settings.horarios_por_dia[currentDay];
+    if (!schedule || schedule.toLowerCase() === 'cerrado') return false;
+    
+    const match = schedule.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+    if (!match) return false;
+    
+    const startHour = parseInt(match[1]);
+    const startMinute = parseInt(match[2]);
+    const endHour = parseInt(match[3]);
+    const endMinute = parseInt(match[4]);
+    
+    const startTime = startHour * 60 + startMinute;
+    let endTime = endHour * 60 + endMinute;
+    
+    if (endTime === 0) endTime = 24 * 60;
+    
+    return currentTime >= startTime && currentTime < endTime;
 }
 
 function updateDeliveryInfo() {
@@ -1269,6 +1302,11 @@ async function initApp() {
         
         // Configurar autenticación
         setupAuthListeners();
+        
+        // Verificar estado del local cada minuto
+        setInterval(() => {
+            updateStoreStatus();
+        }, 60000);
         
         console.log('✅ Aplicación lista para usar');
         
