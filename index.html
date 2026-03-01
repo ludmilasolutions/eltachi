@@ -329,18 +329,29 @@
             color: var(--amarillo);
         }
         
-        /* CATEGORÍAS MEJORADAS */
+        /* CATEGORÍAS - CARRUSEL HORIZONTAL */
         .categories-container {
-            padding: 1.25rem 1.5rem 0.75rem;
-            background: transparent;
-            overflow-x: auto;
-            white-space: nowrap;
-            scrollbar-width: none;
+            padding: 1rem 1rem 0.75rem;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
             position: sticky;
             top: 100px;
             z-index: 900;
             border-bottom: 1px solid var(--gris-border);
-            backdrop-filter: blur(10px);
+        }
+        
+        .categories-scroll {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            padding-bottom: 0.5rem;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .categories-scroll::-webkit-scrollbar {
+            display: none;
         }
         
         .categories-container::-webkit-scrollbar {
@@ -348,42 +359,35 @@
         }
         
         .category-tabs {
-            display: inline-flex;
+            display: flex;
             gap: 0.5rem;
-            padding-bottom: 0.5rem;
-            flex-wrap: wrap;
         }
         
         .category-tab {
-            padding: 0.75rem 1.25rem;
-            background: var(--fondo-card);
-            backdrop-filter: blur(10px);
+            padding: 0.6rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--gris-border);
-            border-radius: 12px;
-            font-weight: 600;
+            border-radius: 20px;
+            font-weight: 500;
             color: var(--texto-secondary);
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
             white-space: nowrap;
-            font-size: 0.9rem;
-            position: relative;
-            overflow: hidden;
+            font-size: 0.8rem;
+            flex-shrink: 0;
         }
         
         .category-tab:hover {
-            border-color: var(--amarillo);
-            color: var(--amarillo);
-            transform: translateY(-2px);
-            box-shadow: var(--sombra-cyan);
+            border-color: #06b6d4;
+            color: #06b6d4;
         }
         
         .category-tab.active {
-            background: var(--gradiente-cyan);
-            border-color: var(--amarillo);
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            border-color: #06b6d4;
             color: white;
-            font-weight: 700;
-            box-shadow: var(--sombra-cyan);
-            transform: translateY(-2px);
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
         }
         
         .category-tab.active::before {
@@ -2180,7 +2184,7 @@
 
         <!-- CATEGORÍAS -->
         <div class="categories-container">
-            <div class="category-tabs" id="categoryTabs">
+            <div class="categories-scroll" id="categoryTabs">
                 <div class="loading">
                     <div class="loading-spinner"></div>
                 </div>

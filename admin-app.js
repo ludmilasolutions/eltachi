@@ -1055,7 +1055,8 @@ function updateTopProductsList() {
                 const productId = item.id;
                 if (!productCount[productId]) {
                     productCount[productId] = 0;
-            }
+                }
+            });
         }
     });
     
