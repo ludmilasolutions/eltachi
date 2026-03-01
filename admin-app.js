@@ -205,11 +205,9 @@ let audioCtx = null;
 let soundIntervals = [];
 
 function stopSound() {
-    // Limpiar todos los timeouts pendientes
     soundIntervals.forEach(id => clearTimeout(id));
     soundIntervals = [];
     
-    // Cerrar AudioContext si existe
     if (audioCtx) {
         audioCtx.close();
         audioCtx = null;
@@ -218,35 +216,54 @@ function stopSound() {
 
 function playNewOrderSound() {
     try {
-        // Limpiar sonidos anteriores
         stopSound();
         
-        // Crear AudioContext
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // Función para reproducir un beep
-        const playBeep = () => {
+        const playNote = (freq, delay) => {
             if (!audioCtx) return;
             
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
             
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
             
-            oscillator.frequency.value = 880;
-            oscillator.type = 'square';
-            gainNode.gain.value = 0.3;
+            osc.frequency.value = freq;
+            osc.type = 'sine';
             
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.25);
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.4);
+            
+            osc.start(audioCtx.currentTime + delay);
+            osc.stop(audioCtx.currentTime + delay + 0.4);
         };
         
-        // Programar beeps
-        playBeep();
-        soundIntervals.push(setTimeout(playBeep, 250));
-        soundIntervals.push(setTimeout(playBeep, 500));
-        soundIntervals.push(setTimeout(playBeep, 750));
+        // Melodía más agradable (notas musicales)
+        const melody = [
+            [523, 0],    // Do
+            [659, 0.3],  // Mi
+            [784, 0.6],  // Sol
+            [1047, 0.9], // Do alto
+            [784, 1.2],  // Sol
+            [659, 1.5],  // Mi
+            [523, 1.8],  // Do
+        ];
+        
+        melody.forEach(([freq, delay]) => {
+            soundIntervals.push(setTimeout(() => playNote(freq, 0), delay * 1000));
+        });
+        
+        // Repetir la melodía
+        const melodyRepeat = [
+            [523, 0], [659, 0.3], [784, 0.6], [1047, 0.9],
+            [784, 1.2], [659, 1.5], [523, 1.8],
+        ];
+        
+        melodyRepeat.forEach(([freq, delay]) => {
+            soundIntervals.push(setTimeout(() => playNote(freq, 0), (delay + 2.2) * 1000));
+        });
+        
     } catch (error) {
         console.log('Error con sonido:', error);
     }
