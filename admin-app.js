@@ -4,6 +4,7 @@
 // Estado global del panel admin
 const adminState = {
     currentUser: null,
+    isAdmin: false,
     orders: [],
     filteredOrders: [],
     products: [],
@@ -226,6 +227,81 @@ async function getSettings() {
     } catch (error) {
         console.error("Error obteniendo configuración:", error);
         return null;
+    }
+}
+
+// Verificar si el usuario es admin
+async function checkAdminStatus(user) {
+    try {
+        if (!user || !user.email) return false;
+        
+        // Verificar en colección "admins" por email
+        const adminDoc = await db.collection('admins').doc(user.uid).get();
+        if (adminDoc.exists && adminDoc.data().isAdmin === true) {
+            return true;
+        }
+        
+        // También verificar por email en caso de que el UID no coincida
+        const adminByEmail = await db.collection('admins')
+            .where('email', '==', user.email)
+            .limit(1)
+            .get();
+        
+        if (!adminByEmail.empty) {
+            return adminByEmail.docs[0].data().isAdmin === true;
+        }
+        
+        // Verificar en settings/config si hay lista de admins
+        const settings = await getSettings();
+        if (settings && settings.adminEmails) {
+            return settings.adminEmails.includes(user.email);
+        }
+        
+        return false;
+    } catch (error) {
+        console.error("Error verificando admin:", error);
+        return false;
+    }
+}
+
+// Agregar un nuevo admin (solo admins pueden ejecutar esto)
+async function addAdmin(email, nombre) {
+    try {
+        // Buscar usuario por email para obtener su UID
+        // Como no podemos buscar por email directamente en Firestore sin Cloud Functions,
+        // vamos a crear el documento con el email y el admin lo completa manualmente
+        // o usamos el UID si lo conocemos
+        
+        const adminEmail = email.toLowerCase().trim();
+        
+        await db.collection('admins').add({
+            email: adminEmail,
+            nombre: nombre || 'Admin',
+            isAdmin: true,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdBy: adminState.currentUser?.email || 'system'
+        });
+        
+        showNotification(`✅ Admin agregado: ${adminEmail}`, 'success');
+        return true;
+    } catch (error) {
+        console.error("Error agregando admin:", error);
+        showNotification('Error al agregar admin', 'error');
+        return false;
+    }
+}
+
+// Obtener lista de admins
+async function getAdminsList() {
+    try {
+        const snapshot = await db.collection('admins').get();
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error("Error obteniendo admins:", error);
+        return [];
     }
 }
 
@@ -2668,7 +2744,20 @@ async function initAdminApp() {
         
         auth.onAuthStateChanged(async (user) => {
             if (user) {
+                // Verificar si es admin
+                const isAdmin = await checkAdminStatus(user);
+                
+                if (!isAdmin) {
+                    // No es admin - cerrar sesión y mostrar error
+                    showNotification('🚫 No tienes acceso al panel de administración', 'error');
+                    await auth.signOut();
+                    showLoginScreen();
+                    showError('No tienes permisos de administrador', document.getElementById('loginError'));
+                    return;
+                }
+                
                 adminState.currentUser = user;
+                adminState.isAdmin = true;
                 showAdminPanel();
                 
                 // Actualizar avatar de usuario
