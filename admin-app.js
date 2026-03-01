@@ -2264,10 +2264,15 @@ function updateSettingsForm() {
     
     const settings = adminState.settings;
     
-    document.getElementById('storeName').value = settings.nombre_local || '';
-    document.getElementById('storeSubtitle').value = settings.subtitulo || '';
-    document.getElementById('whatsappPhone').value = settings.telefono_whatsapp || '';
-    document.getElementById('geminiApiKey').value = settings.api_key_gemini || '';
+    const storeNameEl = document.getElementById('storeName');
+    const storeSubtitleEl = document.getElementById('storeSubtitle');
+    const whatsappPhoneEl = document.getElementById('whatsappPhone');
+    const geminiApiKeyEl = document.getElementById('geminiApiKey');
+    
+    if (storeNameEl) storeNameEl.value = settings.nombre_local || '';
+    if (storeSubtitleEl) storeSubtitleEl.value = settings.subtitulo || '';
+    if (whatsappPhoneEl) whatsappPhoneEl.value = settings.telefono_whatsapp || '';
+    if (geminiApiKeyEl) geminiApiKeyEl.value = settings.api_key_gemini || '';
     
     const hoursContainer = document.getElementById('hoursContainer');
     hoursContainer.innerHTML = '';
