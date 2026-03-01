@@ -311,6 +311,8 @@ function closeUserOrderDetailsModal() {
 // Hacer funciones disponibles globalmente
 window.showUserOrderDetails = showUserOrderDetails;
 window.openUserOrdersModal = openUserOrdersModal;
+window.loginWithGoogle = loginWithGoogle;
+window.logout = logout;
 
 // Cargar configuración del local
 async function loadSettings() {
