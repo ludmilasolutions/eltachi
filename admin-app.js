@@ -202,18 +202,24 @@ function playNotificationSound() {
 }
 
 let notificationAudio = null;
+let audioEnabled = false;
 
 function stopSound() {
     if (notificationAudio) {
         notificationAudio.pause();
         notificationAudio.currentTime = 0;
     }
-    if (Notification.permission === 'granted') {
-        // Cerrar notificaciones previas
-        window.activeNotifications = window.activeNotifications || [];
-        window.activeNotifications.forEach(n => n.close());
-        window.activeNotifications = [];
-    }
+}
+
+function enableAudio() {
+    notificationAudio.volume = 0.01;
+    notificationAudio.play().then(() => {
+        notificationAudio.pause();
+        notificationAudio.currentTime = 0;
+        notificationAudio.volume = 0.8;
+        audioEnabled = true;
+        showNotification('✅ Sonidos activados', 'success');
+    }).catch(e => console.error('Error:', e));
 }
 
 function playNewOrderSound() {
@@ -223,8 +229,7 @@ function playNewOrderSound() {
             body: 'Tienes un nuevo pedido pendiente',
             icon: 'logo.png',
             tag: 'new-order',
-            requireInteraction: true,
-            silent: false
+            requireInteraction: true
         });
         
         notification.onclick = function() {
@@ -233,10 +238,40 @@ function playNewOrderSound() {
         };
     }
     
-    // Reproducir audio local
-    const audio = new Audio('SD_ALERT_3.mp3');
-    audio.volume = 1.0;
-    audio.play().then(() => console.log('🔔')).catch(e => console.log('Error:', e));
+    // Reproducir audio
+    if (!notificationAudio) {
+        notificationAudio = new Audio('SD_ALERT_3.mp3');
+        notificationAudio.volume = 0.8;
+    }
+    
+    notificationAudio.currentTime = 0;
+    notificationAudio.play().catch(error => {
+        showAudioActivationWarning();
+    });
+}
+
+function showAudioActivationWarning() {
+    const existing = document.getElementById('audioWarning');
+    if (existing) return;
+    
+    const warning = document.createElement('div');
+    warning.id = 'audioWarning';
+    warning.innerHTML = `
+        <div style="position:fixed; bottom:20px; left:20px; background:#f59e0b; color:white; padding:15px 20px; border-radius:12px; z-index:10001; max-width:300px; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+            <div style="margin-bottom:10px;">
+                <i class="fas fa-volume-mute"></i> Haz clic para activar sonidos
+            </div>
+            <button onclick="enableAudio(); this.parentElement.parentElement.remove();" style="background:white; color:#f59e0b; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">
+                Activar sonido
+            </button>
+        </div>
+    `;
+    document.body.appendChild(warning);
+    
+    document.body.addEventListener('click', function enableOnce() {
+        enableAudio();
+        document.getElementById('audioWarning')?.remove();
+    }, { once: true });
 }
 
 function requestNotificationPermission() {
@@ -2992,6 +3027,7 @@ window.debugRealtimeUpdates = debugRealtimeUpdates;
 window.toggleRealtimeUpdates = toggleRealtimeUpdates;
 window.showNotification = showNotification;
 window.showNewOrderAlert = showNewOrderAlert;
+window.enableAudio = enableAudio;
 window.filterProducts = filterProducts;
 window.checkAdminStatus = checkAdminStatus;
 window.addAdmin = addAdmin;
