@@ -202,16 +202,11 @@ function playNotificationSound() {
 }
 
 let audioCtx = null;
-let soundIntervals = [];
+let soundTimeouts = [];
 
 function stopSound() {
-    soundIntervals.forEach(id => clearTimeout(id));
-    soundIntervals = [];
-    
-    if (audioCtx) {
-        audioCtx.close();
-        audioCtx = null;
-    }
+    soundTimeouts.forEach(t => clearTimeout(t));
+    soundTimeouts = [];
 }
 
 function playNewOrderSound() {
@@ -220,9 +215,7 @@ function playNewOrderSound() {
         
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        const playNote = (freq, delay) => {
-            if (!audioCtx) return;
-            
+        const playTone = (freq, startTime, duration) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             
@@ -232,40 +225,34 @@ function playNewOrderSound() {
             osc.frequency.value = freq;
             osc.type = 'sine';
             
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime + delay);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.4);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime + startTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + startTime + duration);
             
-            osc.start(audioCtx.currentTime + delay);
-            osc.stop(audioCtx.currentTime + delay + 0.4);
+            osc.start(audioCtx.currentTime + startTime);
+            osc.stop(audioCtx.currentTime + startTime + duration);
         };
         
-        // Melodía más agradable (notas musicales)
-        const melody = [
-            [523, 0],    // Do
-            [659, 0.3],  // Mi
-            [784, 0.6],  // Sol
-            [1047, 0.9], // Do alto
-            [784, 1.2],  // Sol
-            [659, 1.5],  // Mi
-            [523, 1.8],  // Do
-        ];
+        // Melodía bella
+        const notes = [523, 659, 784, 1047, 784, 659, 523];
+        const timing = [0, 0.2, 0.4, 0.7, 1.0, 1.3, 1.6];
         
-        melody.forEach(([freq, delay]) => {
-            soundIntervals.push(setTimeout(() => playNote(freq, 0), delay * 1000));
+        // Primera ronda
+        notes.forEach((note, i) => {
+            soundTimeouts.push(setTimeout(() => playTone(note, 0, 0.3), timing[i] * 1000));
         });
         
-        // Repetir la melodía
-        const melodyRepeat = [
-            [523, 0], [659, 0.3], [784, 0.6], [1047, 0.9],
-            [784, 1.2], [659, 1.5], [523, 1.8],
-        ];
+        // Segunda ronda
+        notes.forEach((note, i) => {
+            soundTimeouts.push(setTimeout(() => playTone(note, 0, 0.3), (timing[i] + 2) * 1000));
+        });
         
-        melodyRepeat.forEach(([freq, delay]) => {
-            soundIntervals.push(setTimeout(() => playNote(freq, 0), (delay + 2.2) * 1000));
+        // Tercera ronda
+        notes.forEach((note, i) => {
+            soundTimeouts.push(setTimeout(() => playTone(note, 0, 0.3), (timing[i] + 4) * 1000));
         });
         
     } catch (error) {
-        console.log('Error con sonido:', error);
+        console.log('Error sonido:', error);
     }
 }
 
