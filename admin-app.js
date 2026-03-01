@@ -208,19 +208,45 @@ function stopSound() {
         notificationAudio.pause();
         notificationAudio.currentTime = 0;
     }
+    if (Notification.permission === 'granted') {
+        // Cerrar notificaciones previas
+        window.activeNotifications = window.activeNotifications || [];
+        window.activeNotifications.forEach(n => n.close());
+        window.activeNotifications = [];
+    }
 }
 
 function playNewOrderSound() {
+    // Intentar con notificación del sistema
+    if (Notification.permission === 'granted') {
+        const notification = new Notification('EL TACHI - Nuevo Pedido!', {
+            body: 'Tienes un nuevo pedido pendiente',
+            icon: 'logo.png',
+            tag: 'new-order',
+            requireInteraction: true
+        });
+        
+        window.activeNotifications = window.activeNotifications || [];
+        window.activeNotifications.push(notification);
+        
+        notification.onclick = function() {
+            window.focus();
+            this.close();
+        };
+    }
+    
+    // También intentar reproducir audio
     try {
         stopSound();
-        
-        notificationAudio = new Audio();
-        notificationAudio.src = 'https://cdn.pixabay.com/audio/2022/03/10/audio_c6c8a73467.mp3';
-        notificationAudio.volume = 0.8;
-        
-        notificationAudio.play().catch(e => console.log('No se pudo reproducir:', e));
-    } catch (error) {
-        console.log('Error:', error);
+        notificationAudio = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU' + 'A'.repeat(1000));
+        notificationAudio.volume = 0.7;
+        notificationAudio.play().catch(() => {});
+    } catch(e) {}
+}
+
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
     }
 }
 
@@ -2827,6 +2853,9 @@ function showLoginScreen() {
 async function initAdminApp() {
     try {
         console.log('🚀 Inicializando Panel Admin...');
+        
+        // Solicitar permiso de notificaciones
+        requestNotificationPermission();
         
         // Verificar conexión a Firebase
         if (!firebase.apps.length) {
