@@ -203,20 +203,30 @@ function playNotificationSound() {
 
 function playNewOrderSound() {
     try {
-        // Sonido de alarma más fuerte y claro
+        // Intentar reproducir sonido inmediatamente (sin delay)
         const playSound = () => {
-            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-            audio.volume = 1.0;
-            audio.play().catch(e => console.log('Error con audio:', e));
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.frequency.value = 880; // Frecuencia más alta
+            oscillator.type = 'square';
+            gainNode.gain.value = 0.3;
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
         };
         
-        // Reproducir 4 veces para asegurar que se escuche
+        // Reproducir múltiples veces
         playSound();
-        setTimeout(playSound, 400);
-        setTimeout(playSound, 800);
-        setTimeout(playSound, 1200);
+        setTimeout(playSound, 300);
+        setTimeout(playSound, 600);
+        setTimeout(playSound, 900);
     } catch (error) {
-        console.log('Error con sonido de nuevo pedido:', error);
+        console.log('Error con sonido:', error);
     }
 }
 
@@ -227,40 +237,51 @@ function showNewOrderAlert(orderId) {
         existingAlert.remove();
     }
     
-    // Crear nueva alerta visual
+    // Crear alerta visual con botón claro
     const alertDiv = document.createElement('div');
     alertDiv.id = 'newOrderAlert';
-    alertDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;';
+    alertDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(30,64,175,0.95);z-index:10000;display:flex;align-items:center;justify-content:center;';
     
     alertDiv.innerHTML = `
-        <div style="background:white;padding:50px;border-radius:30px;text-align:center;box-shadow:0 20px60px rgba(0,0,0,0.5);max-width:90%;">
-            <i class="fas fa-bell" style="font-size:80px;color:#f59e0b;margin-bottom:20px;animation:ring 0.5s infinite;"></i>
-            <h2 style="color:#1e40af;margin-bottom:10px;font-size:28px;">NUEVO PEDIDO!</h2>
-            <p style="font-size:24px;color:#6b7280;font-weight:bold;">#${orderId}</p>
-            <p style="font-size:16px;color:#9ca3af;margin-top:10px;">Toca para aceptar</p>
+        <div style="background:white;padding:40px;border-radius:20px;text-align:center;max-width:90%;width:350px;">
+            <i class="fas fa-bell" style="font-size:70px;color:#f59e0b;margin-bottom:15px;animation:pulse 0.3s infinite;"></i>
+            <h2 style="color:#1e40af;margin:0 0 10px 0;font-size:26px;">¡NUEVO PEDIDO!</h2>
+            <p style="font-size:22px;color:#374151;font-weight:bold;margin:0 0 5px 0;">#${orderId}</p>
+            <p style="font-size:14px;color:#6b7280;margin:0 0 25px 0;">Hace click en el botón para aceptar</p>
+            <button id="acceptOrderBtn" style="width:100%;padding:18px 30px;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:12px;font-size:18px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(16,185,129,0.4);">
+                <i class="fas fa-check-circle"></i> ACEPTAR
+            </button>
         </div>
         <style>
-            @keyframes ring {
-                0%, 100% { transform: rotate(0deg); }
-                25% { transform: rotate(15deg); }
-                75% { transform: rotate(-15deg); }
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.1); }
             }
         </style>
     `;
     
-    // Cerrar al hacer click en cualquier parte
-    alertDiv.onclick = function() {
+    // Agregar al DOM primero
+    document.body.appendChild(alertDiv);
+    
+    // Evento del botón
+    document.getElementById('acceptOrderBtn').onclick = function(e) {
+        e.stopPropagation();
         alertDiv.remove();
     };
     
-    document.body.appendChild(alertDiv);
+    // También cerrar al hacer click fuera del contenido
+    alertDiv.onclick = function(e) {
+        if (e.target === alertDiv) {
+            alertDiv.remove();
+        }
+    };
     
-    // Auto cerrar después de 20 segundos
+    // Auto cerrar después de 30 segundos
     setTimeout(() => {
         if (alertDiv.parentElement) {
             alertDiv.remove();
         }
-    }, 20000);
+    }, 30000);
 }
 
 // FUNCIONES DE FIREBASE
