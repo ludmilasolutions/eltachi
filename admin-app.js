@@ -203,65 +203,64 @@ function playNotificationSound() {
 
 function playNewOrderSound() {
     try {
-        // Sonido más fuerte y repetido para asegurar que se escuche
+        // Sonido de alarma más fuerte y claro
         const playSound = () => {
-            const audio = new Audio('https://cdn.freesound.org/previews/612/612095_5674468-lq.mp3');
-            audio.volume = 0.8;
+            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+            audio.volume = 1.0;
             audio.play().catch(e => console.log('Error con audio:', e));
         };
         
-        // Reproducir 3 veces conintervalo
+        // Reproducir 4 veces para asegurar que se escuche
         playSound();
+        setTimeout(playSound, 400);
         setTimeout(playSound, 800);
-        setTimeout(playSound, 1600);
-        
-        // También intentar con el elemento de audio existente
-        const audioEl = document.getElementById('newOrderSound');
-        if (audioEl) {
-            audioEl.volume = 0.8;
-            audioEl.currentTime = 0;
-            audioEl.play().catch(e => {});
-        }
+        setTimeout(playSound, 1200);
     } catch (error) {
         console.log('Error con sonido de nuevo pedido:', error);
     }
 }
 
 function showNewOrderAlert(orderId) {
-    // Crear alerta visual parpadeante
+    // Cerrar alerta anterior si existe
+    const existingAlert = document.getElementById('newOrderAlert');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+    
+    // Crear nueva alerta visual
     const alertDiv = document.createElement('div');
     alertDiv.id = 'newOrderAlert';
+    alertDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;';
+    
     alertDiv.innerHTML = `
-        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-                    background: rgba(0,0,0,0.8); z-index: 10000; display: flex; 
-                    align-items: center; justify-content: center; flex-direction: column;">
-            <div style="background: white; padding: 40px; border-radius: 20px; 
-                        text-align: center; animation: pulse 0.5s infinite;">
-                <i class="fas fa-bell" style="font-size: 60px; color: #f59e0b; margin-bottom: 20px;"></i>
-                <h2 style="color: #1e40af; margin-bottom: 10px;">NUEVO PEDIDO!</h2>
-                <p style="font-size: 18px; color: #6b7280;">#${orderId}</p>
-                <button onclick="this.parentElement.parentElement.remove()" 
-                        style="margin-top: 20px; padding: 12px 30px; background: #10b981; 
-                               color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">
-                    <i class="fas fa-check"></i> Aceptar
-                </button>
-            </div>
+        <div style="background:white;padding:50px;border-radius:30px;text-align:center;box-shadow:0 20px60px rgba(0,0,0,0.5);max-width:90%;">
+            <i class="fas fa-bell" style="font-size:80px;color:#f59e0b;margin-bottom:20px;animation:ring 0.5s infinite;"></i>
+            <h2 style="color:#1e40af;margin-bottom:10px;font-size:28px;">NUEVO PEDIDO!</h2>
+            <p style="font-size:24px;color:#6b7280;font-weight:bold;">#${orderId}</p>
+            <p style="font-size:16px;color:#9ca3af;margin-top:10px;">Toca para aceptar</p>
         </div>
         <style>
-            @keyframes pulse {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.05); }
+            @keyframes ring {
+                0%, 100% { transform: rotate(0deg); }
+                25% { transform: rotate(15deg); }
+                75% { transform: rotate(-15deg); }
             }
         </style>
     `;
+    
+    // Cerrar al hacer click en cualquier parte
+    alertDiv.onclick = function() {
+        alertDiv.remove();
+    };
+    
     document.body.appendChild(alertDiv);
     
-    // Auto cerrar después de 30 segundos
+    // Auto cerrar después de 20 segundos
     setTimeout(() => {
         if (alertDiv.parentElement) {
             alertDiv.remove();
         }
-    }, 30000);
+    }, 20000);
 }
 
 // FUNCIONES DE FIREBASE
