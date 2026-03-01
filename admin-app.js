@@ -201,58 +201,26 @@ function playNotificationSound() {
     }
 }
 
-let audioCtx = null;
-let soundTimeouts = [];
+let notificationAudio = null;
 
 function stopSound() {
-    soundTimeouts.forEach(t => clearTimeout(t));
-    soundTimeouts = [];
+    if (notificationAudio) {
+        notificationAudio.pause();
+        notificationAudio.currentTime = 0;
+    }
 }
 
 function playNewOrderSound() {
     try {
         stopSound();
         
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        notificationAudio = new Audio();
+        notificationAudio.src = 'https://cdn.pixabay.com/audio/2022/03/10/audio_c6c8a73467.mp3';
+        notificationAudio.volume = 0.8;
         
-        const playTone = (freq, startTime, duration) => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.frequency.value = freq;
-            osc.type = 'sine';
-            
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime + startTime);
-            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + startTime + duration);
-            
-            osc.start(audioCtx.currentTime + startTime);
-            osc.stop(audioCtx.currentTime + startTime + duration);
-        };
-        
-        // Melodía bella
-        const notes = [523, 659, 784, 1047, 784, 659, 523];
-        const timing = [0, 0.2, 0.4, 0.7, 1.0, 1.3, 1.6];
-        
-        // Primera ronda
-        notes.forEach((note, i) => {
-            soundTimeouts.push(setTimeout(() => playTone(note, 0, 0.3), timing[i] * 1000));
-        });
-        
-        // Segunda ronda
-        notes.forEach((note, i) => {
-            soundTimeouts.push(setTimeout(() => playTone(note, 0, 0.3), (timing[i] + 2) * 1000));
-        });
-        
-        // Tercera ronda
-        notes.forEach((note, i) => {
-            soundTimeouts.push(setTimeout(() => playTone(note, 0, 0.3), (timing[i] + 4) * 1000));
-        });
-        
+        notificationAudio.play().catch(e => console.log('No se pudo reproducir:', e));
     } catch (error) {
-        console.log('Error sonido:', error);
+        console.log('Error:', error);
     }
 }
 
