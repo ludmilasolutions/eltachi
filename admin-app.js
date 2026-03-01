@@ -2876,3 +2876,6 @@ window.debugRealtimeUpdates = debugRealtimeUpdates;
 window.toggleRealtimeUpdates = toggleRealtimeUpdates;
 window.showNotification = showNotification;
 window.filterProducts = filterProducts;
+window.checkAdminStatus = checkAdminStatus;
+window.addAdmin = addAdmin;
+window.getAdminsList = getAdminsList;
