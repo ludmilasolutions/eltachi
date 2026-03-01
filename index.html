@@ -2044,6 +2044,60 @@
         .user-order-item:last-child {
             border-bottom: none;
         }
+        
+        .orders-section-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--gris-medio);
+            margin: 1.5rem 0 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--amarillo);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .orders-section-title:first-child {
+            margin-top: 0;
+        }
+        
+        .user-order-card.urgent {
+            border: 2px solid var(--amarillo);
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+        }
+        
+        .urgent-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--amarillo);
+            color: var(--azul-oscuro);
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .user-order-card.history {
+            opacity: 0.75;
+            background: var(--gris-claro);
+        }
+        
+        .user-order-card {
+            position: relative;
+        }
     </style>
 </head>
 <body>
@@ -2716,35 +2770,81 @@
                 return;
             }
             
+            // Separar pedidos activos (no entregados/cancelados) del historial
+            const activeOrders = appState.userOrders.filter(order => 
+                order.estado !== 'Entregado' && order.estado !== 'Cancelado'
+            );
+            const historyOrders = appState.userOrders.filter(order => 
+                order.estado === 'Entregado' || order.estado === 'Cancelado'
+            );
+            
             let html = '';
-            appState.userOrders.forEach(order => {
-                const fecha = order.fecha?.toDate ? order.fecha.toDate() : new Date(order.fecha);
-                const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                }) : '--';
-                
-                const statusClass = order.estado === 'Recibido' ? 'recibido' :
-                                  order.estado === 'En preparación' ? 'preparacion' :
-                                  order.estado === 'Listo' ? 'listo' : 'entregado';
-                
-                const itemsCount = order.items?.length || 0;
-                
-                html += `
-                    <div class="user-order-card" onclick="showUserOrderDetails('${order.id}')">
-                        <div class="user-order-header">
-                            <span class="user-order-id">${order.id_pedido || order.id}</span>
-                            <span class="user-order-status ${statusClass}">${order.estado || 'Recibido'}</span>
+            
+            // Pedidos activos
+            if (activeOrders.length > 0) {
+                html += `<div class="orders-section-title"><i class="fas fa-clock"></i> Pedidos activos</div>`;
+                activeOrders.forEach(order => {
+                    const fecha = order.fecha?.toDate ? order.fecha.toDate() : new Date(order.fecha);
+                    const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }) : '--';
+                    
+                    const statusClass = order.estado === 'Recibido' ? 'recibido' :
+                                      order.estado === 'En preparación' ? 'preparacion' :
+                                      order.estado === 'Listo' ? 'listo' : 'entregado';
+                    
+                    const itemsCount = order.items?.length || 0;
+                    
+                    const isUrgent = order.estado === 'Recibido';
+                    
+                    html += `
+                        <div class="user-order-card ${isUrgent ? 'urgent' : ''}" onclick="showUserOrderDetails('${order.id}')">
+                            <div class="user-order-header">
+                                <span class="user-order-id">${order.id_pedido || order.id}</span>
+                                <span class="user-order-status ${statusClass}">${order.estado || 'Recibido'}</span>
+                            </div>
+                            <div class="user-order-date">${fechaStr}</div>
+                            <div class="user-order-items">${itemsCount} item${itemsCount !== 1 ? 's' : ''}</div>
+                            <div class="user-order-total">$${order.total || 0}</div>
+                            ${isUrgent ? '<div class="urgent-badge">Nuevo</div>' : ''}
                         </div>
-                        <div class="user-order-date">${fechaStr}</div>
-                        <div class="user-order-items">${itemsCount} item${itemsCount !== 1 ? 's' : ''}</div>
-                        <div class="user-order-total">$${order.total || 0}</div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            }
+            
+            // Historial
+            if (historyOrders.length > 0) {
+                html += `<div class="orders-section-title"><i class="fas fa-history"></i> Historial</div>`;
+                historyOrders.forEach(order => {
+                    const fecha = order.fecha?.toDate ? order.fecha.toDate() : new Date(order.fecha);
+                    const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }) : '--';
+                    
+                    const statusClass = order.estado === 'Entregado' ? 'entregado' : 'cancelado';
+                    
+                    const itemsCount = order.items?.length || 0;
+                    
+                    html += `
+                        <div class="user-order-card history" onclick="showUserOrderDetails('${order.id}')">
+                            <div class="user-order-header">
+                                <span class="user-order-id">${order.id_pedido || order.id}</span>
+                                <span class="user-order-status ${statusClass}">${order.estado}</span>
+                            </div>
+                            <div class="user-order-date">${fechaStr}</div>
+                            <div class="user-order-items">${itemsCount} item${itemsCount !== 1 ? 's' : ''}</div>
+                            <div class="user-order-total">$${order.total || 0}</div>
+                        </div>
+                    `;
+                });
+            }
             
             container.innerHTML = html;
         }
@@ -3101,11 +3201,30 @@
         }
         
         // CARRITO FUNCTIONS
+        const CART_EXPIRY_MINUTES = 30;
+        
         function loadCart() {
             try {
                 const savedCart = localStorage.getItem('eltachi_cart');
                 if (savedCart) {
-                    appState.cart = JSON.parse(savedCart);
+                    const cartData = JSON.parse(savedCart);
+                    
+                    // Verificar si el carrito tiene marca de tiempo
+                    if (cartData.timestamp) {
+                        const cartTime = new Date(cartData.timestamp).getTime();
+                        const now = Date.now();
+                        const diffMinutes = (now - cartTime) / (1000 * 60);
+                        
+                        if (diffMinutes > CART_EXPIRY_MINUTES) {
+                            console.log('⏰ Carrito expirado después de', CART_EXPIRY_MINUTES, 'minutos');
+                            localStorage.removeItem('eltachi_cart');
+                            appState.cart = [];
+                            return;
+                        }
+                    }
+                    
+                    // Mantener backwards compatibility con carrito sin timestamp
+                    appState.cart = cartData.items || cartData;
                     updateCartUI();
                 }
             } catch (error) {
@@ -3116,7 +3235,11 @@
         
         function saveCart() {
             try {
-                localStorage.setItem('eltachi_cart', JSON.stringify(appState.cart));
+                const cartData = {
+                    items: appState.cart,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('eltachi_cart', JSON.stringify(cartData));
                 updateCartUI();
             } catch (error) {
                 console.error('Error guardando carrito:', error);
@@ -3413,6 +3536,12 @@
         
         async function confirmOrder() {
             try {
+                // Verificar que el local esté abierto
+                if (!appState.settings?.abierto) {
+                    showToast('El local está cerrado. No se pueden realizar pedidos.', 'error');
+                    return;
+                }
+                
                 // Obtener datos
                 const customerName = document.getElementById('customerName').value.trim();
                 const customerPhone = document.getElementById('customerPhone').value.trim();
