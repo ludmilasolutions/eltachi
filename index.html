@@ -2,8 +2,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EL TACHI - Rotisería & Almacén</title>
-    <meta name="description" content="Pedí online en EL TACHI Rotisería. Hamburguesas, pizzas, milanesas y más. Envío a domicilio y retiro en local.">
+    <title>AFM Orders - Gestión de Pedidos</title>
+    <meta name="description" content="AFM Orders - Sistema de pedidos online. Envío a domicilio y retiro en local.">
     <meta name="theme-color" content="#3B82F6">
     
     <!-- PWA Manifest -->
@@ -2111,8 +2111,8 @@
                         <img src="logo.png?v=4" alt="EL TACHI">
                     </div>
                     <div class="logo-text">
-                        <div class="store-name">EL TACHI</div>
-                        <div class="store-subtitle">Rotisería & Almacén</div>
+                        <div class="store-name" id="storeName">Cargando...</div>
+                        <div class="store-subtitle" id="storeSubtitle">Pedidos Online</div>
                     </div>
                 </div>
                 <button class="cart-button-header" id="cartButton">
@@ -3675,6 +3675,23 @@
                 elements.statusDot.style.background = '#ef4444';
                 elements.statusDot.style.animation = 'none';
             }
+        }
+        
+        function updateStoreName() {
+            if (!appState.settings) return;
+            
+            const storeNameEl = document.getElementById('storeName');
+            const storeSubtitleEl = document.getElementById('storeSubtitle');
+            const pageTitle = document.title;
+            
+            const nombreLocal = appState.settings.nombre_local || 'AFM Orders';
+            const subtitulo = appState.settings.subtitulo || 'de AFMSolutions';
+            
+            if (storeNameEl) storeNameEl.textContent = nombreLocal;
+            if (storeSubtitleEl) storeSubtitleEl.textContent = subtitulo;
+            
+            // Actualizar título de la página
+            document.title = `${nombreLocal} - Pedidos Online`;
         }
         
         function updateDeliveryInfo() {

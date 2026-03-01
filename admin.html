@@ -7,6 +7,7 @@
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#1e40af">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="EL TACHI Admin">
@@ -1437,6 +1438,10 @@
                         <div id="ordersChartError" class="chart-error" style="display: none;">
                             <i class="fas fa-exclamation-triangle"></i>
                             <p>Error cargando el gráfico</p>
+                        </div>
+                        <div id="ordersChartNoData" class="chart-error" style="display: none; color: #6b7280;">
+                            <i class="fas fa-chart-line"></i>
+                            <p>No hay pedidos hoy</p>
                         </div>
                     </div>
                 </div>

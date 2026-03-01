@@ -1068,10 +1068,23 @@ function updateTopProductsList() {
                 const productId = item.id;
                 if (!productCount[productId]) {
                     productCount[productId] = 0;
-                }
-                productCount[productId] += item.cantidad || 1;
-            });
+            }
         }
+    });
+    
+    // Mostrar/ocultar mensaje de sin datos
+    const noDataEl = document.getElementById('ordersChartNoData');
+    const canvasEl = document.getElementById('ordersChart');
+    if (noDataEl && canvasEl) {
+        if (hasData) {
+            noDataEl.style.display = 'none';
+            canvasEl.style.display = 'block';
+        } else {
+            noDataEl.style.display = 'flex';
+            canvasEl.style.display = 'none';
+        }
+    }
+}
     });
     
     const topProducts = Object.entries(productCount)
@@ -1115,6 +1128,7 @@ function updateTopProductsList() {
 
 function updateOrdersChart() {
     const ctx = document.getElementById('ordersChart');
+    const noDataEl = document.getElementById('ordersChartNoData');
     if (!ctx) return;
     
     if (window.ordersChartInstance) {
@@ -1122,32 +1136,56 @@ function updateOrdersChart() {
     }
     
     const today = new Date();
-    const labels = Array.from({length: 14}, (_, i) => {
-        const hour = 10 + Math.floor(i/2);
-        const minute = i % 2 === 0 ? '00' : '30';
-        return `${hour}:${minute}`;
-    });
+    const todayStr = today.toDateString();
     
-    const ordersByHour = Array(14).fill(0);
+    // Horas de 8:00 a 23:00
+    const startHour = 8;
+    const endHour = 23;
+    const hours = endHour - startHour;
+    
+    const labels = Array.from({length: hours}, (_, i) => `${startHour + i}:00`);
+    const ordersByHour = Array(hours).fill(0);
+    
+    let hasData = false;
+    let totalOrders = 0;
+    
+    // Depuración
+    console.log('Total pedidos en estado:', adminState.orders.length);
     
     adminState.orders.forEach(order => {
         if (!order.fecha) return;
         
-        const orderDate = order.fecha.toDate ? order.fecha.toDate() : new Date(order.fecha);
-        if (orderDate.getDate() === today.getDate() && 
-            orderDate.getMonth() === today.getMonth() && 
-            orderDate.getFullYear() === today.getFullYear()) {
-            
-            const hour = orderDate.getHours();
-            const minute = orderDate.getMinutes();
-            const slot = (hour - 10) * 2 + (minute >= 30 ? 1 : 0);
-            
-            if (slot >= 0 && slot < 14) {
-                ordersByHour[slot]++;
+        try {
+            let orderDate;
+            if (order.fecha.toDate && typeof order.fecha.toDate === 'function') {
+                orderDate = order.fecha.toDate();
+            } else if (order.fecha instanceof Date) {
+                orderDate = order.fecha;
+            } else {
+                orderDate = new Date(order.fecha);
             }
+            
+            // Verificar que la fecha sea válida
+            if (isNaN(orderDate.getTime())) return;
+            
+            // Comparar solo fecha
+            if (orderDate.toDateString() === todayStr) {
+                hasData = true;
+                totalOrders++;
+                const hour = orderDate.getHours();
+                
+                if (hour >= startHour && hour < endHour) {
+                    ordersByHour[hour - startHour]++;
+                }
+            }
+        } catch (e) {
+            console.log('Error procesando fecha:', e, order.fecha);
         }
     });
     
+    console.log('Pedidos hoy:', totalOrders, 'hasData:', hasData);
+    
+    // Si no hay datos, igualmente mostrar el gráfico vacío
     window.ordersChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
